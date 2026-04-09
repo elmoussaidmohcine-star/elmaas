@@ -5,8 +5,256 @@ import { io } from "socket.io-client";
 import Board from "./Board";
 import "./App.css";
 
-const API = process.env.REACT_APP_API_URL || "https://elmaas.up.railway.app";
+const API = "https://elmaas.up.railway.app";
 // TIMER_INITIAL est maintenant choisi par les joueurs
+
+// ── Auth helpers ─────────────────────────────────────────────
+function getToken() { return localStorage.getItem("elmaas_token"); }
+function getUser()  {
+  try { return JSON.parse(localStorage.getItem("elmaas_user") || "null"); }
+  catch { return null; }
+}
+
+// ── Écran Auth (Connexion / Inscription) ──────────────────────
+function EcranAuth({ onConnecte }) {
+  const [mode, setMode] = useState("connexion"); // "connexion" | "inscription"
+  const [email, setEmail] = useState("");
+  const [pseudo, setPseudo] = useState("");
+  const [mdp, setMdp] = useState("");
+  const [erreur, setErreur] = useState(null);
+  const [chargement, setChargement] = useState(false);
+
+  const handleSubmit = async () => {
+    setErreur(null);
+    setChargement(true);
+    try {
+      const route = mode === "connexion" ? "/auth/connexion" : "/auth/inscription";
+      const body = mode === "connexion"
+        ? { email, mot_de_passe: mdp }
+        : { email, pseudo, mot_de_passe: mdp };
+      const res = await axios.post(`${API}${route}`, body);
+      localStorage.setItem("elmaas_token", res.data.token);
+      localStorage.setItem("elmaas_user", JSON.stringify(res.data.utilisateur));
+      onConnecte(res.data.utilisateur);
+    } catch (err) {
+      setErreur(err.response?.data?.erreur || "Erreur de connexion");
+    } finally { setChargement(false); }
+  };
+
+  return (
+    <div className="ecran-taille">
+      <h1 className="titre-jeu">ELMAAS</h1>
+      <p className="phrase-jeu">Chess is old, ELMAAS is better than gold</p>
+      <div className="lobby-card" style={{ minWidth: 340 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          {["connexion","inscription"].map(m => (
+            <button key={m} className={`ia-btn ${mode===m?"actif":""}`}
+              onClick={() => { setMode(m); setErreur(null); }}
+              style={{ flex: 1, textTransform: "capitalize" }}>
+              {m === "connexion" ? "Connexion" : "Inscription"}
+            </button>
+          ))}
+        </div>
+        {mode === "inscription" && (
+          <input className="lobby-input" placeholder="Pseudo" value={pseudo}
+            onChange={e => setPseudo(e.target.value)} style={{ marginBottom: 8 }} />
+        )}
+        <input className="lobby-input" placeholder="Email" type="email" value={email}
+          onChange={e => setEmail(e.target.value)} style={{ marginBottom: 8 }} />
+        <input className="lobby-input" placeholder="Mot de passe" type="password" value={mdp}
+          onChange={e => setMdp(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleSubmit()}
+          style={{ marginBottom: 8 }} />
+        {erreur && <div style={{ color: "#ff6644", fontSize: 13 }}>{erreur}</div>}
+        <button className="btn-valider" onClick={handleSubmit} disabled={chargement}>
+          {chargement ? "..." : mode === "connexion" ? "Se connecter" : "Créer un compte"}
+        </button>
+        <button style={{ background:"none", border:"none", color:"var(--muted)", cursor:"pointer", fontSize:13, marginTop:4 }}
+          onClick={() => onConnecte(null)}>
+          Continuer sans compte
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Écran sélection photo ─────────────────────────────────────
+function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, onPartieCreee }) {
+  const [photosFixees, setPhotosFixees] = useState([]);
+  const [photoSelectionnee, setPhotoSelectionnee] = useState(null);
+  const [nomPhoto, setNomPhoto] = useState("");
+  const [chargement, setChargement] = useState(false);
+  const [erreur, setErreur] = useState(null);
+  const [modeUpload, setModeUpload] = useState(false);
+  const [apercu, setApercu] = useState(null);
+
+  const peutUploader = !utilisateur
+    ? false
+    : utilisateur.premium || !utilisateur.photo_perso_utilisee;
+
+  useEffect(() => {
+    axios.get(`${API}/photos_fixes`).then(res => setPhotosFixees(res.data.photos));
+  }, []);
+
+  const jouerAvecPhoto = async (urlOuFichier, estFichier = false) => {
+    setErreur(null);
+    setChargement(true);
+    try {
+      const formData = new FormData();
+      formData.append("prop_j1", prop1);
+      formData.append("prop_j2", prop2);
+      formData.append("nom_photo", nomPhoto.slice(0, 10));
+      formData.append("timer_sec", timerSec);
+      if (estFichier) {
+        formData.append("photo", urlOuFichier);
+        // Marquer la photo perso comme utilisée
+        if (utilisateur && !utilisateur.premium) {
+          const token = getToken();
+          await axios.post(`${API}/consommer_upload`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+      } else {
+        // Photo fixe : la télécharger depuis l'URL
+        const resp = await fetch(`${API}${urlOuFichier}`);
+        const blob = await resp.blob();
+        const fichier = new File([blob], "photo_fixe.jpg", { type: blob.type });
+        formData.append("photo", fichier);
+      }
+      const res = await axios.post(`${API}/nouvelle-partie`, formData);
+      onPartieCreee(res.data.partie_id, res.data.etat, res.data.pixels_photo, res.data.taille, res.data.timer_sec, res.data.scores_manches);
+    } catch (err) {
+      setErreur("Erreur lors de la création de la partie.");
+    } finally { setChargement(false); }
+  };
+
+  const handleFichier = (e) => {
+    const fichier = e.target.files[0];
+    if (!fichier) return;
+    setApercu(URL.createObjectURL(fichier));
+    setPhotoSelectionnee({ fichier, estFichier: true });
+  };
+
+  return (
+    <div className="ecran-taille" style={{ gap: 20 }}>
+      <h1 className="titre-jeu">ELMAAS</h1>
+      <p className="phrase-jeu">Choisissez une photo pour votre plateau</p>
+
+      {/* Nom secret multijoueur */}
+      <div className="nom-photo-section">
+        <label className="nom-photo-label">Nom secret de la photo <span>(max 10 car.)</span></label>
+        <input className="nom-photo-input" maxLength={10} placeholder="ex: vacances"
+          value={nomPhoto} onChange={e => setNomPhoto(e.target.value)} />
+      </div>
+
+      {/* Grille des 10 photos fixes */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600 }}>
+        {photosFixees.map((url, i) => (
+          <div key={i} onClick={() => { setPhotoSelectionnee({ url, estFichier: false }); setModeUpload(false); setApercu(null); }}
+            style={{
+              width: 100, height: 100, borderRadius: 8, overflow: "hidden", cursor: "pointer",
+              border: photoSelectionnee?.url === url ? "3px solid var(--rouge-c)" : "2px solid var(--bord)",
+              transition: "all 0.2s",
+            }}>
+            <img src={`${API}${url}`} alt={`photo ${i+1}`}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+        ))}
+      </div>
+
+      {/* Upload photo perso */}
+      {utilisateur ? (
+        peutUploader ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>
+              {utilisateur.premium ? "Premium — uploads illimités" : "1 photo personnelle gratuite disponible"}
+            </div>
+            <label className="zone-upload" htmlFor="photo-perso-input"
+              style={{ width: 200, minHeight: 80, cursor: "pointer" }}>
+              {apercu
+                ? <img src={apercu} alt="apercu" style={{ width: "100%", height: 80, objectFit: "cover" }} />
+                : <div className="upload-placeholder" style={{ fontSize: 13 }}>
+                    <div className="upload-icone" style={{ fontSize: 24 }}>+</div>
+                    <p>Ma photo</p>
+                  </div>}
+              <input id="photo-perso-input" type="file" accept="image/*"
+                onChange={handleFichier} style={{ display: "none" }} />
+            </label>
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
+            Photo personnelle utilisée — <span style={{ color: "var(--rouge-c)" }}>Passer Premium pour en uploader plus</span>
+          </div>
+        )
+      ) : (
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>
+          Connectez-vous pour uploader votre propre photo
+        </div>
+      )}
+
+      {erreur && <p className="erreur">{erreur}</p>}
+      {chargement && <div className="chargement"><div className="spinner" /><p>Génération...</p></div>}
+
+      {photoSelectionnee && !chargement && (
+        <button className="btn-valider"
+          onClick={() => jouerAvecPhoto(
+            photoSelectionnee.estFichier ? photoSelectionnee.fichier : photoSelectionnee.url,
+            photoSelectionnee.estFichier
+          )}>
+          Jouer avec cette photo
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Écran Classement ELO ──────────────────────────────────────
+function EcranClassement({ onFermer, utilisateur }) {
+  const [classement, setClassement] = useState([]);
+  useEffect(() => {
+    axios.get(`${API}/classement`).then(res => setClassement(res.data));
+  }, []);
+  return (
+    <div className="popup-overlay">
+      <div className="popup-pouvoir" style={{ maxWidth: 480, maxHeight: "80vh", overflowY: "auto", gap: 12 }}>
+        <div className="popup-titre">Classement ELO</div>
+        {classement.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>Aucun joueur classé pour l'instant.</div>}
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+          <thead>
+            <tr style={{ color: "var(--muted)", borderBottom: "1px solid var(--bord)" }}>
+              <th style={{ padding: "4px 8px", textAlign: "left" }}>#</th>
+              <th style={{ padding: "4px 8px", textAlign: "left" }}>Pseudo</th>
+              <th style={{ padding: "4px 8px", textAlign: "right" }}>ELO</th>
+              <th style={{ padding: "4px 8px", textAlign: "right" }}>Parties</th>
+              <th style={{ padding: "4px 8px", textAlign: "right" }}>Win%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classement.map((j, i) => (
+              <tr key={i} style={{
+                borderBottom: "1px solid var(--bord)",
+                background: j.pseudo === utilisateur?.pseudo ? "var(--rouge)11" : "transparent"
+              }}>
+                <td style={{ padding: "6px 8px", color: i < 3 ? "var(--rouge-c)" : "var(--muted)" }}>
+                  {i === 0 ? "1" : i === 1 ? "2" : i === 2 ? "3" : j.rang}
+                </td>
+                <td style={{ padding: "6px 8px", color: "var(--texte)", fontWeight: j.pseudo === utilisateur?.pseudo ? 700 : 400 }}>
+                  {j.pseudo}
+                </td>
+                <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--rouge-c)", fontFamily: "monospace" }}>
+                  {j.elo}
+                </td>
+                <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--muted)" }}>{j.parties}</td>
+                <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--muted)" }}>{j.ratio}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <button className="popup-btn" onClick={onFermer}>Fermer</button>
+      </div>
+    </div>
+  );
+}
 
 // ── Écran Taille ──────────────────────────────────────────────
 const TIMER_OPTIONS = [
@@ -373,7 +621,9 @@ function PopupManuel({ onFermer }) {
 
 // ── App principale ────────────────────────────────────────────
 export default function App() {
-  const [etape, setEtape] = useState("taille");
+  const [utilisateur, setUtilisateur] = useState(() => getUser());
+  const [showClassement, setShowClassement] = useState(false);
+  const [etape, setEtape] = useState(() => getUser() ? "taille" : "auth");
   const [props, setProps] = useState({ j1: 16, j2: 16, taille: 16 });
   const [partieId, setPartieId] = useState(null);
   const [etat, setEtat] = useState(null);
@@ -707,10 +957,17 @@ export default function App() {
     setTimerRouge(timerChoisi); setTimerNoir(timerChoisi);
     setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null);
     setMancheTermineeInfo(null); setPauseActive(false); setDemandePauseRecue(null);
+    setEtape(utilisateur ? "taille" : "auth");
   };
 
   // ── Rendu étapes ──
   if (etape === "taille") return <div className="app"><EcranTaille onValider={handleTailleValidee} /></div>;
+
+  if (etape === "auth") return (
+    <div className="app">
+      <EcranAuth onConnecte={(user) => { setUtilisateur(user); setEtape("taille"); }} />
+    </div>
+  );
 
   if (etape === "photo") return (
     <div className="app">
@@ -720,7 +977,11 @@ export default function App() {
           Je suis le Joueur 2 — Rejoindre une partie
         </button>
       </div>
-      <EcranPhoto prop1={props.j1} prop2={props.j2} onPartieCreee={handlePartieCreee} modeMultijoueur={modeIA === "aucune"} timerSec={timerChoisi} />
+      <EcranPhoto2
+        prop1={props.j1} prop2={props.j2} timerSec={timerChoisi}
+        utilisateur={utilisateur}
+        onPartieCreee={handlePartieCreee}
+      />
     </div>
   );
 
@@ -734,6 +995,8 @@ export default function App() {
   // ── Écran jeu ──
   return (
     <div className="app jeu">
+
+      {showClassement && <EcranClassement utilisateur={utilisateur} onFermer={() => setShowClassement(false)} />}
 
       {/* Écran fin de manche */}
       {mancheTermineeInfo && (
@@ -912,6 +1175,14 @@ export default function App() {
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {utilisateur && (
+            <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "right" }}>
+              <div style={{ color: "var(--texte)" }}>{utilisateur.pseudo}</div>
+              <div style={{ color: "var(--rouge-c)" }}>ELO {utilisateur.elo}</div>
+            </div>
+          )}
+          <button className="btn-manuel" onClick={() => setShowClassement(true)} title="Classement"
+            style={{ width: 34, height: 34, fontSize: 14 }}>ELO</button>
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title="Manuel">?</button>
           <button className="btn-reset" onClick={handleReset}>Nouvelle partie</button>
         </div>
