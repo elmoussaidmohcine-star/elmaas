@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+*.jpg
+*.jpeg
+*.png
+*.avif
+
+# Node
+node_modules/
+frontend/build/
+
+# Divers
+.DS_Store
+*.log
