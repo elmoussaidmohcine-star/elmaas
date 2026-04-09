@@ -603,5 +603,7 @@ if __name__ == "__main__":
     print("  http://localhost:5000")
     print("  WebSocket actif (threading)")
     print("=" * 50)
-    socketio.run(app, debug=DEBUG, port=5000, host="0.0.0.0",
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, debug=False, port=port, host="0.0.0.0",
                  allow_unsafe_werkzeug=True)
