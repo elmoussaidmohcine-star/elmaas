@@ -1,3 +1,4 @@
+import os
 # ============================================================
 #  ELMAAS — api.py (original qui marche + reconnaissance)
 # ============================================================
@@ -17,9 +18,19 @@ from pieces_generator import serialiser_piece
 from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, calculer_score_cellules
 from ai_player import jouer_ia
 from config import DEBUG
+from models import db, Utilisateur, calculer_elo
+from auth import auth_bp
 
 app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///elmaas.db")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "elmaas_secret_dev")
 CORS(app, origins="*")
+db.init_app(app)
+app.register_blueprint(auth_bp)
+
+with app.app_context():
+    db.create_all()
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
                     logger=False, engineio_logger=False)
@@ -592,6 +603,5 @@ if __name__ == "__main__":
     print("  http://localhost:5000")
     print("  WebSocket actif (threading)")
     print("=" * 50)
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, debug=False, port=port, host="0.0.0.0", allow_unsafe_werkzeug=True)
+    socketio.run(app, debug=DEBUG, port=5000, host="0.0.0.0",
+                 allow_unsafe_werkzeug=True)
