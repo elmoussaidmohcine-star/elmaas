@@ -17,3 +17,16 @@ frontend/build/
 # Divers
 .DS_Store
 *.log
+
+# Exceptions — photos fixes ELMAAS
+!backend/city.jpeg
+!backend/sea.jpeg
+!backend/see_purple.jpeg
+!backend/sky_scappers.jpeg
+!backend/tiano.jpeg
+!backend/tools.jpeg
+!backend/photo_girl.jpeg
+!backend/phto.jpg
+!backend/Untitled.jpeg
+!backend/Untitled.jpg
+!backend/champ-lavande-au-coucher-du-soleil-pres-valensole_268835-3910.avif
