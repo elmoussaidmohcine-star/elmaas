@@ -1,0 +1,172 @@
+/* ============================================================
+   ELMAAS — Board.css v2
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Rajdhani:wght@300;400;500&display=swap');
+
+/* ── Wrapper ──────────────────────────────────────────────── */
+
+.board-wrapper-v2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* ── Main ─────────────────────────────────────────────────── */
+
+.main-v2 {
+  width: 100%;
+  max-width: 720px;
+  background: #0d0d1a;
+  border: 1px solid #1e1e3a;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.main-label-v2 {
+  font-size: 11px;
+  color: #5555aa;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.main-pieces-v2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  min-height: 44px;
+}
+
+.main-vide-v2 {
+  font-size: 12px;
+  color: #3333aa;
+  font-style: italic;
+}
+
+/* ── Plateau ──────────────────────────────────────────────── */
+
+.plateau-v2 {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 2px #1e1e3a,
+    0 0 40px #00000088;
+}
+
+.plateau-v2.mode-placement {
+  box-shadow:
+    0 0 0 2px #c9a84c,
+    0 0 30px #c9a84c22;
+}
+
+/* ── Cellule ──────────────────────────────────────────────── */
+
+.cellule-v2 {
+  image-rendering: pixelated;
+}
+
+/* Fantôme valide */
+.cellule-v2.fantome-ok {
+  filter: brightness(1.8);
+  outline: 2px solid #ffffff88;
+  outline-offset: -2px;
+  z-index: 10;
+}
+
+/* Fantôme invalide */
+.cellule-v2.fantome-non {
+  filter: brightness(0.6) saturate(0.3);
+  outline: 2px solid #ff000088;
+  outline-offset: -2px;
+}
+
+/* Puzzle brisé */
+.cellule-v2.brise-v2 {
+  animation: brise-cligno 1.2s ease-in-out infinite;
+}
+
+@keyframes brise-cligno {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(0.4) sepia(1) hue-rotate(0deg); }
+}
+
+/* Animation complétion */
+.cellule-v2.complete-anim {
+  animation: complete-flash 0.4s ease-out;
+}
+
+@keyframes complete-flash {
+  0%   { filter: brightness(3); }
+  100% { filter: brightness(1); }
+}
+
+/* ── Pièce posée ──────────────────────────────────────────── */
+
+.piece-posee-v2 {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  animation: pop-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pop-in {
+  0%   { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.piece-posee-v2.rouge {
+  background: radial-gradient(circle at 35% 35%, #ff8866, #E8402A);
+  box-shadow: 0 0 8px #E8402A88, inset 0 1px 0 #ffaa8844;
+}
+
+.piece-posee-v2.noir {
+  background: radial-gradient(circle at 35% 35%, #d0d0ff, #8888cc);
+  box-shadow: 0 0 8px #a0a0ff88, inset 0 1px 0 #d0d0ff44;
+}
+
+/* ── Label puzzle ─────────────────────────────────────────── */
+
+.puzzle-tag {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 1px 3px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  background: #00000066;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ── Effet complétion (particules) ────────────────────────── */
+
+@keyframes fx-pop {
+  0%   { opacity: 1; transform: scale(0.5); }
+  50%  { opacity: 0.8; transform: scale(1.4); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+/* ── Légende ──────────────────────────────────────────────── */
+
+.legende-v2 {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.legende-item-v2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #5555aa;
+  letter-spacing: 0.08em;
+}
