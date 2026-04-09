@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 import Board from "./Board";
 import "./App.css";
 
-const API = "https://elmaas-production.up.railway.app";
+const API = "https://elmaas.up.railway.app";
 // TIMER_INITIAL est maintenant choisi par les joueurs
 
 // ── Écran Taille ──────────────────────────────────────────────
