@@ -9,3 +9,4 @@ python-socketio==5.16.1
 simple-websocket==1.1.0
 bcrypt==5.0.0
 pyjwt==2.10.1
+stripe

@@ -20,6 +20,7 @@ from ai_player import jouer_ia
 from config import DEBUG
 from models import db, Utilisateur, calculer_elo
 from auth import auth_bp
+from stripe_routes import stripe_bp
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///elmaas.db")
@@ -28,6 +29,7 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "elmaas_secret_dev")
 CORS(app, origins="*")
 db.init_app(app)
 app.register_blueprint(auth_bp)
+app.register_blueprint(stripe_bp)
 
 with app.app_context():
     db.create_all()
@@ -168,23 +170,6 @@ def on_rejoindre_partie(data):
             "etat": serialiser_etat(parties[partie_id]),
         }, room=partie_id)
 
-
-@app.route("/photos_fixes", methods=["GET"])
-def photos_fixes():
-    import os
-    photos = [
-        "city.jpeg", "sea.jpeg", "see_purple.jpeg",
-        "sky_scappers.jpeg", "tiano.jpeg", "tools.jpeg",
-        "photo_girl.jpeg", "phto.jpg", "Untitled.jpeg",
-        "champ-lavande-au-coucher-du-soleil-pres-valensole_268835-3910.avif"
-    ]
-    return jsonify({"photos": [f"/photo_fixe/{p}" for p in photos]})
-
-@app.route("/photo_fixe/<nom>", methods=["GET"])
-def photo_fixe(nom):
-    from flask import send_from_directory
-    dossier = os.path.dirname(os.path.abspath(__file__))
-    return send_from_directory(dossier, nom)
 
 @app.route("/ping", methods=["GET"])
 def ping():
@@ -620,7 +605,5 @@ if __name__ == "__main__":
     print("  http://localhost:5000")
     print("  WebSocket actif (threading)")
     print("=" * 50)
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, debug=False, port=port, host="0.0.0.0",
+    socketio.run(app, debug=DEBUG, port=5000, host="0.0.0.0",
                  allow_unsafe_werkzeug=True)

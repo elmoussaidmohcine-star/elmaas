@@ -25,7 +25,8 @@ class Utilisateur(db.Model):
 
     # Quota photos
     premium       = db.Column(db.Boolean, default=False)
-    photo_perso_utilisee = db.Column(db.Boolean, default=False)  # 1 photo perso gratuite
+    photo_perso_utilisee = db.Column(db.Boolean, default=False)
+    stripe_customer_id = db.Column(db.String(100), default="")  # 1 photo perso gratuite
     nb_photos_mois = db.Column(db.Integer, default=0)  # reset chaque mois (premium)
     mois_quota    = db.Column(db.String(7), default="")  # ex: "2026-04"
 
