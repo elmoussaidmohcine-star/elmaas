@@ -308,18 +308,28 @@ def jouer(partie_id: str):
                 resultat["succes"] = False
                 resultat["erreur"] = "Index invalide"
         elif pouvoir == "echanger_main":
-            # Échanger une pièce de la main adverse par index
+            # Échange symétrique : on donne une pièce et on prend une pièce adverse
             idx_adverse = data.get("piece_index_adverse")
+            idx_donner  = data.get("piece_index_donner")
             joueur = etat.joueur_actif()
             adverse = etat.joueur_adverse()
-            if idx_adverse is not None and 0 <= int(idx_adverse) < len(adverse.main_active):
-                # On prend la pièce adverse et on l'ajoute à notre main
+            ok_adverse = idx_adverse is not None and 0 <= int(idx_adverse) < len(adverse.main_active)
+            ok_donner  = idx_donner is not None and 0 <= int(idx_donner) < len(joueur.main_active)
+            if ok_adverse and ok_donner:
+                piece_prise  = adverse.main_active.pop(int(idx_adverse))
+                piece_donnee = joueur.main_active.pop(int(idx_donner))
+                joueur.main_active.append(piece_prise)
+                adverse.main_active.append(piece_donnee)
+                joueur.piocher()
+                adverse.piocher()
+                resultat["succes"] = True
+            elif ok_adverse:
                 piece = adverse.main_active.pop(int(idx_adverse))
                 joueur.main_active.append(piece)
                 resultat["succes"] = True
             else:
                 resultat["succes"] = False
-                resultat["erreur"] = "Index adverse invalide"
+                resultat["erreur"] = "Index invalide"
         else:
             r = appliquer_pouvoir(etat, pouvoir, cible)
             resultat.update(r)
@@ -418,6 +428,21 @@ def coup_ia(partie_id: str):
 
     piece_index, origine = coup
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
+
+    # Si l'IA a complété des puzzles → appliquer pouvoir automatiquement
+    if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
+        joueur_ia = etat.joueur_actif()
+        adverse = etat.joueur_adverse()
+        if niveau >= 2 and adverse.main_active:
+            # Echanger : prendre la première pièce adverse, donner la dernière de sa main
+            piece_prise = adverse.main_active.pop(0)
+            if joueur_ia.main_active:
+                piece_donnee = joueur_ia.main_active.pop(-1)
+                adverse.main_active.append(piece_donnee)
+            joueur_ia.main_active.append(piece_prise)
+        # Passer le tour après le pouvoir IA
+        etat.passer_tour()
+
     etat_serialise = serialiser_etat(etat)
     resultat["etat"] = etat_serialise
     if "puzzles_completes" in resultat:
@@ -605,6 +630,5 @@ if __name__ == "__main__":
     print("  http://localhost:5000")
     print("  WebSocket actif (threading)")
     print("=" * 50)
-    port = int(__import__("os").environ.get("PORT", 8080))
-    socketio.run(app, debug=False, port=port, host="0.0.0.0",
+    socketio.run(app, debug=DEBUG, port=5000, host="0.0.0.0",
                  allow_unsafe_werkzeug=True)

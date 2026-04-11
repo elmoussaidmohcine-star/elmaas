@@ -676,6 +676,7 @@ export default function App() {
 
   // Extraction série
   const [extractionsEnCours, setExtractionsEnCours] = useState([]);
+  const [pieceADonner, setPieceADonner] = useState(null); // index de ma pièce à donner dans l'échange
   // Quand true : puzzle complété, tour PAS encore passé côté serveur
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
 
@@ -892,9 +893,9 @@ export default function App() {
       setAttenteChoixPouvoir(true);
       setPopup({ type: "attente_cible", pouvoir: "proteger", message: "Clique sur une de tes pièces dans le panneau gauche" });
     } else if (choix === "echanger") {
-      // Clic direct dans la liste adverse (panneau gauche)
+      setPieceADonner(null);
       setAttenteChoixPouvoir(true);
-      setPopup({ type: "attente_cible", pouvoir: "echanger", message: "Clique sur une pièce adverse dans le panneau gauche" });
+      setPopup({ type: "attente_cible", pouvoir: "echanger", message: "1) Clique sur ta pièce à donner (vert), puis la pièce adverse à prendre (rouge)" });
     } else if (choix === "extraire") {
       setExtractionsEnCours([]);
       setAttenteChoixPouvoir(true);
@@ -1342,18 +1343,18 @@ export default function App() {
               // En mode protéger : clic direct sur ma pièce
               const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
               const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
-              const estProtegee = joueurActif?.pieces_protegees?.includes
-                ? joueurActif.pieces_protegees.includes(`m${i}`)
-                : false;
+              const estSelectPourDonner = clickEchanger && pieceADonner === i;
               return (
                 <div key={i} style={{ position: "relative" }}>
                   <MiniPiece piece={piece} couleur={joueurActif?.couleur}
-                    estSelectionnee={pieceIdx === i}
+                    estSelectionnee={pieceIdx === i || estSelectPourDonner}
                     onClick={() => {
                       if (clickProteger) {
-                        // Protéger cette pièce : on envoie son index
                         setPopup(null);
                         envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i });
+                      } else if (clickEchanger) {
+                        // Sélectionner ma pièce à donner
+                        setPieceADonner(pieceADonner === i ? null : i);
                       } else if (!enModeCible && !attenteChoixPouvoir && estMonTour) {
                         setPieceIdx(pieceIdx === i ? null : i);
                       }
@@ -1361,6 +1362,14 @@ export default function App() {
                   {clickProteger && (
                     <div style={{ position: "absolute", inset: 0, border: "2px dashed #88ff88",
                       borderRadius: 6, pointerEvents: "none", opacity: 0.7 }} />
+                  )}
+                  {estSelectPourDonner && (
+                    <div style={{ position: "absolute", inset: 0, border: "2px solid #88ff88",
+                      borderRadius: 6, pointerEvents: "none" }} />
+                  )}
+                  {clickEchanger && pieceADonner === null && (
+                    <div style={{ position: "absolute", inset: 0, border: "2px dashed #88ff8866",
+                      borderRadius: 6, pointerEvents: "none" }} />
                   )}
                 </div>
               );
@@ -1398,8 +1407,13 @@ export default function App() {
                         estSelectionnee={false}
                         onClick={() => {
                           if (clickEchanger) {
+                            if (pieceADonner === null) {
+                              alert("Choisis d'abord ta pièce à donner (en vert)");
+                              return;
+                            }
                             setPopup(null);
-                            envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i });
+                            setPieceADonner(null);
+                            envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i, piece_index_donner: pieceADonner });
                           }
                         }} />
                       {clickEchanger && (
