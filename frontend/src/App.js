@@ -272,10 +272,7 @@ function EcranTaille({ onValider }) {
   const [modeIA, setModeIA] = useState("aucune");
   const [niveauIA, setNiveauIA] = useState(2);
   const [timerSec, setTimerSec] = useState(30);
-  const moyenne = (prop1 + prop2) / 2;
-  let tailleFin = Math.floor(moyenne);
-  if (tailleFin % 2 !== 0) tailleFin -= 1;
-  tailleFin = Math.max(10, Math.min(20, tailleFin));
+  const tailleFin = Math.max(10, Math.min(20, prop1 % 2 === 0 ? prop1 : prop1 - 1));
   return (
     <div className="ecran-taille">
       <h1 className="titre-jeu">ELMAAS</h1>
@@ -283,18 +280,13 @@ function EcranTaille({ onValider }) {
       <p className="sous-titre">Choisissez la taille du plateau</p>
       <div className="taille-inputs">
         <div className="taille-joueur">
-          <label>Joueur 1</label>
-          <input type="range" min="10" max="20" step="1" value={prop1} onChange={e => setProp1(Number(e.target.value))} />
+          <label>Taille du plateau</label>
+          <input type="range" min="10" max="20" step="2" value={prop1} onChange={e => setProp1(Number(e.target.value))} />
           <span className="taille-val">{prop1}</span>
         </div>
         <div className="taille-result">
           <div className="taille-final">{tailleFin}</div>
-          <div className="taille-label">plateau final</div>
-        </div>
-        <div className="taille-joueur">
-          <label>Joueur 2</label>
-          <input type="range" min="10" max="20" step="1" value={prop2} onChange={e => setProp2(Number(e.target.value))} />
-          <span className="taille-val">{prop2}</span>
+          <div className="taille-label">plateau</div>
         </div>
       </div>
 
@@ -329,7 +321,7 @@ function EcranTaille({ onValider }) {
           </div>
         )}
       </div>
-      <button className="btn-valider" onClick={() => onValider(prop1, prop2, tailleFin, modeIA, niveauIA, timerSec)}>
+      <button className="btn-valider" onClick={() => onValider(prop1, prop1, tailleFin, modeIA, niveauIA, timerSec)}>
         Confirmer
       </button>
     </div>
@@ -597,6 +589,31 @@ function PopupManuel({ onFermer }) {
             <p>Chaque joueur dispose de 5 minutes. Le chrono tourne uniquement pendant ton tour. À 0, tu perds.</p>
           </div>
           <div className="manuel-section">
+            <div className="manuel-titre-section">Pieces disponibles</div>
+            <p>10 formes de pieces existent, chacune avec une probabilite d obtention differente :</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginTop: 6, fontSize: 13 }}>
+              {[
+                ["I2", "2 cases en ligne", "20%"],
+                ["I3", "3 cases en ligne", "15%"],
+                ["I4", "4 cases en ligne", "8%"],
+                ["L",  "Forme L",          "12%"],
+                ["J",  "Forme J",          "12%"],
+                ["T",  "Forme T",          "12%"],
+                ["S",  "Forme S",          "8%"],
+                ["Z",  "Forme Z",          "8%"],
+                ["O",  "Carre 2x2",        "10%"],
+                ["1",  "1 case (rare)",    "5%"],
+              ].map(([nom, desc, pct]) => (
+                <div key={nom} style={{ display: "flex", gap: 8, alignItems: "center", padding: "3px 0", borderBottom: "1px solid var(--bord)" }}>
+                  <span style={{ color: "var(--rouge-c)", fontWeight: 700, minWidth: 24 }}>{nom}</span>
+                  <span style={{ color: "var(--muted)", flex: 1 }}>{desc}</span>
+                  <span style={{ color: "var(--texte)" }}>{pct}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="manuel-section">
             <div className="manuel-titre-section">Regeneration des pieces</div>
             <p>Les pieces se regenerent automatiquement quand ta reserve est vide. Tu disposes de 5 pieces pour completer au moins un puzzle. Si tu n'y arrives pas : defaite immediate. Si tu reussis, tu regois 10 nouvelles pieces, puis 15 au cycle suivant.</p>
           </div>
@@ -623,6 +640,9 @@ function PopupManuel({ onFermer }) {
 export default function App() {
   const [utilisateur, setUtilisateur] = useState(() => getUser());
   const [showClassement, setShowClassement] = useState(false);
+  const [showParametres, setShowParametres] = useState(false);
+  const [nbAbandons, setNbAbandons] = useState(() => parseInt(localStorage.getItem("elmaas_abandons") || "0"));
+  const [banniJusque, setBanniJusque] = useState(() => localStorage.getItem("elmaas_banni_jusque") || null);
   const [etape, setEtape] = useState(() => getUser() ? "taille" : "auth");
   const [props, setProps] = useState({ j1: 16, j2: 16, taille: 16 });
   const [partieId, setPartieId] = useState(null);
@@ -948,6 +968,29 @@ export default function App() {
     } catch (err) { console.error("Erreur scout:", err); }
   };
 
+  const handleAbandon = () => {
+    // Compter les abandons en cours de partie
+    if (etape === "jeu" && etat && !etat.manche_terminee) {
+      const nouveauxAbandons = nbAbandons + 1;
+      setNbAbandons(nouveauxAbandons);
+      localStorage.setItem("elmaas_abandons", String(nouveauxAbandons));
+      if (nouveauxAbandons >= 3) {
+        const jusque = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        setBanniJusque(jusque);
+        localStorage.setItem("elmaas_banni_jusque", jusque);
+        setNbAbandons(0);
+        localStorage.setItem("elmaas_abandons", "0");
+        alert("3 abandons consecutifs — vous etes banni pendant 24h.");
+      }
+    }
+    handleReset();
+  };
+
+  const estBanni = () => {
+    if (!banniJusque) return false;
+    return new Date(banniJusque) > new Date();
+  };
+
   const handleReset = () => {
     clearInterval(timerRef.current);
     setEtape("taille"); setEtat(null); setPartieId(null);
@@ -998,20 +1041,106 @@ export default function App() {
 
       {showClassement && <EcranClassement utilisateur={utilisateur} onFermer={() => setShowClassement(false)} />}
 
+      {showParametres && (
+        <div className="popup-overlay">
+          <div className="popup-pouvoir" style={{ minWidth: 320, gap: 14 }}>
+            <div className="popup-titre">Parametres</div>
+
+            {/* Compte */}
+            {utilisateur && (
+              <div style={{ width: "100%", borderBottom: "1px solid var(--bord)", paddingBottom: 12 }}>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>Compte</div>
+                <div style={{ fontSize: 15, color: "var(--texte)", marginBottom: 8 }}>{utilisateur.pseudo} — {utilisateur.email}</div>
+                <div style={{ fontSize: 13, color: "var(--rouge-c)", marginBottom: 8 }}>ELO : {utilisateur.elo}</div>
+                <button className="popup-btn" style={{ fontSize: 13 }}
+                  onClick={() => {
+                    localStorage.removeItem("elmaas_token");
+                    localStorage.removeItem("elmaas_user");
+                    setUtilisateur(null);
+                    setShowParametres(false);
+                    handleReset();
+                  }}>
+                  Se deconnecter
+                </button>
+              </div>
+            )}
+
+            {/* Langue */}
+            <div style={{ width: "100%" }}>
+              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>Langue</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {[["fr","Francais"],["en","English"],["ar","العربية"],["es","Español"]].map(([code, nom]) => (
+                  <button key={code} className="ia-btn" style={{ fontSize: 13 }}
+                    onClick={() => alert("Traductions a venir !")}>
+                    {nom}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Premium */}
+            {utilisateur && !utilisateur.premium && (
+              <button className="btn-valider" style={{ fontSize: 14, padding: "10px 24px" }}
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem("elmaas_token");
+                    const res = await fetch(\`\${API}/stripe/checkout\`, {
+                      method: "POST",
+                      headers: { Authorization: \`Bearer \${token}\` }
+                    });
+                    const data = await res.json();
+                    if (data.url) window.location.href = data.url;
+                  } catch(e) { alert("Erreur paiement"); }
+                }}>
+                Passer Premium — 6.99€/mois
+              </button>
+            )}
+            {utilisateur?.premium && (
+              <div style={{ color: "#88ff88", fontSize: 14 }}>Premium actif</div>
+            )}
+
+            <button className="popup-btn" onClick={() => setShowParametres(false)}>Fermer</button>
+          </div>
+        </div>
+      )}
+
       {/* Écran fin de manche */}
       {mancheTermineeInfo && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
-            <div className="popup-titre">
-              {mancheTermineeInfo.gagnant === "egalite" ? "Egalite !" : `${mancheTermineeInfo.gagnant === "rouge" ? "Rouge" : "Noir"} gagne !`}
+            {/* Titre victoire/défaite selon le joueur local */}
+            {(() => {
+              const g = mancheTermineeInfo.gagnant;
+              const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+              const jaiGagne = g === maCouleur;
+              const egalite = g === "egalite";
+              return (
+                <>
+                  <div className="popup-titre" style={{
+                    color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
+                    fontSize: 32,
+                  }}>
+                    {egalite ? "Egalite !" : jaiGagne ? "Victoire !" : "Defaite"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                    {egalite ? "" : jaiGagne ? "Bien joue !" : `${g === "rouge" ? "Rouge" : "Noir"} remporte la manche`}
+                  </div>
+                </>
+              );
+            })()}
+            <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 32, fontFamily: "var(--brush)", alignItems: "center" }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ color: "var(--rouge-c)", fontWeight: 700 }}>{mancheTermineeInfo.scores?.rouge ?? 0}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>Rouge</div>
+              </div>
+              <span style={{ color: "var(--muted)", fontSize: 20 }}>vs</span>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ color: "#aaaaaa", fontWeight: 700 }}>{mancheTermineeInfo.scores?.noir ?? 0}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>Noir</div>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 28, fontFamily: "var(--brush)" }}>
-              <span style={{ color: "var(--rouge-c)" }}>{mancheTermineeInfo.scores?.rouge ?? 0}</span>
-              <span style={{ color: "var(--muted)" }}>—</span>
-              <span style={{ color: "#aaaaaa" }}>{mancheTermineeInfo.scores?.noir ?? 0}</span>
-            </div>
-            <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
-              Score en cellules de puzzles complétés
+            <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center" }}>
+              Score en cellules de puzzles completes
             </div>
             <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 13, color: "var(--muted)" }}>
               <span>Manches Rouge : <strong style={{ color: "var(--rouge-c)" }}>{scoresManches.rouge}</strong></span>
@@ -1181,10 +1310,12 @@ export default function App() {
               <div style={{ color: "var(--rouge-c)" }}>ELO {utilisateur.elo}</div>
             </div>
           )}
+          <button className="btn-manuel" onClick={() => setShowParametres(true)} title="Parametres"
+            style={{ width: 34, height: 34, fontSize: 16 }}>⚙</button>
           <button className="btn-manuel" onClick={() => setShowClassement(true)} title="Classement"
             style={{ width: 34, height: 34, fontSize: 14 }}>ELO</button>
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title="Manuel">?</button>
-          <button className="btn-reset" onClick={handleReset}>Nouvelle partie</button>
+          <button className="btn-reset" onClick={handleAbandon}>Nouvelle partie</button>
         </div>
       </header>
 
@@ -1312,7 +1443,7 @@ export default function App() {
             Scout
           </button>
 
-          {modeMultijoueur && monRole === "joueur2" && indiceReconnaissance && (
+          {modeMultijoueur && modeIA === "aucune" && monRole === "joueur2" && indiceReconnaissance && (
             <>
               <button className="btn-action"
                 style={{ borderColor: reconnaissanceTentee ? "#444" : "#cc880044", color: reconnaissanceTentee ? "var(--muted)" : "#ffaa44" }}

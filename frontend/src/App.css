@@ -207,3 +207,118 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
 
 .board-v3.mode-cible { box-shadow: 0 0 0 2px #8888ff, 0 0 30px #4444aa33; cursor: crosshair; }
 .cell-v3.mode-cible-hover { outline: 2px solid #8888ff88; outline-offset: -2px; }
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE MOBILE
+   ══════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ── Header ── */
+  .app-header {
+    padding: 6px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .titre-jeu-petit { font-size: 18px; }
+  .score-nb { font-size: 22px; }
+  .tour-info { font-size: 12px; }
+  .timers { gap: 4px; }
+  .timer-val { font-size: 14px; }
+  .timer-label { font-size: 8px; }
+  .timer-bloc { padding: 2px 6px; }
+  .badge-ia, .badge-serie { font-size: 10px; padding: 1px 5px; }
+
+  /* ── Zone de jeu : passer en colonne ── */
+  .zone-jeu {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* ── Panneaux : horizontaux en haut/bas ── */
+  .panneau-main, .panneau-actions {
+    width: 100%;
+    min-width: unset;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+    gap: 6px;
+    border-right: none;
+    border-left: none;
+    border-bottom: 1px solid var(--bord);
+  }
+  .panneau-actions {
+    border-top: 1px solid var(--bord);
+    border-bottom: none;
+  }
+  .panneau-titre {
+    width: 100%;
+    margin-top: 0 !important;
+  }
+  .main-pieces-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+  }
+  .serie-info { font-size: 12px; }
+
+  /* ── Plateau : centré et scrollable ── */
+  .plateau-central {
+    padding: 8px;
+    flex: unset;
+    width: 100%;
+    overflow: auto;
+  }
+
+  /* ── Actions : en ligne ── */
+  .btn-action {
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+  .hint-action { font-size: 11px; }
+
+  /* ── Zone adverse : compacte ── */
+  .zone-adverse {
+    padding: 4px 10px;
+    gap: 6px;
+  }
+  .adverse-label { font-size: 11px; }
+  .piece-cachee { width: 16px; height: 16px; }
+
+  /* ── Écrans d'accueil ── */
+  .ecran-taille { padding: 24px 16px; gap: 20px; }
+  .taille-inputs { gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .taille-final { font-size: 48px; }
+  .lobby-card { padding: 24px 20px; min-width: unset; width: 90%; }
+  .lobby-code { font-size: 11px; }
+
+  /* ── Popup ── */
+  .popup-pouvoir, .popup-scout {
+    min-width: unset;
+    width: 90vw;
+    padding: 20px 16px;
+  }
+  .popup-titre { font-size: 20px; }
+  .popup-btn { font-size: 14px; padding: 10px 12px; }
+
+  /* ── Bandeau cible ── */
+  .bandeau-cible {
+    width: 90vw;
+    flex-wrap: wrap;
+    font-size: 13px;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  /* ── Scores ── */
+  .scores { gap: 8px; }
+  .score-lbl { font-size: 9px; }
+}
+
+@media (max-width: 480px) {
+  .titre-jeu { font-size: clamp(36px, 12vw, 60px); }
+  .panneau-main, .panneau-actions { padding: 6px 8px; }
+  .btn-reset { font-size: 12px; padding: 5px 10px; }
+  .btn-manuel { width: 28px; height: 28px; font-size: 13px; }
+}
