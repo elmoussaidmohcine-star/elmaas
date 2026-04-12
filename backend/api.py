@@ -171,6 +171,24 @@ def on_rejoindre_partie(data):
         }, room=partie_id)
 
 
+
+@app.route("/photos_fixes", methods=["GET"])
+def photos_fixes():
+    import os
+    photos = [
+        "city.jpeg", "sea.jpeg", "see_purple.jpeg",
+        "sky_scappers.jpeg", "tiano.jpeg", "tools.jpeg",
+        "photo_girl.jpeg", "phto.jpg", "Untitled.jpeg",
+        "champ-lavande-au-coucher-du-soleil-pres-valensole_268835-3910.avif"
+    ]
+    return jsonify({"photos": [f"/photo_fixe/{p}" for p in photos]})
+
+@app.route("/photo_fixe/<nom>", methods=["GET"])
+def photo_fixe(nom):
+    from flask import send_from_directory
+    dossier = os.path.dirname(os.path.abspath(__file__))
+    return send_from_directory(dossier, nom)
+
 @app.route("/ping", methods=["GET"])
 def ping():
     return jsonify({"status": "ok", "message": "ELMAAS API en ligne"})
