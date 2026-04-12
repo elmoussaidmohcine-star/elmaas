@@ -51,6 +51,23 @@ class Utilisateur(db.Model):
         }
 
 
+class PartieDB(db.Model):
+    """Stocke l'état complet d'une partie en JSON pour survivre aux redémarrages."""
+    __tablename__ = "parties"
+
+    id            = db.Column(db.String(36), primary_key=True)  # UUID
+    etat_json     = db.Column(db.Text, nullable=False)           # EtatJeu sérialisé
+    pixels_json   = db.Column(db.Text, nullable=True)            # pixels photo
+    nom_photo     = db.Column(db.String(20), default="")
+    bonus_double  = db.Column(db.Boolean, default=False)
+    recon_tentee  = db.Column(db.Boolean, default=False)
+    timer_sec     = db.Column(db.Integer, default=30)
+    scores_manches_json = db.Column(db.String(50), default='{"rouge":0,"noir":0}')
+    cree_le       = db.Column(db.DateTime, default=lambda: __import__('datetime').datetime.utcnow())
+    mise_a_jour   = db.Column(db.DateTime, default=lambda: __import__('datetime').datetime.utcnow(),
+                              onupdate=lambda: __import__('datetime').datetime.utcnow())
+
+
 class PartieHistorique(db.Model):
     __tablename__ = "parties_historique"
 

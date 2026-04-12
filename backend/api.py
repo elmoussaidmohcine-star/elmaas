@@ -18,15 +18,13 @@ from pieces_generator import serialiser_piece
 from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, calculer_score_cellules
 from ai_player import jouer_ia
 from config import DEBUG
-from models import db, Utilisateur, calculer_elo
+from models import db, Utilisateur, calculer_elo, PartieDB
+import json as _json
 from auth import auth_bp
 from stripe_routes import stripe_bp
 
 app = Flask(__name__)
-db_url = os.environ.get("DATABASE_URL", "sqlite:///elmaas.db")
-if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///elmaas.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "elmaas_secret_dev")
 CORS(app, origins="*")
@@ -40,16 +38,41 @@ with app.app_context():
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
                     logger=False, engineio_logger=False)
 
+# Cache mémoire (rapide) + DB (persistant)
 parties: dict[str, EtatJeu] = {}
 pixels_par_partie: dict[str, list] = {}
 noms_par_partie: dict[str, str] = {}
 bonus_double_tour: dict[str, bool] = {}
 reconnaissance_tentee: dict[str, bool] = {}
 joueurs_connectes: dict[str, dict] = {}
-demandes_pause: dict[str, str] = {}      # partie_id -> couleur qui demande la pause
-pause_active: dict[str, bool] = {}       # partie_id -> pause acceptée
-scores_manches: dict[str, dict] = {}     # partie_id -> {"rouge": n, "noir": n}
-timer_par_partie: dict[str, int] = {}    # partie_id -> secondes par tour
+demandes_pause: dict[str, str] = {}
+pause_active: dict[str, bool] = {}
+scores_manches: dict[str, dict] = {}
+timer_par_partie: dict[str, int] = {}
+
+
+def sauvegarder_partie(partie_id: str):
+    """Sauvegarde l'état d'une partie en base de données."""
+    try:
+        etat = parties.get(partie_id)
+        if not etat:
+            return
+        etat_dict = serialiser_etat(etat)
+        partie_db = PartieDB.query.get(partie_id)
+        if not partie_db:
+            partie_db = PartieDB(id=partie_id)
+            db.session.add(partie_db)
+        partie_db.etat_json = _json.dumps(etat_dict)
+        partie_db.pixels_json = _json.dumps(pixels_par_partie.get(partie_id, []))
+        partie_db.nom_photo = noms_par_partie.get(partie_id, "")
+        partie_db.bonus_double = bonus_double_tour.get(partie_id, False)
+        partie_db.recon_tentee = reconnaissance_tentee.get(partie_id, False)
+        partie_db.timer_sec = timer_par_partie.get(partie_id, 30)
+        partie_db.scores_manches_json = _json.dumps(scores_manches.get(partie_id, {"rouge": 0, "noir": 0}))
+        db.session.commit()
+    except Exception as e:
+        if DEBUG:
+            print(f"[DB] Erreur sauvegarde: {e}")
 
 
 def serialiser_puzzle(puzzle: Puzzle) -> dict:
@@ -174,24 +197,6 @@ def on_rejoindre_partie(data):
         }, room=partie_id)
 
 
-
-@app.route("/photos_fixes", methods=["GET"])
-def photos_fixes():
-    import os
-    photos = [
-        "city.jpeg", "sea.jpeg", "see_purple.jpeg",
-        "sky_scappers.jpeg", "tiano.jpeg", "tools.jpeg",
-        "photo_girl.jpeg", "phto.jpg", "Untitled.jpeg",
-        "champ-lavande-au-coucher-du-soleil-pres-valensole_268835-3910.avif"
-    ]
-    return jsonify({"photos": [f"/photo_fixe/{p}" for p in photos]})
-
-@app.route("/photo_fixe/<nom>", methods=["GET"])
-def photo_fixe(nom):
-    from flask import send_from_directory
-    dossier = os.path.dirname(os.path.abspath(__file__))
-    return send_from_directory(dossier, nom)
-
 @app.route("/ping", methods=["GET"])
 def ping():
     return jsonify({"status": "ok", "message": "ELMAAS API en ligne"})
@@ -259,11 +264,34 @@ def nouvelle_partie():
         return jsonify({"erreur": str(e)}), 500
 
 
+def charger_partie_depuis_db(partie_id: str) -> bool:
+    """Charge une partie depuis la DB si elle n'est pas en mémoire."""
+    if partie_id in parties:
+        return True
+    try:
+        partie_db = PartieDB.query.get(partie_id)
+        if not partie_db:
+            return False
+        # On ne peut pas reconstruire EtatJeu depuis JSON facilement
+        # Mais on peut au moins recharger les métadonnées
+        pixels_par_partie[partie_id] = _json.loads(partie_db.pixels_json or "[]")
+        noms_par_partie[partie_id] = partie_db.nom_photo or ""
+        bonus_double_tour[partie_id] = partie_db.bonus_double or False
+        reconnaissance_tentee[partie_id] = partie_db.recon_tentee or False
+        timer_par_partie[partie_id] = partie_db.timer_sec or 30
+        scores_manches[partie_id] = _json.loads(partie_db.scores_manches_json or '{"rouge":0,"noir":0}')
+        return False  # La partie EtatJeu n'est pas reconstituée
+    except Exception as e:
+        if DEBUG:
+            print(f"[DB] Erreur chargement: {e}")
+        return False
+
+
 @app.route("/etat/<partie_id>", methods=["GET"])
 def get_etat(partie_id: str):
     etat = parties.get(partie_id)
     if not etat:
-        return jsonify({"erreur": "Partie introuvable"}), 404
+        return jsonify({"erreur": "Partie introuvable — redémarrez une nouvelle partie"}), 404
     return jsonify(serialiser_etat(etat))
 
 
@@ -397,6 +425,7 @@ def jouer(partie_id: str):
         resultat["scores_manches"] = scores_manches.get(partie_id, {"rouge": 0, "noir": 0})
 
     if resultat.get("succes"):
+        sauvegarder_partie(partie_id)
         socketio.emit("etat_mis_a_jour", {
             "etat": etat_serialise,
             "action": action,
@@ -651,6 +680,5 @@ if __name__ == "__main__":
     print("  http://localhost:5000")
     print("  WebSocket actif (threading)")
     print("=" * 50)
-    port = int(__import__("os").environ.get("PORT", 8080))
-    socketio.run(app, debug=False, port=port, host="0.0.0.0",
+    socketio.run(app, debug=DEBUG, port=5000, host="0.0.0.0",
                  allow_unsafe_werkzeug=True)
