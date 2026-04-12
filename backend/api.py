@@ -441,9 +441,10 @@ def jouer(partie_id: str):
             serialiser_puzzle(p) for p in resultat["puzzles_completes"]
         ]
 
-    if etat.manche_terminee and etat.gagnant in ("rouge", "noir"):
-        scores_manches[partie_id][etat.gagnant] = scores_manches.get(partie_id, {}).get(etat.gagnant, 0) + 1
-        resultat["scores_manches"] = scores_manches.get(partie_id, {"rouge": 0, "noir": 0})
+    if resultat.get("manche_terminee") and not resultat.get("manche_deja_comptee") and etat.gagnant in ("rouge", "noir"):
+        if not resultat.get("attente_pouvoir"):
+            scores_manches[partie_id][etat.gagnant] = scores_manches.get(partie_id, {}).get(etat.gagnant, 0) + 1
+            resultat["scores_manches"] = scores_manches.get(partie_id, {"rouge": 0, "noir": 0})
 
     if resultat.get("succes"):
         sauvegarder_partie(partie_id)
