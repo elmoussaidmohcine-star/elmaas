@@ -688,6 +688,7 @@ export default function App() {
     if (etape !== "jeu" || !etat || etat.manche_terminee || attenteChoixPouvoir || popup) return;
     // En multijoueur, attendre que les deux joueurs soient connectés
     if (modeMultijoueur && statutConnexion !== "connecte") return;
+    if (estTourIA) return; // Timer suspendu pendant tour IA
 
     const tsDebut = etat.timestamp_debut_tour ? etat.timestamp_debut_tour * 1000 : Date.now();
 
@@ -1475,14 +1476,16 @@ export default function App() {
           {pieceIdx !== null && estMonTour && !enModeCible && !attenteChoixPouvoir && (
             <div className="hint-action">Clique sur le plateau pour placer</div>
           )}
-          <button className="btn-action" style={{ marginTop: "auto", borderColor: "#4444aa44", color: "var(--muted)" }}
-            onClick={() => {
-              const couleur = monRole === "joueur2" ? "noir" : "rouge";
-              axios.post(`${API}/pause/demander/${partieId}`, { couleur });
-              setDemandePauseRecue(couleur);
-            }}>
-            Pause
-          </button>
+          {modeIA === "aucune" && (
+            <button className="btn-action" style={{ marginTop: "auto", borderColor: "#4444aa44", color: "var(--muted)" }}
+              onClick={() => {
+                const couleur = monRole === "joueur2" ? "noir" : "rouge";
+                axios.post(`${API}/pause/demander/${partieId}`, { couleur });
+                setDemandePauseRecue(couleur);
+              }}>
+              Pause
+            </button>
+          )}
           {attenteChoixPouvoir && (
             <div className="hint-action" style={{ borderColor: "#cc880044", background: "#44220011", color: "#ffaa44" }}>
               Choisissez votre récompense…
