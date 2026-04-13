@@ -79,13 +79,12 @@ function EcranAuth({ onConnecte }) {
 }
 
 // ── Écran sélection photo ─────────────────────────────────────
-function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, onPartieCreee }) {
+function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCreee }) {
   const [photosFixees, setPhotosFixees] = useState([]);
   const [photoSelectionnee, setPhotoSelectionnee] = useState(null);
   const [nomPhoto, setNomPhoto] = useState("");
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState(null);
-  const [modeUpload, setModeUpload] = useState(false);
   const [apercu, setApercu] = useState(null);
 
   const peutUploader = !utilisateur
@@ -103,11 +102,10 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, onPartieCreee }) {
       const formData = new FormData();
       formData.append("prop_j1", prop1);
       formData.append("prop_j2", prop2);
-      formData.append("nom_photo", nomPhoto.slice(0, 10));
+      formData.append("nom_photo", modeIA !== "aucune" ? "" : nomPhoto.slice(0, 10));
       formData.append("timer_sec", timerSec);
       if (estFichier) {
         formData.append("photo", urlOuFichier);
-        // Marquer la photo perso comme utilisée
         if (utilisateur && !utilisateur.premium) {
           const token = getToken();
           await axios.post(`${API}/consommer_upload`, {}, {
@@ -115,7 +113,6 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, onPartieCreee }) {
           });
         }
       } else {
-        // Photo fixe : la télécharger depuis l'URL
         const resp = await fetch(`${API}${urlOuFichier}`);
         const blob = await resp.blob();
         const fichier = new File([blob], "photo_fixe.jpg", { type: blob.type });
@@ -140,17 +137,19 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, onPartieCreee }) {
       <h1 className="titre-jeu">ELMAAS</h1>
       <p className="phrase-jeu">Choisissez une photo pour votre plateau</p>
 
-      {/* Nom secret multijoueur */}
-      <div className="nom-photo-section">
-        <label className="nom-photo-label">Nom secret de la photo <span>(max 10 car.)</span></label>
-        <input className="nom-photo-input" maxLength={10} placeholder="ex: vacances"
-          value={nomPhoto} onChange={e => setNomPhoto(e.target.value)} />
-      </div>
+      {/* Nom secret — uniquement en mode multijoueur */}
+      {modeIA === "aucune" && (
+        <div className="nom-photo-section">
+          <label className="nom-photo-label">Nom secret de la photo <span>(max 10 car.)</span></label>
+          <input className="nom-photo-input" maxLength={10} placeholder="ex: vacances"
+            value={nomPhoto} onChange={e => setNomPhoto(e.target.value)} />
+        </div>
+      )}
 
       {/* Grille des 10 photos fixes */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600 }}>
         {photosFixees.map((url, i) => (
-          <div key={i} onClick={() => { setPhotoSelectionnee({ url, estFichier: false }); setModeUpload(false); setApercu(null); }}
+          <div key={i} onClick={() => { setPhotoSelectionnee({ url, estFichier: false }); setApercu(null); }}
             style={{
               width: 100, height: 100, borderRadius: 8, overflow: "hidden", cursor: "pointer",
               border: photoSelectionnee?.url === url ? "3px solid var(--rouge-c)" : "2px solid var(--bord)",
@@ -1025,6 +1024,7 @@ export default function App() {
       <EcranPhoto2
         prop1={props.j1} prop2={props.j2} timerSec={timerChoisi}
         utilisateur={utilisateur}
+        modeIA={modeIA}
         onPartieCreee={handlePartieCreee}
       />
     </div>
@@ -1105,7 +1105,7 @@ export default function App() {
           </div>
         </div>
       )}
-
+      
       {/* Écran fin de manche */}
       {mancheTermineeInfo && (
         <div className="popup-overlay">
