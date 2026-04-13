@@ -264,30 +264,22 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
     if not joueur.reserve and not joueur.main_active:
         # Joueur a épuisé son seuil courant et n'a plus de réserve
         if joueur.puzzles_completes_depuis_regen == 0:
-            # Aucun puzzle complété dans ce cycle → défaite immédiate
+            # Aucun puzzle complété dans ce cycle → fin de partie
             etat.manche_terminee = True
             etat.gagnant = etat.joueur_adverse().couleur
             resultat["defaite_regen"] = True
             resultat["succes"] = True
-            etat.historique_actions.append({
-                "tour": etat.numero_tour, "joueur": joueur.couleur,
-                "action": "poser", "piece": piece["forme"],
-                "origine": list(origine),
-                "positions": [list(p) for p in positions_posees],
-                "puzzles_completes": [],
-            })
             return resultat
         else:
-            # Au moins un puzzle complété → régénérer
-            nouveau_seuil = min(joueur.seuil_regen_actuel + 5, 15)
+            # Au moins un puzzle complété → régénérer +5 pièces
             from pieces_generator import generer_piece
-            nouvelles = [generer_piece() for _ in range(nouveau_seuil)]
+            nouvelles = [generer_piece() for _ in range(5)]
             joueur.reserve = nouvelles
             joueur.piocher()
             joueur.nb_pieces_posees_depuis_regen = 0
             joueur.puzzles_completes_depuis_regen = 0
-            joueur.seuil_regen_actuel = nouveau_seuil
-            resultat["regeneration"] = {"nouveau_seuil": nouveau_seuil, "nb_pieces": nouveau_seuil}
+            joueur.seuil_regen_actuel = len(nouvelles)
+            resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5}
 
     resultat["succes"] = True
     etat.historique_actions.append({
