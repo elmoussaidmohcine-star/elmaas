@@ -818,11 +818,12 @@ export default function App() {
 
   // ── Dérivés ──
   const joueurActif  = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
+  
   const monJoueur = etat ? (
   modeIA !== "aucune" ? etat.joueur1 :  // en mode IA, le joueur humain est toujours J1
   monRole === "joueur2" ? etat.joueur2 : etat.joueur1
-  ) : null;
-  const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : etat.joueur1) : null;
+) : null;
+const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : etat.joueur1) : null;
   const estTourIA = etat && modeIA !== "aucune" &&
     ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
   const estMonTour = !modeMultijoueur || !monRole ||
@@ -1332,10 +1333,10 @@ export default function App() {
 
       {/* Zone adverse */}
       <div className="zone-adverse">
-        <div className="adverse-label">Adversaire ({joueurAdverse?.couleur}) — {(joueurAdverse?.nb_pieces_reserve || 0) + (joueurAdverse?.main_active?.length || 0)} pièces</div>
+        <div className="adverse-label">Adversaire ({joueurAdversaire?.couleur}) — {(joueurAdversaire?.nb_pieces_reserve || 0) + (joueurAdversaire?.main_active?.length || 0)} pièces</div>
         <div className="adverse-pieces">
-          {(joueurAdverse?.main_active || []).map((_, i) => (
-            <div key={i} className={"piece-cachee " + joueurAdverse?.couleur} />
+          {(joueurAdversaire?.main_active || []).map((_, i) => (
+            <div key={i} className={"piece-cachee " + joueurAdversaire?.couleur} />
           ))}
         </div>
       </div>
@@ -1403,17 +1404,17 @@ export default function App() {
           {/* ── Pièces adversaires (visible pour echanger) ── */}
           {(() => {
             const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
-            const mainAdverse = joueurAdverse?.main_active || [];
+            const mainAdverse = joueurAdversaire?.main_active || [];
             const showAdverse = clickEchanger || true; // toujours visible mais grayed sauf en mode echanger
             return showAdverse ? (
               <>
-                <div className="panneau-titre" style={{ marginTop: 14, borderColor: joueurAdverse?.couleur === "rouge" ? "#cc220044" : "#44444444" }}>
-                  Adversaire ({joueurAdverse?.couleur})
+                <div className="panneau-titre" style={{ marginTop: 14, borderColor: joueurAdversaire?.couleur === "rouge" ? "#cc220044" : "#44444444" }}>
+                  Adversaire ({joueurAdversaire?.couleur})
                 </div>
                 <div className="main-pieces-list">
                   {mainAdverse.map((piece, i) => (
                     <div key={i} style={{ position: "relative", opacity: clickEchanger ? 1 : 0.4 }}>
-                      <MiniPiece piece={piece} couleur={joueurAdverse?.couleur}
+                      <MiniPiece piece={piece} couleur={joueurAdversaire?.couleur}
                         estSelectionnee={false}
                         onClick={() => {
                           if (clickEchanger) {
