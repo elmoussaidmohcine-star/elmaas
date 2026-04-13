@@ -109,12 +109,15 @@ def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
     
     pieces = []
     total = 0
+    nb_solo = 0
     while total < cible:
         piece = generer_piece()
-        taille = len(piece["cellules"])
+        if piece["forme"] == "1":
+            if nb_solo >= 1:
+                continue  # on re-tire
+            nb_solo += 1
         pieces.append(piece)
-        total += taille
-    
+        total += len(piece["cellules"])
     return pieces
 
 

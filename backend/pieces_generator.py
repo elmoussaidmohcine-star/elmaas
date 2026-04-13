@@ -24,16 +24,16 @@ FORMES = {
 
 # Raretés : plus le poids est élevé, plus la pièce est commune
 POIDS = {
-    "I2": 20,
-    "I3": 15,
-    "I4": 8,
-    "L":  12,
-    "J":  12,
-    "T":  12,
-    "S":  8,
-    "Z":  8,
-    "O":  10,
-    "1":  5,   # pièce solo — rare mais utile
+    "I2": 22,
+    "I3": 18,
+    "I4": 10,
+    "L":  13,
+    "J":  13,
+    "T":  13,
+    "S":  9,
+    "Z":  9,
+    "O":  11,
+    "1":  2,   # très rare
 }
 
 # ── Rotations ────────────────────────────────────────────────
