@@ -261,7 +261,7 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
                 print(f"[game_engine] 🏆 VICTOIRE IMMÉDIATE — {joueur.couleur}")
 
     # ── Régénération de pièces ──
-    if joueur.nb_pieces_posees_depuis_regen >= joueur.seuil_regen_actuel and not joueur.reserve and not joueur.main_active:
+    if (not joueur.reserve and not joueur.main_active) or (joueur.nb_pieces_posees_depuis_regen >= joueur.seuil_regen_actuel and not joueur.reserve and not joueur.main_active):
         # Joueur a épuisé son seuil courant et n'a plus de réserve
         if joueur.puzzles_completes_depuis_regen == 0:
             # Aucun puzzle complété dans ce cycle → défaite immédiate
