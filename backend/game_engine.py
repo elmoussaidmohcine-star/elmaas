@@ -263,123 +263,30 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
             if DEBUG:
                 print(f"[game_engine] 🏆 VICTOIRE IMMÉDIATE — {joueur.couleur}")
 
-    # ── Régénération de pièces ──
-    if not joueur.reserve and not joueur.main_active:
-        # Joueur a épuisé son seuil courant et n'a plus de réserve
-        if joueur.puzzles_completes_depuis_regen == 0:
-            # Aucun puzzle complété dans ce cycle → fin de partie
-            etat.manche_terminee = True
-            etat.gagnant = etat.joueur_adverse().couleur
-            resultat["defaite_regen"] = True
-            resultat["succes"] = True
-            return resultat
-        else:
-            # Au moins un puzzle complété → régénérer +5 pièces
-            from pieces_generator import generer_piece
-            nouvelles = [generer_piece() for _ in range(5)]
-            joueur.reserve = nouvelles
-            joueur.piocher()
-            joueur.nb_pieces_posees_depuis_regen = 0
-            joueur.puzzles_completes_depuis_regen = 0
-            joueur.seuil_regen_actuel = len(nouvelles)
-            resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5}
-
-    resultat["succes"] = True
-    etat.historique_actions.append({
-        "tour": etat.numero_tour,
-        "joueur": joueur.couleur,
-        "action": "poser",
-        "piece": piece["forme"],
-        "origine": list(origine),
-        "positions": [list(p) for p in positions_posees],
-        "puzzles_completes": [p.id for p in puzzles_completes],
-    })
-
-    if plateau_plein(etat):
-        terminer_manche(etat)
-
-    return resultat
-
-
-def action_passer_repiocher(etat: EtatJeu) -> dict:
-    """
-    Action 2 : Passer son tour pour voir les 5 pièces suivantes de sa réserve.
-    Le joueur perd son tour mais actualise sa main active.
-    """
-    joueur = etat.joueur_actif()
-    resultat = {"succes": True, "nouvelles_pieces": []}
-
-    anciennes = list(joueur.main_active)
-    joueur.main_active = []
-    joueur.reserve = joueur.reserve + anciennes  # ✅ anciennes à la fin  # Remettre la main dans la réserve
-    joueur.piocher()
-
-    resultat["nouvelles_pieces"] = list(joueur.main_active)
-
-    # Réinitialiser série adverse ? Non — passer n'est pas compléter un puzzle
-    # La série de l'adversaire n'est pas affectée
-
-    if DEBUG:
-        print(f"[game_engine] {joueur.couleur} repoche — nouvelle main : {joueur.main_active}")
-
-    etat.historique_actions.append({
-        "tour": etat.numero_tour,
-        "joueur": joueur.couleur,
-        "action": "repiocher",
-    })
-
-    return resultat
-
-
-def action_scout(etat: EtatJeu) -> dict:
-    """
-    Action 3 : Voir 10 pièces de la réserve à venir.
-    NB_ECHANGE_SCOUT pièces aléatoires de la main sont échangées
-    avec NB_ECHANGE_SCOUT pièces aléatoires parmi celles visualisées.
-    Disponible uniquement si le joueur a > MIN_PIECES_SCOUT pièces en main.
-    """
-    joueur = etat.joueur_actif()
-    resultat = {"succes": False, "erreur": None, "pieces_vues": [], "echanges": []}
-
-    if len(joueur.main_active) <= MIN_PIECES_SCOUT:
-        resultat["erreur"] = f"Main trop petite pour le scout (besoin > {MIN_PIECES_SCOUT})"
+# ── Régénération de pièces ──
+if not joueur.reserve and not joueur.main_active:
+    # Compter tous les puzzles complétés sur le plateau depuis la dernière régén
+    puzzles_completes_total = sum(
+        1 for p in etat.plateau.puzzles.values()
+        if p.complete_par is not None and not p.brise
+    )
+    if puzzles_completes_total == 0:
+        # Aucun puzzle complété du tout → fin de partie
+        etat.manche_terminee = True
+        etat.gagnant = etat.joueur_adverse().couleur
+        resultat["defaite_regen"] = True
+        resultat["succes"] = True
         return resultat
-    if len(joueur.reserve) == 0:
-        resultat["erreur"] = "Réserve vide"
-        return resultat
-
-    # Visualiser NB_SCOUT pièces (ou moins si réserve insuffisante)
-    nb_voir = min(NB_SCOUT, len(joueur.reserve))
-    pieces_vues = joueur.reserve[:nb_voir]
-    resultat["pieces_vues"] = list(pieces_vues)
-
-    # Échanger NB_ECHANGE_SCOUT pièces aléatoires de la main avec NB_ECHANGE_SCOUT vues
-    nb_echange = min(NB_ECHANGE_SCOUT, len(joueur.main_active), len(pieces_vues))
-    indices_main = random.sample(range(len(joueur.main_active)), nb_echange)
-    indices_vue = random.sample(range(len(pieces_vues)), nb_echange)
-
-    for im, iv in zip(indices_main, indices_vue):
-        piece_main = joueur.main_active[im]
-        piece_vue = joueur.reserve[iv]
-        joueur.main_active[im] = piece_vue
-        joueur.reserve[iv] = piece_main
-        resultat["echanges"].append({"de_main": piece_main, "vers_main": piece_vue})
-
-    resultat["succes"] = True
-
-    if DEBUG:
-        print(f"[game_engine] {joueur.couleur} scout — vues:{pieces_vues[:3]}... échanges:{resultat['echanges']}")
-
-    etat.historique_actions.append({
-        "tour": etat.numero_tour,
-        "joueur": joueur.couleur,
-        "action": "scout",
-        "echanges": resultat["echanges"],
-    })
-
-    return resultat
-
-
+    else:
+        # Au moins un puzzle complété → régénérer +5 pièces
+        from pieces_generator import generer_piece
+        nouvelles = [generer_piece() for _ in range(5)]
+        joueur.reserve = nouvelles
+        joueur.piocher()
+        joueur.nb_pieces_posees_depuis_regen = 0
+        joueur.puzzles_completes_depuis_regen = 0
+        joueur.seuil_regen_actuel = len(nouvelles)
+        resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5}
 # ── Pouvoirs après complétion de puzzle ──────────────────────
 
 def appliquer_pouvoir(etat: EtatJeu, pouvoir: str, cible: tuple = None) -> dict:
