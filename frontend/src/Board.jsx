@@ -20,13 +20,11 @@ function couleurFrontierePuzzle(puzzle) {
   if (puzzle.complete_par === "noir")  return "#aaaaaa";
   if (puzzle.type_couleur === "mono_rouge") return ROUGE;
   if (puzzle.type_couleur === "mono_noir")  return NOIR_C;
-  if (puzzle.type_couleur === "mixte")      return "mixte"; // traité séparément
+  if (puzzle.type_couleur === "mixte")      return "mixte";
   return "#2a2a4a";
 }
 
-// Pour les puzzles mixtes : renvoie rouge ou noir en alternance selon position
 function couleurFrontiereMixte(r, c, dir) {
-  // Alternance basée sur la position de la cellule + direction
   const pair = (r + c + (dir === "top" || dir === "bottom" ? 0 : 1)) % 2 === 0;
   return pair ? ROUGE : NOIR_C;
 }
@@ -58,7 +56,7 @@ export default function Board({
   onPoserPiece, modeCible, onCibleSelectionnee, extractionsEnCours
 }) {
   const [survol, setSurvol] = useState(null);
-  const [puzzleEclaire, setPuzzleEclaire] = useState(null); // pid éclairé au clic
+  const [puzzleEclaire, setPuzzleEclaire] = useState(null);
   const [animPuzzles, setAnimPuzzles] = useState({});
   const boardRef = useRef(null);
   const CELL = Math.min(36, Math.floor(560 / taille));
@@ -67,8 +65,7 @@ export default function Board({
   const pieces  = plateau?.pieces ?? {};
   const puzzles = plateau?.puzzles ?? {};
 
-  // ── Index multi-puzzle : une cellule peut appartenir à plusieurs puzzles ──
-  // puzzlesParCell[key] = [pid1, pid2, ...] (triés du plus petit au plus grand)
+  // ── Index multi-puzzle ──
   const puzzlesParCell = {};
   Object.entries(puzzles).forEach(([pid, puzz]) => {
     (puzz.cellules || []).forEach(([r, c]) => {
@@ -77,12 +74,10 @@ export default function Board({
       puzzlesParCell[key].push(Number(pid));
     });
   });
-  // Trier chaque liste par taille croissante (plus petit = sous-puzzle)
   Object.values(puzzlesParCell).forEach(pids => {
     pids.sort((a, b) => (puzzles[a]?.cellules?.length ?? 0) - (puzzles[b]?.cellules?.length ?? 0));
   });
 
-  // ── Calculer les frontières d'un puzzle donné ──
   const getFrontieres = useCallback((r, c, pid) => {
     const dirs = { top: [r-1,c], bottom: [r+1,c], left: [r,c-1], right: [r,c+1] };
     const f = {};
@@ -93,15 +88,7 @@ export default function Board({
     return f;
   }, [puzzlesParCell]);
 
-  // ── Puzzle principal d'une cellule (le plus petit si intersection) ──
-  const puzzlePrincipal = useCallback((key) => {
-    const pids = puzzlesParCell[key] || [];
-    if (pids.length === 0) return null;
-    // En intersection : le plus petit (sous-puzzle)
-    return puzzles[pids[0]] ?? null;
-  }, [puzzlesParCell, puzzles]);
-
-  // ── Toutes les cellules d'un puzzle éclairé ──
+  // ── Cellules du puzzle éclairé ──
   const cellulesEclairees = new Set();
   if (puzzleEclaire !== null && puzzles[puzzleEclaire]) {
     (puzzles[puzzleEclaire].cellules || []).forEach(([r, c]) => {
@@ -144,13 +131,11 @@ export default function Board({
   const handleClick = useCallback((e) => {
     const cell = getCellule(e);
 
-    // Mode cible
     if (modeCible && onCibleSelectionnee && cell) {
       onCibleSelectionnee(cell);
       return;
     }
 
-    // Pose de pièce
     if (pieceSelectionnee && survol && pieceIdx !== null) {
       const valide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille);
       if (valide && onPoserPiece) {
@@ -161,17 +146,14 @@ export default function Board({
       }
     }
 
-    // Clic sur arête : éclaire le puzzle
     if (cell) {
       const key = `${cell[0]},${cell[1]}`;
       const pids = puzzlesParCell[key] || [];
       if (pids.length > 0) {
-        // Trouver quel puzzle est sur l'arête cliquée
-        // Si déjà éclairé, cycler au suivant
         const idxActuel = puzzleEclaire !== null ? pids.indexOf(puzzleEclaire) : -1;
         const idxSuivant = (idxActuel + 1) % pids.length;
         const nouveauPid = pids[idxSuivant];
-        setPuzzleEclaire(prev => prev === nouveauPid ? null : nouveauPid);
+        setPuzzleEclaire(prev => prev === nouveauPid && pids.length === 1 ? null : nouveauPid);
       } else {
         setPuzzleEclaire(null);
       }
@@ -191,7 +173,6 @@ export default function Board({
     });
   }
 
-  // Cellules en cours d'extraction
   const extractionSet = new Set(
     (extractionsEnCours || []).map(([r, c]) => `${r},${c}`)
   );
@@ -210,45 +191,44 @@ export default function Board({
           const key = `${r},${c}`;
           const couleurPiece = pieces[key];
           const pids = puzzlesParCell[key] || [];
-          // Puzzle affiché = le plus petit présent
+
           const pidPrinc = pids[0] ?? undefined;
           const puzzle = pidPrinc !== undefined ? puzzles[pidPrinc] : null;
           const estIntersection = pids.length > 1;
 
-          // Puzzle éclairé au clic
           const estEclaire = cellulesEclairees.has(key);
-          // Le puzzle éclairé (peut être différent du principal)
-          const puzzleEcl = puzzleEclaire !== null ? puzzles[puzzleEclaire] : null;
 
-          // Fantôme
+          // ✅ FIX : si la cellule est éclairée, utiliser le puzzle éclairé
+          // pour les frontières et le style, pas forcément le puzzle principal
+          const pidAffiche = estEclaire && puzzleEclaire !== null
+            ? puzzleEclaire
+            : pidPrinc;
+          const puzzleAffiche = pidAffiche !== undefined ? puzzles[pidAffiche] : null;
+
           const estFantome = cellulesFantomes.has(key);
-
-          // Brisé / complété
-          const brise = puzzle?.brise;
+          const brise = puzzleAffiche?.brise;
           const anime = pidPrinc !== undefined && animPuzzles[pidPrinc] === true;
 
-          // ── Frontières : on dessine les arêtes du puzzle principal ──
-          // Si intersection, l'arête externe est celle du sous-puzzle
-          const frontieres = puzzle
-            ? getFrontieres(r, c, pidPrinc)
+          // ✅ Frontières basées sur le puzzle affiché (éclairé ou principal)
+          const frontieres = puzzleAffiche
+            ? getFrontieres(r, c, pidAffiche)
             : {};
 
-          // Couleur frontière selon état
-          const cFBase = couleurFrontierePuzzle(puzzle);
-          const estMixte = puzzle?.type_couleur === "mixte";
-          let epaisseur = puzzle?.complete_par ? "3px" : "2px";
+          const cFBase = couleurFrontierePuzzle(puzzleAffiche);
+          const estMixte = puzzleAffiche?.type_couleur === "mixte";
+          let epaisseur = puzzleAffiche?.complete_par ? "3px" : "2px";
           if (estEclaire) epaisseur = "3px";
 
-          // Fonction qui retourne la couleur de frontière pour une direction donnée
           const getCF = (dir) => {
             if (estEclaire) return "#ffffff";
             if (estMixte) return couleurFrontiereMixte(r, c, dir);
             return cFBase;
           };
 
-          // Pour les cellules d'intersection, aussi dessiner le contour du parent
-          // (arête interne plus fine)
-          const pid2 = estIntersection ? pids[1] : null;
+          // Puzzle secondaire pour intersection (toujours le non-affiché)
+          const pid2 = estIntersection
+            ? (pidAffiche === pids[0] ? pids[1] : pids[0])
+            : null;
           const puzzle2 = pid2 !== null ? puzzles[pid2] : null;
           const frontieres2 = puzzle2 ? getFrontieres(r, c, pid2) : {};
           const cF2 = couleurFrontierePuzzle(puzzle2);
@@ -259,11 +239,11 @@ export default function Board({
             ? `rgba(${px[0]},${px[1]},${px[2]},0.18)`
             : "rgba(10,10,20,0.18)";
 
-          const bgComplete = couleurBgComplete(puzzle);
+          // ✅ bg basé sur puzzleAffiche
+          const bgComplete = couleurBgComplete(puzzleAffiche);
           if (bgComplete) bgColor = bgComplete;
           if (estEclaire) bgColor = "rgba(255,255,255,0.12)";
 
-          // Extraction
           const estEnExtraction = extractionSet.has(key);
 
           return (
@@ -279,7 +259,6 @@ export default function Board({
                 left: c * CELL, top: r * CELL,
                 width: CELL, height: CELL,
                 backgroundColor: bgColor,
-                // Arêtes du puzzle principal
                 borderTop:    frontieres.top    ? `${epaisseur} solid ${getCF("top")}`    : "1px solid #1a1a2a22",
                 borderBottom: frontieres.bottom ? `${epaisseur} solid ${getCF("bottom")}` : "1px solid #1a1a2a22",
                 borderLeft:   frontieres.left   ? `${epaisseur} solid ${getCF("left")}`   : "1px solid #1a1a2a22",
@@ -287,12 +266,11 @@ export default function Board({
                 boxSizing: "border-box",
                 cursor: pieceSelectionnee ? "crosshair" : (puzzle ? "pointer" : "default"),
                 transition: "background-color 0.25s",
-                // Extraction en cours : outline orange
                 outline: estEnExtraction ? "2px solid #ffaa44" : "none",
                 outlineOffset: "-2px",
               }}
             >
-              {/* Arêtes du puzzle parent (intersection) — tracées en interne */}
+              {/* Arêtes du puzzle secondaire (intersection) */}
               {estIntersection && puzzle2 && (
                 <>
                   {frontieres2.top    && !frontieres.top    && <div style={{ position:"absolute", top:0,    left:0, right:0,  height:"1px", background: cF2, opacity:0.5 }} />}
@@ -307,17 +285,17 @@ export default function Board({
                 <div className={`piece-v3 ${couleurPiece}`} />
               )}
 
-              {/* Tag type puzzle en haut à gauche du puzzle */}
-              {puzzle && frontieres.top && frontieres.left && (
+              {/* Tag type puzzle */}
+              {puzzleAffiche && frontieres.top && frontieres.left && (
                 <div className="tag-puzzle" style={{ color: estEclaire ? "#ffffff" : (estMixte ? ROUGE : cFBase) }}>
-                  {puzzle.type_couleur === "mixte" ? "R+N"
-                    : puzzle.type_couleur === "mono_rouge" ? "R" : "N"}
+                  {puzzleAffiche.type_couleur === "mixte" ? "R+N"
+                    : puzzleAffiche.type_couleur === "mono_rouge" ? "R" : "N"}
                   {estIntersection ? "+" : ""}
-                  {puzzle.parent_id !== null && puzzle.parent_id !== undefined ? "s" : ""}
+                  {puzzleAffiche.parent_id !== null && puzzleAffiche.parent_id !== undefined ? "s" : ""}
                 </div>
               )}
 
-              {/* Indicateur intersection (point central) */}
+              {/* Point central intersection */}
               {estIntersection && (
                 <div style={{
                   position: "absolute", top: "50%", left: "50%",
