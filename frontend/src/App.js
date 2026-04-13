@@ -1015,12 +1015,14 @@ export default function App() {
 
   if (etape === "photo") return (
     <div className="app">
-      <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
+      {modeIA === "aucune" && (
+        <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
         <button className="btn-action" style={{ fontSize: 15, padding: "10px 20px" }}
-          onClick={() => { setMonRole("joueur2"); setEtape("lobby"); }}>
-          Je suis le Joueur 2 — Rejoindre une partie
+        onClick={() => { setMonRole("joueur2"); setEtape("lobby"); }}>
+        Je suis le Joueur 2 — Rejoindre une partie
         </button>
-      </div>
+        </div>
+      )}
       <EcranPhoto2
         prop1={props.j1} prop2={props.j2} timerSec={timerChoisi}
         utilisateur={utilisateur}
