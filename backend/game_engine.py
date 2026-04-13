@@ -87,17 +87,53 @@ class EtatJeu:
 
 # ── Initialisation du jeu ────────────────────────────────────
 
+def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
+    """
+    Génère des pièces aléatoires dont la somme des tailles =
+    cellules puzzles de cette couleur + cellules mixtes / 2.
+    """
+    from pieces_generator import generer_piece
+    couleur_mono = "mono_rouge" if couleur == COULEUR_JOUEUR_1 else "mono_noir"
+    
+    # Compter les cellules cibles
+    cellules_couleur = sum(
+        len(p.cellules) for p in plateau.puzzles.values()
+        if p.type_couleur == couleur_mono
+    )
+    cellules_mixtes = sum(
+        len(p.cellules) for p in plateau.puzzles.values()
+        if p.type_couleur == "mixte"
+    )
+    cible = cellules_couleur + cellules_mixtes // 2
+    cible = max(cible, 10)  # minimum 10 cellules
+    
+    pieces = []
+    total = 0
+    while total < cible:
+        piece = generer_piece()
+        taille = len(piece["cellules"])
+        pieces.append(piece)
+        total += taille
+    
+    return pieces
+
+
 def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     """
     Prépare l'état initial du jeu avec pièces tetrominos.
-    - Génère ~21 pièces tetrominos (nombre impair)
-    - Distribue équitablement aux deux joueurs
+    - Calcule les pièces initiales selon la taille des puzzles
     - Place une pièce initiale aléatoire sur le plateau
     - Initialise les mains actives (TAILLE_MAIN pièces visibles)
     """
-    NB_PIECES_TOTAL = 21  # impair garanti par distribuer_pieces
-
-    reserve_j1, reserve_j2, piece_initiale = distribuer_pieces(NB_PIECES_TOTAL)
+    from pieces_generator import generer_piece
+    
+    reserve_j1_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_1)
+    reserve_j2_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_2)
+    
+    # Pièce initiale = première pièce de j1
+    piece_initiale = reserve_j1_liste.pop(0) if reserve_j1_liste else generer_piece()
+    reserve_j1 = reserve_j1_liste
+    reserve_j2 = reserve_j2_liste
 
     # Placer la pièce initiale au centre du plateau
     centre = (TAILLE_TAB // 2, TAILLE_TAB // 2)
@@ -117,6 +153,7 @@ def initialiser_jeu(plateau: Plateau) -> EtatJeu:
         main_active=[],
         reserve=reserve_j1,
         pieces_protegees=set(),
+        seuil_regen_actuel=max(5, len(reserve_j1)),
     )
     joueur2 = Joueur(
         id=1,
@@ -124,6 +161,7 @@ def initialiser_jeu(plateau: Plateau) -> EtatJeu:
         main_active=[],
         reserve=reserve_j2,
         pieces_protegees=set(),
+        seuil_regen_actuel=max(5, len(reserve_j2)),
     )
 
     joueur1.piocher()
