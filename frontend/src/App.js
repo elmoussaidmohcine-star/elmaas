@@ -1086,9 +1086,9 @@ export default function App() {
                 onClick={async () => {
                   try {
                     const token = localStorage.getItem("elmaas_token");
-                    const res = await fetch(\`\${API}/stripe/checkout\`, {
+                   const res = await fetch(`${API}/stripe/checkout`, {
                       method: "POST",
-                      headers: { Authorization: \`Bearer \${token}\` }
+                      headers: { Authorization: `Bearer ${token}` }
                     });
                     const data = await res.json();
                     if (data.url) window.location.href = data.url;
