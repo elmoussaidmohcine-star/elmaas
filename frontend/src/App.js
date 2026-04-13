@@ -1229,7 +1229,7 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
 
       {/* Popups */}
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} />}
-      {popup?.type === "scout"   && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} />}
+      {popup?.type === "scout"   && <PopupScout pieces={scoutPieces} couleur={monJoueur?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} />}
       {popup?.type === "manuel"  && <PopupManuel onFermer={() => setPopup(null)} />}
       {popup?.type === "reconnaissance" && (
         <PopupReconnaissance
@@ -1347,17 +1347,17 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
         <div className="panneau-main">
           {/* ── Mes pièces ── */}
           <div className="panneau-titre">
-            Mes pièces ({joueurActif?.couleur})
+            Mes pièces ({monJoueur?.couleur})
           </div>
           <div className="main-pieces-list">
-            {(joueurActif?.main_active || []).map((piece, i) => {
+            {(monJoueur?.main_active || []).map((piece, i) => {
               // En mode protéger : clic direct sur ma pièce
               const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
               const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
               const estSelectPourDonner = clickEchanger && pieceADonner === i;
               return (
                 <div key={i} style={{ position: "relative" }}>
-                  <MiniPiece piece={piece} couleur={joueurActif?.couleur}
+                  <MiniPiece piece={piece} couleur={monJoueur?.couleur}
                     estSelectionnee={pieceIdx === i || estSelectPourDonner}
                     onClick={() => {
                       if (clickProteger) {
@@ -1386,19 +1386,19 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
               );
             })}
           </div>
-          {(joueurActif?.main_active || []).length === 0 && (
+          {(monJoueur?.main_active || []).length === 0 && (
             <div style={{ fontSize: 12, color: "var(--muted)" }}>Main vide</div>
           )}
 
           <div className="panneau-titre" style={{ marginTop: 10 }}>
-            Réserve : {joueurActif?.nb_pieces_reserve}
+            Réserve : {monJoueur?.nb_pieces_reserve}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>
-            Pièces posées : {joueurActif?.nb_pieces_posees_depuis_regen ?? 0} / {joueurActif?.seuil_regen_actuel ?? 5}
+            Pièces posées : {monJoueur?.nb_pieces_posees_depuis_regen ?? 0} / {monJoueur?.seuil_regen_actuel ?? 5}
           </div>
           <div className="serie-info">
-            Série : {joueurActif?.serie_actuelle}
-            {joueurActif?.serie_actuelle >= 3 ? " !" : ""}
+            Série : {monJoueur?.serie_actuelle}
+            {monJoueur?.serie_actuelle >= 3 ? " !" : ""}
           </div>
 
           {/* ── Pièces adversaires (visible pour echanger) ── */}
@@ -1446,8 +1446,8 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
           <Board
             etat={etat}
             taille={taille}
-            couleurJoueur={joueurActif?.couleur}
-            pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurActif?.main_active[pieceIdx] : null}
+            couleurJoueur={monJoueur?.couleur}
+            pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? monJoueur?.main_active[pieceIdx] : null}
             pieceIdx={pieceIdx}
             pixelsPhoto={pixelsPhoto}
             onPoserPiece={!enModeCible && !attenteChoixPouvoir ? handlePoserPiece : null}
