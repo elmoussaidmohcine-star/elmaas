@@ -818,7 +818,11 @@ export default function App() {
 
   // ── Dérivés ──
   const joueurActif  = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
-  const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
+  const monJoueur = etat ? (
+  modeIA !== "aucune" ? etat.joueur1 :  // en mode IA, le joueur humain est toujours J1
+  monRole === "joueur2" ? etat.joueur2 : etat.joueur1
+  ) : null;
+  const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : etat.joueur1) : null;
   const estTourIA = etat && modeIA !== "aucune" &&
     ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
   const estMonTour = !modeMultijoueur || !monRole ||

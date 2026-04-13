@@ -311,7 +311,7 @@ def action_passer_repiocher(etat: EtatJeu) -> dict:
 
     anciennes = list(joueur.main_active)
     joueur.main_active = []
-    joueur.reserve = anciennes + joueur.reserve  # Remettre la main dans la réserve
+    joueur.reserve = joueur.reserve + anciennes  # ✅ anciennes à la fin  # Remettre la main dans la réserve
     joueur.piocher()
 
     resultat["nouvelles_pieces"] = list(joueur.main_active)
