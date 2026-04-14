@@ -64,7 +64,7 @@ POIDS_PIECES = {
 }
 
 # --- Debug ---
-DEBUG = False
+DEBUG = True
 
 
 # --- Utilitaire : calcul taille depuis propositions joueurs ---
