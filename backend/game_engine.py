@@ -31,27 +31,24 @@ from config import (
 @dataclass
 class Joueur:
     id: int
-    couleur: str                        # "rouge" ou "noir"
-    main_active: list                   # pièces tetrominos visibles (max TAILLE_MAIN)
-    reserve: list                       # pièces tetrominos cachées
-    pieces_protegees: set               # positions (r,c) protégées ce tour
+    couleur: str
+    main_active: list
+    reserve: list
+    pieces_protegees: set
     serie_actuelle: int = 0
     score_puzzles: list = field(default_factory=list)
-    # Gestion régénération
-    nb_pieces_posees_depuis_regen: int = 0   # pièces posées depuis dernière régén
-    seuil_regen_actuel: int = 5              # 5 → 10 → 15
-    puzzles_completes_depuis_regen: int = 0  # puzzles complétés dans ce cycle
+    nb_pieces_posees_depuis_regen: int = 0
+    seuil_regen_actuel: int = 5
+    puzzles_completes_depuis_regen: int = 0
 
     def nb_pieces_total(self) -> int:
         return len(self.main_active) + len(self.reserve)
 
     def piocher(self):
-        """Remplace la main active depuis la réserve jusqu'à TAILLE_MAIN."""
         while len(self.main_active) < TAILLE_MAIN and self.reserve:
             self.main_active.append(self.reserve.pop(0))
 
     def retirer_piece(self, index: int) -> bool:
-        """Retire la pièce à l'index donné de la main active."""
         if 0 <= index < len(self.main_active):
             self.main_active.pop(index)
             self.piocher()
@@ -64,14 +61,14 @@ class EtatJeu:
     plateau: Plateau
     joueur1: Joueur
     joueur2: Joueur
-    tour_actuel: int = 0                # 0 = joueur1, 1 = joueur2
+    tour_actuel: int = 0
     numero_tour: int = 0
     manche_terminee: bool = False
-    gagnant: Optional[str] = None      # "rouge", "noir", ou None
+    gagnant: Optional[str] = None
     victoire_immediate: bool = False
     historique_actions: list = field(default_factory=list)
-    piece_initiale_pos: Optional[tuple] = None  # pièce placée aléatoirement au début
-    timestamp_debut_tour: float = field(default_factory=time.time)  # synchro timers
+    piece_initiale_pos: Optional[tuple] = None
+    timestamp_debut_tour: float = field(default_factory=time.time)
 
     def joueur_actif(self) -> Joueur:
         return self.joueur1 if self.tour_actuel == 0 else self.joueur2
@@ -88,14 +85,9 @@ class EtatJeu:
 # ── Initialisation du jeu ────────────────────────────────────
 
 def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
-    """
-    Génère des pièces aléatoires dont la somme des tailles =
-    cellules puzzles de cette couleur + cellules mixtes / 2.
-    """
     from pieces_generator import generer_piece
     couleur_mono = "mono_rouge" if couleur == COULEUR_JOUEUR_1 else "mono_noir"
-    
-    # Compter les cellules cibles
+
     cellules_couleur = sum(
         len(p.cellules) for p in plateau.puzzles.values()
         if p.type_couleur == couleur_mono
@@ -105,8 +97,8 @@ def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
         if p.type_couleur == "mixte"
     )
     cible = cellules_couleur + cellules_mixtes // 2
-    cible = max(cible, 10)  # minimum 10 cellules
-    
+    cible = max(cible, 10)
+
     pieces = []
     total = 0
     nb_solo = 0
@@ -114,7 +106,7 @@ def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
         piece = generer_piece()
         if piece["forme"] == "1":
             if nb_solo >= 1:
-                continue  # on re-tire
+                continue
             nb_solo += 1
         pieces.append(piece)
         total += len(piece["cellules"])
@@ -122,23 +114,15 @@ def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
 
 
 def initialiser_jeu(plateau: Plateau) -> EtatJeu:
-    """
-    Prépare l'état initial du jeu avec pièces tetrominos.
-    - Calcule les pièces initiales selon la taille des puzzles
-    - Place une pièce initiale aléatoire sur le plateau
-    - Initialise les mains actives (TAILLE_MAIN pièces visibles)
-    """
     from pieces_generator import generer_piece
-    
+
     reserve_j1_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_1)
     reserve_j2_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_2)
-    
-    # Pièce initiale = première pièce de j1
+
     piece_initiale = reserve_j1_liste.pop(0) if reserve_j1_liste else generer_piece()
     reserve_j1 = reserve_j1_liste
     reserve_j2 = reserve_j2_liste
 
-    # Placer la pièce initiale au centre du plateau
     centre = (TAILLE_TAB // 2, TAILLE_TAB // 2)
     couleur_initiale = random.choice([COULEUR_JOUEUR_1, COULEUR_JOUEUR_2])
     absolues_init = cellules_absolues(piece_initiale, centre)
@@ -189,11 +173,6 @@ def initialiser_jeu(plateau: Plateau) -> EtatJeu:
 # ── Actions du tour ──────────────────────────────────────────
 
 def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
-    """
-    Action 1 : Poser une pièce tetromino sur le plateau.
-    piece_index : index de la pièce dans la main active
-    origine     : (r, c) coin supérieur gauche du placement
-    """
     joueur = etat.joueur_actif()
     resultat = {"succes": False, "erreur": None, "puzzles_completes": [], "victoire_immediate": False}
 
@@ -203,13 +182,11 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
 
     piece = joueur.main_active[piece_index]
 
-    # Vérifier placement valide
     valide, raison = placement_valide(piece, origine, etat.plateau.pieces, TAILLE_TAB)
     if not valide:
         resultat["erreur"] = raison
         return resultat
 
-    # Poser toutes les cellules de la pièce
     absolues = cellules_absolues(piece, origine)
     positions_posees = []
     for pos in absolues:
@@ -219,17 +196,13 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
         etat.plateau.cellules_actives.add((r, c))
         positions_posees.append((r, c))
 
-    # Retirer la pièce de la main
     joueur.retirer_piece(piece_index)
     joueur.nb_pieces_posees_depuis_regen += 1
-
-    # Réinitialiser protections
     joueur.pieces_protegees.clear()
 
     if DEBUG:
         print(f"[game_engine] {joueur.couleur} pose {piece['forme']} en {origine} → {positions_posees}")
 
-    # Vérifier puzzles complétés pour chaque cellule posée
     puzzles_completes = []
     for pos in positions_posees:
         nouveaux = verifier_completion_puzzles(etat, pos)
@@ -244,13 +217,10 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
         joueur.puzzles_completes_depuis_regen += len(puzzles_completes)
         etat.joueur_adverse().serie_actuelle = 0
 
-        # Règle sous-puzzle : si un puzzle parent est déjà complété,
-        # le joueur qui complète le sous-puzzle gagne le parent aussi
         for puzzle_c in puzzles_completes:
             if puzzle_c.parent_id is not None:
                 parent = etat.plateau.puzzles.get(puzzle_c.parent_id)
                 if parent and parent.complete_par is not None and parent.complete_par != joueur.couleur:
-                    # Le parent était complété par l'adversaire → le joueur le vole
                     parent.complete_par = joueur.couleur
                     if DEBUG:
                         print(f"[game_engine] {joueur.couleur} vole le parent {parent.id} via sous-puzzle {puzzle_c.id}")
@@ -284,14 +254,97 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
             joueur.puzzles_completes_depuis_regen = 0
             joueur.seuil_regen_actuel = len(nouvelles)
             resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5}
+
+    resultat["succes"] = True
+    etat.historique_actions.append({
+        "tour": etat.numero_tour,
+        "joueur": joueur.couleur,
+        "action": "poser",
+        "piece": piece["forme"],
+        "origine": list(origine),
+        "positions": [list(p) for p in positions_posees],
+        "puzzles_completes": [p.id for p in puzzles_completes],
+    })
+
+    if plateau_plein(etat):
+        terminer_manche(etat)
+
+    return resultat
+
+
+def action_passer_repiocher(etat: EtatJeu) -> dict:
+    """
+    Action 2 : Passer son tour pour actualiser sa main active.
+    """
+    joueur = etat.joueur_actif()
+    resultat = {"succes": True, "nouvelles_pieces": []}
+
+    anciennes = list(joueur.main_active)
+    joueur.main_active = []
+    joueur.reserve = joueur.reserve + anciennes
+    joueur.piocher()
+
+    resultat["nouvelles_pieces"] = list(joueur.main_active)
+
+    if DEBUG:
+        print(f"[game_engine] {joueur.couleur} repoche — nouvelle main : {joueur.main_active}")
+
+    etat.historique_actions.append({
+        "tour": etat.numero_tour,
+        "joueur": joueur.couleur,
+        "action": "repiocher",
+    })
+
+    return resultat
+
+
+def action_scout(etat: EtatJeu) -> dict:
+    """
+    Action 3 : Voir 10 pièces de la réserve à venir.
+    """
+    joueur = etat.joueur_actif()
+    resultat = {"succes": False, "erreur": None, "pieces_vues": [], "echanges": []}
+
+    if len(joueur.main_active) <= MIN_PIECES_SCOUT:
+        resultat["erreur"] = f"Main trop petite pour le scout (besoin > {MIN_PIECES_SCOUT})"
+        return resultat
+    if len(joueur.reserve) == 0:
+        resultat["erreur"] = "Réserve vide"
+        return resultat
+
+    nb_voir = min(NB_SCOUT, len(joueur.reserve))
+    pieces_vues = joueur.reserve[:nb_voir]
+    resultat["pieces_vues"] = list(pieces_vues)
+
+    nb_echange = min(NB_ECHANGE_SCOUT, len(joueur.main_active), len(pieces_vues))
+    indices_main = random.sample(range(len(joueur.main_active)), nb_echange)
+    indices_vue = random.sample(range(len(pieces_vues)), nb_echange)
+
+    for im, iv in zip(indices_main, indices_vue):
+        piece_main = joueur.main_active[im]
+        piece_vue = joueur.reserve[iv]
+        joueur.main_active[im] = piece_vue
+        joueur.reserve[iv] = piece_main
+        resultat["echanges"].append({"de_main": piece_main, "vers_main": piece_vue})
+
+    resultat["succes"] = True
+
+    if DEBUG:
+        print(f"[game_engine] {joueur.couleur} scout — vues:{pieces_vues[:3]}... échanges:{resultat['echanges']}")
+
+    etat.historique_actions.append({
+        "tour": etat.numero_tour,
+        "joueur": joueur.couleur,
+        "action": "scout",
+        "echanges": resultat["echanges"],
+    })
+
+    return resultat
+
+
 # ── Pouvoirs après complétion de puzzle ──────────────────────
 
 def appliquer_pouvoir(etat: EtatJeu, pouvoir: str, cible: tuple = None) -> dict:
-    """
-    Applique le pouvoir choisi après complétion d'un puzzle.
-    pouvoir : "rien", "proteger", "echanger"
-    cible   : position de la pièce concernée (pour protéger ou échanger)
-    """
     joueur = etat.joueur_actif()
     adverse = etat.joueur_adverse()
     resultat = {"succes": False, "erreur": None}
@@ -300,7 +353,6 @@ def appliquer_pouvoir(etat: EtatJeu, pouvoir: str, cible: tuple = None) -> dict:
         resultat["erreur"] = f"Pouvoir inconnu : {pouvoir}"
         return resultat
 
-    # Normaliser cible en string si tuple
     if cible is not None and isinstance(cible, (tuple, list)):
         cible = f"{cible[0]},{cible[1]}"
 
@@ -314,7 +366,7 @@ def appliquer_pouvoir(etat: EtatJeu, pouvoir: str, cible: tuple = None) -> dict:
         if etat.plateau.pieces.get(cible) != joueur.couleur:
             resultat["erreur"] = "Vous ne possédez pas cette pièce"
             return resultat
-        cible_cle = f"{cible[0]},{cible[1]}" if isinstance(cible, (tuple,list)) else cible
+        cible_cle = f"{cible[0]},{cible[1]}" if isinstance(cible, (tuple, list)) else cible
         joueur.pieces_protegees.add(cible_cle)
         resultat["succes"] = True
         if DEBUG:
@@ -330,30 +382,22 @@ def appliquer_pouvoir(etat: EtatJeu, pouvoir: str, cible: tuple = None) -> dict:
         if cible in adverse.pieces_protegees:
             resultat["erreur"] = "Cette pièce est protégée"
             return resultat
-        # Échanger : la pièce adverse devient la couleur du joueur actif
-        cible_cle = f"{cible[0]},{cible[1]}" if isinstance(cible, (tuple,list)) else cible
+        cible_cle = f"{cible[0]},{cible[1]}" if isinstance(cible, (tuple, list)) else cible
         etat.plateau.pieces[cible_cle] = joueur.couleur
         resultat["succes"] = True
         if DEBUG:
             print(f"[game_engine] {joueur.couleur} échange {cible} (était {adverse.couleur})")
-
-        # Vérifier si l'échange brise un puzzle
         verifier_brisure_puzzle(etat, cible)
 
     return resultat
 
 
 def appliquer_bonus_serie(etat: EtatJeu, positions_a_extraire: list = None) -> dict:
-    """
-    Applique le bonus de série (3 puzzles d'affilée) :
-    - Extrait NB_PIECES_EXTRACTION pièces du plateau (optionnel)
-    - Si une pièce extraite est de sa propre couleur → recolorier une autre pièce
-    """
     joueur = etat.joueur_actif()
     resultat = {"succes": True, "extractions": [], "recoloriages_possibles": 0}
 
     if positions_a_extraire is None:
-        return resultat  # Joueur choisit de ne pas extraire
+        return resultat
 
     for pos in positions_a_extraire[:NB_PIECES_EXTRACTION]:
         if isinstance(pos, (tuple, list)):
@@ -361,13 +405,11 @@ def appliquer_bonus_serie(etat: EtatJeu, positions_a_extraire: list = None) -> d
         couleur_piece = etat.plateau.pieces.get(pos)
         if couleur_piece is None:
             continue
-        # Extraire la pièce
-        pos_cle = f"{pos[0]},{pos[1]}" if isinstance(pos, (tuple,list)) else pos
+        pos_cle = f"{pos[0]},{pos[1]}" if isinstance(pos, (tuple, list)) else pos
         etat.plateau.pieces[pos_cle] = None
         etat.plateau.cellules_actives.discard(pos)
         resultat["extractions"].append({"position": pos, "couleur": couleur_piece})
 
-        # Si sa propre couleur extraite → droit de recolorier une autre pièce
         if couleur_piece == joueur.couleur:
             resultat["recoloriages_possibles"] += 1
 
@@ -378,10 +420,6 @@ def appliquer_bonus_serie(etat: EtatJeu, positions_a_extraire: list = None) -> d
 
 
 def recolorier_piece(etat: EtatJeu, position: tuple) -> dict:
-    """
-    Recolorie une pièce adverse en la couleur du joueur actif.
-    Utilisé après extraction d'une pièce de sa propre couleur.
-    """
     joueur = etat.joueur_actif()
     resultat = {"succes": False, "erreur": None}
 
@@ -395,7 +433,7 @@ def recolorier_piece(etat: EtatJeu, position: tuple) -> dict:
         resultat["erreur"] = "La pièce est déjà de votre couleur"
         return resultat
 
-    pos_cle = f"{position[0]},{position[1]}" if isinstance(position, (tuple,list)) else position
+    pos_cle = f"{position[0]},{position[1]}" if isinstance(position, (tuple, list)) else position
     etat.plateau.pieces[pos_cle] = joueur.couleur
     resultat["succes"] = True
 
@@ -410,15 +448,6 @@ def recolorier_piece(etat: EtatJeu, position: tuple) -> dict:
 # ── Détection de complétion et brisure ──────────────────────
 
 def verifier_completion_puzzles(etat: EtatJeu, position_posee: tuple) -> list[Puzzle]:
-    """
-    Vérifie si la pièce posée complète un ou plusieurs puzzles.
-    Règles :
-    - mono_rouge : toutes les cellules doivent être ROUGE → complete_par = "rouge"
-                   toutes les cellules doivent être NOIR  → complete_par = "noir"
-                   mélange → pas complété
-    - mono_noir  : même logique inversée
-    - mixte      : doit avoir les deux couleurs → complete_par = joueur actif
-    """
     completes = []
 
     for pid, puzzle in etat.plateau.puzzles.items():
@@ -431,10 +460,9 @@ def verifier_completion_puzzles(etat: EtatJeu, position_posee: tuple) -> list[Pu
         if not toutes_posees(etat, puzzle):
             continue
 
-        # Déterminer le gagnant selon les couleurs présentes
         gagnant = determiner_gagnant_puzzle(etat, puzzle)
         if gagnant is None:
-            continue  # Pas encore complétable
+            continue
 
         puzzle.complete_par = gagnant
         completes.append(puzzle)
@@ -442,7 +470,6 @@ def verifier_completion_puzzles(etat: EtatJeu, position_posee: tuple) -> list[Pu
         if DEBUG:
             print(f"[game_engine] Puzzle {pid} complété par {gagnant} (type={puzzle.type_couleur})")
 
-        # Vérifier brisure des puzzles voisins
         for autre_pid, autre_puzzle in etat.plateau.puzzles.items():
             if autre_pid == pid:
                 continue
@@ -454,26 +481,10 @@ def verifier_completion_puzzles(etat: EtatJeu, position_posee: tuple) -> list[Pu
 
 
 def toutes_posees(etat: EtatJeu, puzzle: Puzzle) -> bool:
-    """Vérifie que toutes les cellules du puzzle ont une pièce posée."""
-    # Les clés de plateau.pieces sont des strings "r,c", les cellules sont des tuples (r,c)
     return all(etat.plateau.pieces.get(f"{r},{c}") is not None for r, c in puzzle.cellules)
 
 
 def determiner_gagnant_puzzle(etat: EtatJeu, puzzle: Puzzle):
-    """
-    Détermine qui gagne le puzzle selon les couleurs présentes.
-    Retourne "rouge", "noir", ou None si le puzzle n'est pas complétable.
-
-    Règles :
-    - mono_rouge : tout rouge → rouge gagne
-                   tout noir  → noir gagne (a envahi le puzzle)
-                   mélange    → non complété
-    - mono_noir  : tout noir  → noir gagne
-                   tout rouge → rouge gagne (a envahi le puzzle)
-                   mélange    → non complété
-    - mixte      : doit avoir les deux couleurs → le joueur actif gagne
-                   (celui qui a posé la dernière pièce)
-    """
     couleurs = {
         etat.plateau.pieces[f"{r},{c}"]
         for r, c in puzzle.cellules
@@ -485,15 +496,14 @@ def determiner_gagnant_puzzle(etat: EtatJeu, puzzle: Puzzle):
     if puzzle.type_couleur == "mono_rouge":
         if tout_rouge: return COULEUR_JOUEUR_1
         if tout_noir:  return COULEUR_JOUEUR_2
-        return None  # mélange = pas complété
+        return None
 
     elif puzzle.type_couleur == "mono_noir":
         if tout_noir:  return COULEUR_JOUEUR_2
         if tout_rouge: return COULEUR_JOUEUR_1
-        return None  # mélange = pas complété
+        return None
 
     elif puzzle.type_couleur == "mixte":
-        # Les deux couleurs doivent être présentes
         if COULEUR_JOUEUR_1 in couleurs and COULEUR_JOUEUR_2 in couleurs:
             return etat.joueur_actif().couleur
         return None
@@ -502,11 +512,6 @@ def determiner_gagnant_puzzle(etat: EtatJeu, puzzle: Puzzle):
 
 
 def verifier_brisure_depuis_completion(etat: EtatJeu, puzzle_complete: Puzzle, puzzle_cible: Puzzle):
-    """
-    Vérifie si la complétion de puzzle_complete brise puzzle_cible.
-    Un puzzle se brise si son intersection avec un puzzle complété
-    contient une couleur incompatible avec sa propre contrainte.
-    """
     intersection = puzzle_complete.cellules & puzzle_cible.cellules
     if not intersection:
         return
@@ -516,11 +521,8 @@ def verifier_brisure_depuis_completion(etat: EtatJeu, puzzle_complete: Puzzle, p
         if etat.plateau.pieces.get(f"{r},{c}") is not None
     }
 
-    # Le puzzle complété illumine avec la couleur du joueur
     couleur_completeur = puzzle_complete.complete_par
 
-    # Si l'intersection est entièrement de la couleur du compléteur
-    # ET que puzzle_cible ne peut pas avoir cette couleur seule → brisure
     conflit = False
     if puzzle_cible.type_couleur == "mixte" and couleurs_intersection == {couleur_completeur}:
         conflit = True
@@ -538,9 +540,6 @@ def verifier_brisure_depuis_completion(etat: EtatJeu, puzzle_complete: Puzzle, p
 
 
 def verifier_brisure_puzzle(etat: EtatJeu, position: tuple):
-    """
-    Après un échange ou recoloriage, vérifie si des puzzles sont maintenant brisés.
-    """
     for pid, puzzle in etat.plateau.puzzles.items():
         if puzzle.complete_par is not None and not puzzle.brise:
             for autre_pid, autre in etat.plateau.puzzles.items():
@@ -551,11 +550,6 @@ def verifier_brisure_puzzle(etat: EtatJeu, position: tuple):
 
 
 def tenter_reparer_puzzle_brise(etat: EtatJeu, puzzle_id: int) -> dict:
-    """
-    Tente de réparer un puzzle brisé.
-    Condition : le joueur actif vient de compléter 3 puzzles d'affilée
-    et souhaite échanger la couleur dans l'intersection problématique.
-    """
     joueur = etat.joueur_actif()
     resultat = {"succes": False, "erreur": None}
 
@@ -568,18 +562,16 @@ def tenter_reparer_puzzle_brise(etat: EtatJeu, puzzle_id: int) -> dict:
         resultat["erreur"] = "Puzzle non brisé ou inexistant"
         return resultat
 
-    # Trouver le puzzle complété responsable de la brisure
     for autre_pid, autre in etat.plateau.puzzles.items():
         if autre.complete_par is None:
             continue
         intersection = puzzle.cellules & autre.cellules
         if not intersection:
             continue
-        # Échanger la couleur dans l'intersection
         for cell in intersection:
             couleur_actuelle = etat.plateau.pieces.get(cell)
             if couleur_actuelle == autre.complete_par:
-                cell_cle = f"{cell[0]},{cell[1]}" if isinstance(cell, (tuple,list)) else cell
+                cell_cle = f"{cell[0]},{cell[1]}" if isinstance(cell, (tuple, list)) else cell
                 etat.plateau.pieces[cell_cle] = joueur.couleur
 
         puzzle.brise = False
@@ -594,16 +586,10 @@ def tenter_reparer_puzzle_brise(etat: EtatJeu, puzzle_id: int) -> dict:
 # ── Fin de manche ────────────────────────────────────────────
 
 def plateau_plein(etat: EtatJeu) -> bool:
-    """Vérifie si toutes les cases du plateau ont une pièce posée."""
     return all(v is not None for v in etat.plateau.pieces.values())
 
 
 def terminer_manche(etat: EtatJeu):
-    """
-    Calcule le score final et désigne le gagnant.
-    Score = nombre de puzzles éclairés par chaque couleur.
-    Les pièces du puzzle brisé sont exclues du calcul.
-    """
     if etat.manche_terminee:
         return
 
@@ -629,10 +615,6 @@ def terminer_manche(etat: EtatJeu):
 
 
 def calculer_score_cellules(etat: EtatJeu, couleur: str) -> int:
-    """
-    Score = nombre total de cellules dans les puzzles complétés par cette couleur
-    (toutes les cellules du puzzle comptent, peu importe leur couleur sur le plateau).
-    """
     total = 0
     for p in etat.plateau.puzzles.values():
         if not p.brise and p.complete_par == couleur:
@@ -641,7 +623,6 @@ def calculer_score_cellules(etat: EtatJeu, couleur: str) -> int:
 
 
 def calculer_scores(etat: EtatJeu) -> dict:
-    """Retourne le score actuel sans terminer la manche."""
     score_rouge = calculer_score_cellules(etat, COULEUR_JOUEUR_1)
     score_noir  = calculer_score_cellules(etat, COULEUR_JOUEUR_2)
     return {
@@ -658,18 +639,6 @@ def calculer_scores(etat: EtatJeu) -> dict:
 # ── Interface principale ─────────────────────────────────────
 
 def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
-    """
-    Point d'entrée principal pour jouer un tour.
-
-    action : "poser" | "repiocher" | "scout"
-    kwargs :
-      - position     : tuple (ligne, col) pour "poser"
-      - pouvoir      : str pour après complétion puzzle
-      - cible_pouvoir: tuple pour "proteger" ou "echanger"
-      - extraire     : list de positions pour bonus série
-    
-    Retourne un dict complet de l'état résultant.
-    """
     if etat.manche_terminee:
         return {"succes": False, "erreur": "Manche déjà terminée"}
 
@@ -686,23 +655,17 @@ def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
         if not resultat["succes"]:
             return resultat
 
-        # Si puzzles complétés → gérer pouvoirs et bonus
         if resultat["puzzles_completes"] and not resultat["victoire_immediate"]:
-
-            # Bonus série 3 → extraction optionnelle
             if joueur.serie_actuelle >= SERIE_BONUS_EXTRACTION:
                 extraire = kwargs.get("extraire")
                 if extraire:
                     bonus = appliquer_bonus_serie(etat, extraire)
                     resultat["bonus_serie"] = bonus
-
-                    # Recoloriage si pièce propre extraite
                     recoloriage = kwargs.get("recoloriage")
                     if recoloriage and bonus.get("recoloriages_possibles", 0) > 0:
                         r = recolorier_piece(etat, recoloriage)
                         resultat["recoloriage"] = r
 
-            # Appliquer le pouvoir choisi après complétion
             pouvoir = kwargs.get("pouvoir", "rien")
             cible = kwargs.get("cible_pouvoir")
             if pouvoir != "rien":
@@ -717,13 +680,10 @@ def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
     else:
         return {"succes": False, "erreur": f"Action inconnue : {action}"}
 
-    # Ajouter l'état courant au résultat
     resultat["scores"] = calculer_scores(etat)
     resultat["manche_terminee"] = etat.manche_terminee
     resultat["gagnant"] = etat.gagnant
 
-    # Passer au tour suivant SAUF si des puzzles ont été complétés :
-    # dans ce cas le frontend va envoyer action=pouvoir qui passera le tour.
     puzzles_completes = resultat.get("puzzles_completes", [])
     attente_pouvoir = bool(puzzles_completes) and not resultat.get("victoire_immediate", False)
     resultat["attente_pouvoir"] = attente_pouvoir
@@ -754,7 +714,6 @@ if __name__ == "__main__":
     print(f"Joueur 2 ({etat.joueur2.couleur}) main : {etat.joueur2.main_active}")
     print(f"Scores initiaux : {calculer_scores(etat)}")
 
-    # Simuler quelques tours
     print("\n=== Simulation 3 tours ===")
     for i in range(3):
         joueur = etat.joueur_actif()
