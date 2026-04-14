@@ -458,6 +458,7 @@ def jouer(partie_id: str):
             "scores_manches": scores_manches.get(partie_id, {"rouge": 0, "noir": 0}),
             "regeneration": resultat.get("regeneration"),
             "defaite_regen": resultat.get("defaite_regen", False),
+            "motif": resultat.get("motif", "normal"),
         }, room=partie_id)
 
     return jsonify(resultat)
@@ -526,6 +527,7 @@ def coup_ia(partie_id: str):
         "puzzles_completes": resultat.get("puzzles_completes", []),
         "manche_terminee": etat.manche_terminee,
         "gagnant": etat.gagnant,
+        "motif": resultat.get("motif", "normal"),
     }, room=partie_id)
 
     return jsonify(resultat)

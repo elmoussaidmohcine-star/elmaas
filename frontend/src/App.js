@@ -729,7 +729,7 @@ export default function App() {
       }
       if (data.manche_terminee && data.gagnant) {
         const scores = calculer_scores_locaux(data.etat);
-        setMancheTermineeInfo({ gagnant: data.gagnant, scores });
+        setMancheTermineeInfo({ gagnant: data.gagnant, scores, motif: data.motif || "normal" });
       }
     });
     socket.on("pause_demandee", (data) => { setDemandePauseRecue(data.couleur); });
@@ -870,7 +870,7 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
       if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
       if (res.data.manche_terminee || res.data.victoire_immediate) {
         const scores = calculer_scores_locaux(res.data.etat);
-        setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
+        setMancheTermineeInfo({ gagnant: res.data.gagnant, scores, motif: res.data.motif || "normal" });
         return;
       }
 
@@ -1129,7 +1129,12 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
                     color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
                     fontSize: 32,
                   }}>
-                    {egalite ? "Egalite !" : jaiGagne ? "Victoire !" : "Defaite"}
+                    {egalite ? "" : jaiGagne ? "Bien joue !" : `${g === "rouge" ? "Rouge" : "Noir"} remporte la manche`}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                        {mancheTermineeInfo.motif === "victoire_immediate" && "⚡ 5 puzzles d'affilée !"}
+                        {mancheTermineeInfo.motif === "regen_impossible" && "🔄 Plus de pièces disponibles"}
+                        {mancheTermineeInfo.motif === "plateau_plein" && "🏁 Plateau complet"}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
                     {egalite ? "" : jaiGagne ? "Bien joue !" : `${g === "rouge" ? "Rouge" : "Noir"} remporte la manche`}

@@ -230,6 +230,7 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
             etat.gagnant = joueur.couleur
             etat.victoire_immediate = True
             resultat["victoire_immediate"] = True
+            resultat["motif"] = "victoire_immediate"
             if DEBUG:
                 print(f"[game_engine] 🏆 VICTOIRE IMMÉDIATE — {joueur.couleur}")
 
@@ -243,6 +244,7 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
             etat.manche_terminee = True
             etat.gagnant = etat.joueur_adverse().couleur
             resultat["defaite_regen"] = True
+            resultat["motif"] = "regen_impossible"
             resultat["succes"] = True
             return resultat
         else:
@@ -611,7 +613,7 @@ def terminer_manche(etat: EtatJeu):
         print(f"  Noir  : {score_noir} puzzles")
         print(f"  Gagnant : {etat.gagnant}")
 
-    return {"score_rouge": score_rouge, "score_noir": score_noir, "gagnant": etat.gagnant}
+    return {"score_rouge": score_rouge, "score_noir": score_noir, "gagnant": etat.gagnant, "motif": "plateau_plein"}
 
 
 def calculer_score_cellules(etat: EtatJeu, couleur: str) -> int:
