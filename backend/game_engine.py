@@ -263,7 +263,7 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
             if DEBUG:
                 print(f"[game_engine] 🏆 VICTOIRE IMMÉDIATE — {joueur.couleur}")
 
-# ── Régénération de pièces ──
+    # ── Régénération de pièces ──
     if not joueur.reserve and not joueur.main_active:
         puzzles_completes_total = sum(
             1 for p in etat.plateau.puzzles.values()
