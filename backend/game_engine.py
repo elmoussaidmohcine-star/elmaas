@@ -264,29 +264,26 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
                 print(f"[game_engine] 🏆 VICTOIRE IMMÉDIATE — {joueur.couleur}")
 
 # ── Régénération de pièces ──
-if not joueur.reserve and not joueur.main_active:
-    # Compter tous les puzzles complétés sur le plateau depuis la dernière régén
-    puzzles_completes_total = sum(
-        1 for p in etat.plateau.puzzles.values()
-        if p.complete_par is not None and not p.brise
-    )
-    if puzzles_completes_total == 0:
-        # Aucun puzzle complété du tout → fin de partie
-        etat.manche_terminee = True
-        etat.gagnant = etat.joueur_adverse().couleur
-        resultat["defaite_regen"] = True
-        resultat["succes"] = True
-        return resultat
-    else:
-        # Au moins un puzzle complété → régénérer +5 pièces
-        from pieces_generator import generer_piece
-        nouvelles = [generer_piece() for _ in range(5)]
-        joueur.reserve = nouvelles
-        joueur.piocher()
-        joueur.nb_pieces_posees_depuis_regen = 0
-        joueur.puzzles_completes_depuis_regen = 0
-        joueur.seuil_regen_actuel = len(nouvelles)
-        resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5}
+    if not joueur.reserve and not joueur.main_active:
+        puzzles_completes_total = sum(
+            1 for p in etat.plateau.puzzles.values()
+            if p.complete_par is not None and not p.brise
+        )
+        if puzzles_completes_total == 0:
+            etat.manche_terminee = True
+            etat.gagnant = etat.joueur_adverse().couleur
+            resultat["defaite_regen"] = True
+            resultat["succes"] = True
+            return resultat
+        else:
+            from pieces_generator import generer_piece
+            nouvelles = [generer_piece() for _ in range(5)]
+            joueur.reserve = nouvelles
+            joueur.piocher()
+            joueur.nb_pieces_posees_depuis_regen = 0
+            joueur.puzzles_completes_depuis_regen = 0
+            joueur.seuil_regen_actuel = len(nouvelles)
+            resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5}
 # ── Pouvoirs après complétion de puzzle ──────────────────────
 
 def appliquer_pouvoir(etat: EtatJeu, pouvoir: str, cible: tuple = None) -> dict:
