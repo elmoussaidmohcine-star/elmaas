@@ -194,6 +194,7 @@ def on_rejoindre_partie(data):
 
     slots = joueurs_connectes[partie_id]
     if "joueur1" in slots and "joueur2" in slots:
+        parties[partie_id].timestamp_debut_tour = time.time()
         socketio.emit("partie_prete", {
             "message": "Les deux joueurs sont connectés !",
             "etat": serialiser_etat(parties[partie_id]),
