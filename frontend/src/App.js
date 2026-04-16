@@ -783,7 +783,6 @@ export default function App() {
   }, [modeIA]);
 
   const handleRejoindreManuellement = useCallback(async (rawId) => {
-    // Extraire UUID si URL complète collée
     const match = rawId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
     const id = match ? match[0] : rawId;
     if (!id) return;
@@ -794,9 +793,13 @@ export default function App() {
       setTaille(res.data.taille);
       if (res.data.etat) setEtat(res.data.etat);
       if (res.data.indice) setIndiceReconnaissance(res.data.indice);
-    } catch (err) { console.error("Pixels introuvables:", err); }
-    console.log("[J2] emit rejoindre_partie", id, socketRef.current?.connected);
-    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
+      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
+    } catch (err) {
+      console.error("Pixels introuvables:", err);
+      setTimeout(() => {
+        socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
+      }, 3000);
+    }
   }, []);
 
   const declencherIA = useCallback(async (etatCourant, partieIdCourant, mode, niveau) => {
