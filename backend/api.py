@@ -39,7 +39,8 @@ with app.app_context():
     db.create_all()
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
-                    logger=False, engineio_logger=False)
+                    logger=False, engineio_logger=False,
+                    transports=["polling"])
 
 # Cache mémoire (rapide) + DB (persistant)
 parties: dict[str, EtatJeu] = {}
