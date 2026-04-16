@@ -711,7 +711,7 @@ export default function App() {
 
   // ── WebSocket ──
   useEffect(() => {
-    const socket = io(API, { transports: ["websocket", "polling"] });
+    const socket = io(API, { transports: ["polling"] });
     socketRef.current = socket;
     socket.on("connect", () => console.log("[ws] Connecte"));
     socket.on("rejoint", (data) => { setEtat(data.etat); });
