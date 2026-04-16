@@ -782,7 +782,10 @@ export default function App() {
     }
   }, [modeIA]);
 
-  const handleRejoindreManuellement = useCallback(async (id) => {
+  const handleRejoindreManuellement = useCallback(async (rawId) => {
+    // Extraire UUID si URL complète collée
+    const match = rawId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    const id = match ? match[0] : rawId;
     if (!id) return;
     setPartieId(id); setMonRole("joueur2"); setModeMultijoueur(true); setEtape("lobby");
     try {
