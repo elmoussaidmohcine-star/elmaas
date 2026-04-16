@@ -153,6 +153,9 @@ def serialiser_etat(etat: EtatJeu) -> dict:
 
 
 @socketio.on("connect")
+@socketio.on("*")
+def catch_all(event, data):
+    print(f"[WS] événement reçu: {event} — {data}")
 def on_connect():
     if DEBUG:
         print(f"[ws] Client connecté : {request.sid}")
