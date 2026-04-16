@@ -361,10 +361,10 @@ def charger_partie_depuis_db(partie_id: str) -> bool:
         demandes_pause[partie_id] = None
         return True
     except Exception as e:
-        if DEBUG:
-            print(f"[DB] Erreur chargement: {e}")
+        print(f"[DB] Erreur chargement: {e}")
+        import traceback
+        traceback.print_exc()
         return False
-    
 
 
 @app.route("/etat/<partie_id>", methods=["GET"])
