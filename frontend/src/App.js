@@ -1023,7 +1023,7 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
       {modeIA === "aucune" && (
         <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
         <button className="btn-action" style={{ fontSize: 15, padding: "10px 20px" }}
-        onClick={() => { setMonRole("joueur2"); setEtape("lobby"); }}>
+        onClick={() => { setMonRole("joueur2"); setModeMultijoueur(true); setEtape("lobby"); }}>
         Je suis le Joueur 2 — Rejoindre une partie
         </button>
         </div>
