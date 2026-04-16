@@ -169,10 +169,10 @@ def on_rejoindre_partie(data):
     partie_id = data.get("partie_id")
     role = data.get("joueur")
 
+    charger_partie_depuis_db(partie_id)
     if partie_id not in parties:
         emit("erreur", {"message": "Partie introuvable"})
         return
-
     if role not in ("joueur1", "joueur2"):
         emit("erreur", {"message": "Rôle invalide"})
         return
