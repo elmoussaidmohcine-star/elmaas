@@ -592,6 +592,7 @@ def coup_ia(partie_id: str):
 
 @app.route("/pixels/<partie_id>", methods=["GET"])
 def get_pixels(partie_id: str):
+    charger_partie_depuis_db(partie_id)
     pixels = pixels_par_partie.get(partie_id)
     if not pixels:
         return jsonify({"erreur": "Pixels introuvables"}), 404
