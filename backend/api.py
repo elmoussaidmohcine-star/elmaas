@@ -39,8 +39,7 @@ with app.app_context():
     db.create_all()
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
-                    logger=False, engineio_logger=False,
-                    transports=["polling"])
+                    logger=False, engineio_logger=False)
 
 # Cache mémoire (rapide) + DB (persistant)
 parties: dict[str, EtatJeu] = {}
@@ -195,7 +194,6 @@ def on_rejoindre_partie(data):
 
     slots = joueurs_connectes[partie_id]
     if "joueur1" in slots and "joueur2" in slots:
-        parties[partie_id].timestamp_debut_tour = time.time()
         socketio.emit("partie_prete", {
             "message": "Les deux joueurs sont connectés !",
             "etat": serialiser_etat(parties[partie_id]),
@@ -459,7 +457,6 @@ def jouer(partie_id: str):
             "scores_manches": scores_manches.get(partie_id, {"rouge": 0, "noir": 0}),
             "regeneration": resultat.get("regeneration"),
             "defaite_regen": resultat.get("defaite_regen", False),
-            "motif": resultat.get("motif", "normal"),
         }, room=partie_id)
 
     return jsonify(resultat)
@@ -528,7 +525,6 @@ def coup_ia(partie_id: str):
         "puzzles_completes": resultat.get("puzzles_completes", []),
         "manche_terminee": etat.manche_terminee,
         "gagnant": etat.gagnant,
-        "motif": resultat.get("motif", "normal"),
     }, room=partie_id)
 
     return jsonify(resultat)
@@ -647,35 +643,25 @@ def refuser_pause(partie_id: str):
     return jsonify({"succes": True})
 
 
+# ── Revanche ──
 @app.route("/revanche/<partie_id>", methods=["POST"])
 def revanche(partie_id: str):
     if partie_id not in parties:
         return jsonify({"erreur": "Partie introuvable"}), 404
-
+    # Récupérer le plateau et les pixels existants
     ancienne_partie = parties[partie_id]
     ancien_plateau = ancienne_partie.plateau
-
+    # Mettre à jour le score de manches
     gagnant = ancienne_partie.gagnant
     if gagnant in ("rouge", "noir"):
         scores_manches[partie_id][gagnant] = scores_manches[partie_id].get(gagnant, 0) + 1
-
-    # ✅ Réinitialiser le plateau
-    for cle in ancien_plateau.pieces:
-        ancien_plateau.pieces[cle] = None
-    ancien_plateau.cellules_actives = set()
-    for puzzle in ancien_plateau.puzzles.values():
-        puzzle.complete_par = None
-        puzzle.brise = False
-        puzzle.protege = False
-
+    # Réinitialiser le jeu sur le même plateau (noir joue en premier)
     nouveau_etat = initialiser_jeu(ancien_plateau)
-    nouveau_etat.tour_actuel = 1  # Noir commence
+    nouveau_etat.tour_actuel = 1  # Noir (joueur2) commence
     parties[partie_id] = nouveau_etat
     pause_active[partie_id] = False
     demandes_pause[partie_id] = None
     bonus_double_tour[partie_id] = False
-    reconnaissance_tentee[partie_id] = False
-
     etat_serialise = serialiser_etat(nouveau_etat)
     socketio.emit("revanche_lancee", {
         "etat": etat_serialise,
@@ -686,6 +672,30 @@ def revanche(partie_id: str):
         "etat": etat_serialise,
         "scores_manches": scores_manches[partie_id],
     })
+
+
+@app.route("/scores_manches/<partie_id>", methods=["GET"])
+def get_scores_manches(partie_id: str):
+    return jsonify({
+        "scores_manches": scores_manches.get(partie_id, {"rouge": 0, "noir": 0}),
+        "pause_active": pause_active.get(partie_id, False),
+        "demande_pause": demandes_pause.get(partie_id),
+    })
+
+
+@app.route("/supprimer/<partie_id>", methods=["DELETE"])
+def supprimer_partie(partie_id: str):
+    if partie_id in parties:
+        del parties[partie_id]
+        pixels_par_partie.pop(partie_id, None)
+        noms_par_partie.pop(partie_id, None)
+        bonus_double_tour.pop(partie_id, None)
+        reconnaissance_tentee.pop(partie_id, None)
+        joueurs_connectes.pop(partie_id, None)
+        return jsonify({"succes": True})
+    return jsonify({"erreur": "Partie introuvable"}), 404
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("  ELMAAS API — Démarrage")

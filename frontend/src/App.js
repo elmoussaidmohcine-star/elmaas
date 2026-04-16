@@ -193,10 +193,10 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
 
       {erreur && <p className="erreur">{erreur}</p>}
       {chargement && <div className="chargement"><div className="spinner" /><p>Génération...</p></div>}
+
       {photoSelectionnee && !chargement && (
         <button className="btn-valider"
-            disabled={modeIA === "aucune" && nomPhoto.trim().length < 3}
-            onClick={() => jouerAvecPhoto(
+          onClick={() => jouerAvecPhoto(
             photoSelectionnee.estFichier ? photoSelectionnee.fichier : photoSelectionnee.url,
             photoSelectionnee.estFichier
           )}>
@@ -528,8 +528,8 @@ function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite }) {
             </div>
             <input className="lobby-input" placeholder="Ton estimation..." maxLength={12}
               value={proposition} onChange={e => setProposition(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && proposition.trim().length >= 3 && handleTenter()} />
-            <button className="btn-valider" onClick={handleTenter} disabled={proposition.trim().length < 3}>Valider</button>
+              onKeyDown={e => e.key === "Enter" && proposition.trim() && handleTenter()} />
+            <button className="btn-valider" onClick={handleTenter} disabled={!proposition.trim()}>Valider</button>
           </>
         )}
         {resultat && (
@@ -711,7 +711,7 @@ export default function App() {
 
   // ── WebSocket ──
   useEffect(() => {
-    const socket = io(API, { transports: ["polling"] });
+    const socket = io(API, { transports: ["polling", "websocket"] });
     socketRef.current = socket;
     socket.on("connect", () => console.log("[ws] Connecte"));
     socket.on("rejoint", (data) => { setEtat(data.etat); });
@@ -729,7 +729,7 @@ export default function App() {
       }
       if (data.manche_terminee && data.gagnant) {
         const scores = calculer_scores_locaux(data.etat);
-        setMancheTermineeInfo({ gagnant: data.gagnant, scores, motif: data.motif || "normal" });
+        setMancheTermineeInfo({ gagnant: data.gagnant, scores });
       }
     });
     socket.on("pause_demandee", (data) => { setDemandePauseRecue(data.couleur); });
@@ -782,9 +782,7 @@ export default function App() {
     }
   }, [modeIA]);
 
-  const handleRejoindreManuellement = useCallback(async (rawId) => {
-    const match = rawId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-    const id = match ? match[0] : rawId;
+  const handleRejoindreManuellement = useCallback(async (id) => {
     if (!id) return;
     setPartieId(id); setMonRole("joueur2"); setModeMultijoueur(true); setEtape("lobby");
     try {
@@ -793,13 +791,8 @@ export default function App() {
       setTaille(res.data.taille);
       if (res.data.etat) setEtat(res.data.etat);
       if (res.data.indice) setIndiceReconnaissance(res.data.indice);
-      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
-    } catch (err) {
-      console.error("Pixels introuvables:", err);
-      setTimeout(() => {
-        socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
-      }, 3000);
-    }
+    } catch (err) { console.error("Pixels introuvables:", err); }
+    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
   }, []);
 
   const declencherIA = useCallback(async (etatCourant, partieIdCourant, mode, niveau) => {
@@ -825,12 +818,7 @@ export default function App() {
 
   // ── Dérivés ──
   const joueurActif  = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
-  
-  const monJoueur = etat ? (
-  modeIA !== "aucune" ? etat.joueur1 :  // en mode IA, le joueur humain est toujours J1
-  monRole === "joueur2" ? etat.joueur2 : etat.joueur1
-) : null;
-const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : etat.joueur1) : null;
+  const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
   const estTourIA = etat && modeIA !== "aucune" &&
     ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
   const estMonTour = !modeMultijoueur || !monRole ||
@@ -877,7 +865,7 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
       if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
       if (res.data.manche_terminee || res.data.victoire_immediate) {
         const scores = calculer_scores_locaux(res.data.etat);
-        setMancheTermineeInfo({ gagnant: res.data.gagnant, scores, motif: res.data.motif || "normal" });
+        setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
         return;
       }
 
@@ -1027,14 +1015,12 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
 
   if (etape === "photo") return (
     <div className="app">
-      {modeIA === "aucune" && (
-        <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
         <button className="btn-action" style={{ fontSize: 15, padding: "10px 20px" }}
-        onClick={() => { setMonRole("joueur2"); setModeMultijoueur(true); setEtape("lobby"); }}>
-        Je suis le Joueur 2 — Rejoindre une partie
+          onClick={() => { setMonRole("joueur2"); setEtape("lobby"); }}>
+          Je suis le Joueur 2 — Rejoindre une partie
         </button>
-        </div>
-      )}
+      </div>
       <EcranPhoto2
         prop1={props.j1} prop2={props.j2} timerSec={timerChoisi}
         utilisateur={utilisateur}
@@ -1136,12 +1122,7 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
                     color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
                     fontSize: 32,
                   }}>
-                    {egalite ? "" : jaiGagne ? "Bien joue !" : `${g === "rouge" ? "Rouge" : "Noir"} remporte la manche`}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
-                        {mancheTermineeInfo.motif === "victoire_immediate" && "⚡ 5 puzzles d'affilée !"}
-                        {mancheTermineeInfo.motif === "regen_impossible" && "🔄 Plus de pièces disponibles"}
-                        {mancheTermineeInfo.motif === "plateau_plein" && "🏁 Plateau complet"}
+                    {egalite ? "Egalite !" : jaiGagne ? "Victoire !" : "Defaite"}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
                     {egalite ? "" : jaiGagne ? "Bien joue !" : `${g === "rouge" ? "Rouge" : "Noir"} remporte la manche`}
@@ -1241,7 +1222,7 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
 
       {/* Popups */}
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} />}
-      {popup?.type === "scout"   && <PopupScout pieces={scoutPieces} couleur={monJoueur?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} />}
+      {popup?.type === "scout"   && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} />}
       {popup?.type === "manuel"  && <PopupManuel onFermer={() => setPopup(null)} />}
       {popup?.type === "reconnaissance" && (
         <PopupReconnaissance
@@ -1303,13 +1284,10 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
         </div>
 
         <div className="timers">
+          <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} />
+          <TimerBloc secondes={timerNoir}  couleur="noir"  actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} />
         </div>
-        {modeIA !== "j1" && (
-           <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} />
-        )}
-        {modeIA !== "j2" && (
-          <TimerBloc secondes={timerNoir} couleur="noir" actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} />
-        )}
+
         <div className="tour-info">
           Tour {etat?.numero_tour} —
           <span className={"couleur-actif " + joueurActif?.couleur}> {joueurActif?.couleur}</span>
@@ -1345,10 +1323,10 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
 
       {/* Zone adverse */}
       <div className="zone-adverse">
-        <div className="adverse-label">Adversaire ({joueurAdversaire?.couleur}) — {(joueurAdversaire?.nb_pieces_reserve || 0) + (joueurAdversaire?.main_active?.length || 0)} pièces</div>
+        <div className="adverse-label">Adversaire ({joueurAdverse?.couleur}) — {(joueurAdverse?.nb_pieces_reserve || 0) + (joueurAdverse?.main_active?.length || 0)} pièces</div>
         <div className="adverse-pieces">
-          {(joueurAdversaire?.main_active || []).map((_, i) => (
-            <div key={i} className={"piece-cachee " + joueurAdversaire?.couleur} />
+          {(joueurAdverse?.main_active || []).map((_, i) => (
+            <div key={i} className={"piece-cachee " + joueurAdverse?.couleur} />
           ))}
         </div>
       </div>
@@ -1359,17 +1337,17 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
         <div className="panneau-main">
           {/* ── Mes pièces ── */}
           <div className="panneau-titre">
-            Mes pièces ({monJoueur?.couleur})
+            Mes pièces ({joueurActif?.couleur})
           </div>
           <div className="main-pieces-list">
-            {(monJoueur?.main_active || []).map((piece, i) => {
+            {(joueurActif?.main_active || []).map((piece, i) => {
               // En mode protéger : clic direct sur ma pièce
               const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
               const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
               const estSelectPourDonner = clickEchanger && pieceADonner === i;
               return (
                 <div key={i} style={{ position: "relative" }}>
-                  <MiniPiece piece={piece} couleur={monJoueur?.couleur}
+                  <MiniPiece piece={piece} couleur={joueurActif?.couleur}
                     estSelectionnee={pieceIdx === i || estSelectPourDonner}
                     onClick={() => {
                       if (clickProteger) {
@@ -1398,35 +1376,35 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
               );
             })}
           </div>
-          {(monJoueur?.main_active || []).length === 0 && (
+          {(joueurActif?.main_active || []).length === 0 && (
             <div style={{ fontSize: 12, color: "var(--muted)" }}>Main vide</div>
           )}
 
           <div className="panneau-titre" style={{ marginTop: 10 }}>
-            Réserve : {monJoueur?.nb_pieces_reserve}
+            Réserve : {joueurActif?.nb_pieces_reserve}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>
-            Pièces posées : {monJoueur?.nb_pieces_posees_depuis_regen ?? 0} / {monJoueur?.seuil_regen_actuel ?? 5}
+            Pièces posées : {joueurActif?.nb_pieces_posees_depuis_regen ?? 0} / {joueurActif?.seuil_regen_actuel ?? 5}
           </div>
           <div className="serie-info">
-            Série : {monJoueur?.serie_actuelle}
-            {monJoueur?.serie_actuelle >= 3 ? " !" : ""}
+            Série : {joueurActif?.serie_actuelle}
+            {joueurActif?.serie_actuelle >= 3 ? " !" : ""}
           </div>
 
           {/* ── Pièces adversaires (visible pour echanger) ── */}
           {(() => {
             const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
-            const mainAdverse = joueurAdversaire?.main_active || [];
+            const mainAdverse = joueurAdverse?.main_active || [];
             const showAdverse = clickEchanger || true; // toujours visible mais grayed sauf en mode echanger
             return showAdverse ? (
               <>
-                <div className="panneau-titre" style={{ marginTop: 14, borderColor: joueurAdversaire?.couleur === "rouge" ? "#cc220044" : "#44444444" }}>
-                  Adversaire ({joueurAdversaire?.couleur})
+                <div className="panneau-titre" style={{ marginTop: 14, borderColor: joueurAdverse?.couleur === "rouge" ? "#cc220044" : "#44444444" }}>
+                  Adversaire ({joueurAdverse?.couleur})
                 </div>
                 <div className="main-pieces-list">
                   {mainAdverse.map((piece, i) => (
                     <div key={i} style={{ position: "relative", opacity: clickEchanger ? 1 : 0.4 }}>
-                      <MiniPiece piece={piece} couleur={joueurAdversaire?.couleur}
+                      <MiniPiece piece={piece} couleur={joueurAdverse?.couleur}
                         estSelectionnee={false}
                         onClick={() => {
                           if (clickEchanger) {
@@ -1458,8 +1436,8 @@ const joueurAdversaire = etat ? (monJoueur === etat.joueur1 ? etat.joueur2 : eta
           <Board
             etat={etat}
             taille={taille}
-            couleurJoueur={monJoueur?.couleur}
-            pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? monJoueur?.main_active[pieceIdx] : null}
+            couleurJoueur={joueurActif?.couleur}
+            pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurActif?.main_active[pieceIdx] : null}
             pieceIdx={pieceIdx}
             pixelsPhoto={pixelsPhoto}
             onPoserPiece={!enModeCible && !attenteChoixPouvoir ? handlePoserPiece : null}
