@@ -792,6 +792,7 @@ export default function App() {
       if (res.data.etat) setEtat(res.data.etat);
       if (res.data.indice) setIndiceReconnaissance(res.data.indice);
     } catch (err) { console.error("Pixels introuvables:", err); }
+    console.log("[J2] emit rejoindre_partie", id, socketRef.current?.connected);
     socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
   }, []);
 
