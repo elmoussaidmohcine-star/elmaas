@@ -193,10 +193,10 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
 
       {erreur && <p className="erreur">{erreur}</p>}
       {chargement && <div className="chargement"><div className="spinner" /><p>Génération...</p></div>}
-
       {photoSelectionnee && !chargement && (
         <button className="btn-valider"
-          onClick={() => jouerAvecPhoto(
+            disabled={modeIA === "aucune" && nomPhoto.trim().length < 3}
+            onClick={() => jouerAvecPhoto(
             photoSelectionnee.estFichier ? photoSelectionnee.fichier : photoSelectionnee.url,
             photoSelectionnee.estFichier
           )}>
