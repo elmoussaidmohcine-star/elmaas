@@ -269,7 +269,7 @@ def nouvelle_partie():
         demandes_pause[partie_id] = None
         timer_val = int(request.form.get("timer_sec", 30))
         timer_par_partie[partie_id] = timer_val
-
+        sauvegarder_partie(partie_id)
         return jsonify({
             "partie_id": partie_id,
             "etat": serialiser_etat(etat),
@@ -283,6 +283,7 @@ def nouvelle_partie():
         if DEBUG:
             import traceback
             traceback.print_exc()
+        
         return jsonify({"erreur": str(e)}), 500
 
 def deserialiser_etat(data: dict):
