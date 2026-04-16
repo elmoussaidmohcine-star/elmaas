@@ -172,30 +172,26 @@ def on_disconnect():
 def on_rejoindre_partie(data):
     partie_id = data.get("partie_id")
     role = data.get("joueur")
-
-    charger_partie_depuis_db(partie_id)
+    print(f"[WS] rejoindre: {partie_id} role: {role}")
+    with app.app_context():
+        charger_partie_depuis_db(partie_id)
+    print(f"[WS] parties: {list(parties.keys())}")
     if partie_id not in parties:
+        print(f"[WS] INTROUVABLE: {partie_id}")
         emit("erreur", {"message": "Partie introuvable"})
         return
     if role not in ("joueur1", "joueur2"):
         emit("erreur", {"message": "Rôle invalide"})
         return
-
     join_room(partie_id)
-
     if partie_id not in joueurs_connectes:
         joueurs_connectes[partie_id] = {}
     joueurs_connectes[partie_id][role] = request.sid
-
-    if DEBUG:
-        print(f"[ws] {role} a rejoint {partie_id}")
-
     emit("rejoint", {
         "partie_id": partie_id,
         "ton_role": role,
         "etat": serialiser_etat(parties[partie_id]),
     })
-
     slots = joueurs_connectes[partie_id]
     if "joueur1" in slots and "joueur2" in slots:
         parties[partie_id].timestamp_debut_tour = time.time()
