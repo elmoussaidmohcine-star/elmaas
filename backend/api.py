@@ -285,28 +285,85 @@ def nouvelle_partie():
             traceback.print_exc()
         return jsonify({"erreur": str(e)}), 500
 
+def deserialiser_etat(data: dict):
+    """Reconstruit un EtatJeu depuis un dict JSON."""
+    import numpy as np
+    import time
+    from puzzle_generator import Plateau, Puzzle
+    from game_engine import EtatJeu, Joueur
 
+    plateau_data = data["plateau"]
+    plateau = Plateau.__new__(Plateau)
+    plateau.pieces = plateau_data["pieces"]
+    plateau.cellules_libres = {tuple(x) for x in plateau_data["cellules_libres"]}
+    plateau.cellules_actives = {tuple(x) for x in plateau_data["cellules_actives"]}
+    plateau.grille_bicolore = np.array(plateau_data["grille_bicolore"])
+
+    plateau.puzzles = {}
+    for pid, pd in plateau_data["puzzles"].items():
+        p = Puzzle.__new__(Puzzle)
+        p.id = pd["id"]
+        p.cellules = {tuple(x) for x in pd["cellules"]}
+        p.type_couleur = pd["type_couleur"]
+        p.niveau = pd["niveau"]
+        p.parent_id = pd["parent_id"]
+        p.enfants_ids = pd["enfants_ids"]
+        p.est_chef = pd["est_chef"]
+        p.brise = pd["brise"]
+        p.complete_par = pd["complete_par"]
+        p.protege = pd["protege"]
+        plateau.puzzles[int(pid)] = p
+
+    def deserialiser_joueur(jd, joueur_id):
+        j = Joueur(
+            id=joueur_id,
+            couleur=jd["couleur"],
+            main_active=jd["main_active"],
+            reserve=[],
+            pieces_protegees=set(jd["pieces_protegees"]),
+            serie_actuelle=jd["serie_actuelle"],
+        )
+        j.nb_pieces_posees_depuis_regen = jd.get("nb_pieces_posees_depuis_regen", 0)
+        j.seuil_regen_actuel = jd.get("seuil_regen_actuel", 5)
+        j.puzzles_completes_depuis_regen = jd.get("puzzles_completes_depuis_regen", 0)
+        return j
+
+    etat = EtatJeu(
+        plateau=plateau,
+        joueur1=deserialiser_joueur(data["joueur1"], 0),
+        joueur2=deserialiser_joueur(data["joueur2"], 1),
+        tour_actuel=data["tour_actuel"],
+        numero_tour=data["numero_tour"],
+        manche_terminee=data["manche_terminee"],
+        gagnant=data.get("gagnant"),
+        victoire_immediate=data.get("victoire_immediate", False),
+        piece_initiale_pos=tuple(data["piece_initiale_pos"]) if data.get("piece_initiale_pos") else None,
+        timestamp_debut_tour=data.get("timestamp_debut_tour", time.time()),
+    )
+    return etat
 def charger_partie_depuis_db(partie_id: str) -> bool:
-    """Charge une partie depuis la DB si elle n'est pas en mémoire."""
     if partie_id in parties:
         return True
     try:
         partie_db = PartieDB.query.get(partie_id)
-        if not partie_db:
+        if not partie_db or not partie_db.etat_json:
             return False
-        # On ne peut pas reconstruire EtatJeu depuis JSON facilement
-        # Mais on peut au moins recharger les métadonnées
+        etat_dict = _json.loads(partie_db.etat_json)
+        parties[partie_id] = deserialiser_etat(etat_dict)
         pixels_par_partie[partie_id] = _json.loads(partie_db.pixels_json or "[]")
         noms_par_partie[partie_id] = partie_db.nom_photo or ""
         bonus_double_tour[partie_id] = partie_db.bonus_double or False
         reconnaissance_tentee[partie_id] = partie_db.recon_tentee or False
         timer_par_partie[partie_id] = partie_db.timer_sec or 30
         scores_manches[partie_id] = _json.loads(partie_db.scores_manches_json or '{"rouge":0,"noir":0}')
-        return False  # La partie EtatJeu n'est pas reconstituée
+        pause_active[partie_id] = False
+        demandes_pause[partie_id] = None
+        return True
     except Exception as e:
         if DEBUG:
             print(f"[DB] Erreur chargement: {e}")
         return False
+    
 
 
 @app.route("/etat/<partie_id>", methods=["GET"])
