@@ -528,8 +528,8 @@ function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite }) {
             </div>
             <input className="lobby-input" placeholder="Ton estimation..." maxLength={12}
               value={proposition} onChange={e => setProposition(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && proposition.trim() && handleTenter()} />
-            <button className="btn-valider" onClick={handleTenter} disabled={!proposition.trim()}>Valider</button>
+              onKeyDown={e => e.key === "Enter" && proposition.trim().length >= 3 && handleTenter()} />
+            <button className="btn-valider" onClick={handleTenter} disabled={proposition.trim().length < 3}>Valider</button>
           </>
         )}
         {resultat && (
