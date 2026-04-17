@@ -207,6 +207,50 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
 
 .board-v3.mode-cible { box-shadow: 0 0 0 2px #8888ff, 0 0 30px #4444aa33; cursor: crosshair; }
 .cell-v3.mode-cible-hover { outline: 2px solid #8888ff88; outline-offset: -2px; }
+/* ── Popup fin de partie ─────────────────────────────────── */
+.popup-fin {
+  gap: 16px;
+}
+.popup-gagnant {
+  font-family: var(--brush);
+  font-size: 28px;
+  font-weight: 700;
+  padding: 14px 28px;
+  border-radius: 10px;
+  text-align: center;
+  width: 100%;
+  animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.popup-gagnant.rouge {
+  color: var(--rouge-c);
+  background: #cc220022;
+  border: 1px solid var(--rouge-c);
+  box-shadow: 0 0 30px #cc220044;
+}
+.popup-gagnant.noir {
+  color: #cccccc;
+  background: #44444422;
+  border: 1px solid #888888;
+  box-shadow: 0 0 30px #44444466;
+}
+.popup-options-fin {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.popup-options-fin .popup-btn {
+  flex: 1;
+  justify-content: center;
+  text-align: center;
+}
+.popup-btn-revanche {
+  border-color: var(--rouge-c) !important;
+  color: var(--rouge-c) !important;
+  background: #cc220022 !important;
+}
+.popup-btn-revanche:hover {
+  background: #cc220044 !important;
+}
 
 /* ══════════════════════════════════════════════════════════
    RESPONSIVE MOBILE
@@ -321,4 +365,6 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
   .panneau-main, .panneau-actions { padding: 6px 8px; }
   .btn-reset { font-size: 12px; padding: 5px 10px; }
   .btn-manuel { width: 28px; height: 28px; font-size: 13px; }
+  .popup-gagnant { font-size: 22px; padding: 10px 20px; }
+  .popup-options-fin { flex-direction: column; }
 }

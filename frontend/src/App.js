@@ -634,7 +634,34 @@ function PopupManuel({ onFermer }) {
     </div>
   );
 }
+// ── Popup fin de partie / temps écoulé ────────────────────────
+function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onRevanche }) {
+  return (
+    <div className="popup-overlay" onClick={onFermer}>
+      <div className="popup-pouvoir popup-fin" onClick={(e) => e.stopPropagation()}>
+        <div className="popup-titre">{titre}</div>
+        <div className="popup-sous-titre">{message}</div>
 
+        {gagnant && (
+          <div className={`popup-gagnant ${couleurGagnant}`}>
+            🏆 {gagnant} gagne !
+          </div>
+        )}
+
+        <div className="popup-options-fin">
+          {onRevanche && (
+            <button className="popup-btn popup-btn-revanche" onClick={onRevanche}>
+              🔄 Revanche
+            </button>
+          )}
+          <button className="popup-btn" onClick={onFermer}>
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ── App principale ────────────────────────────────────────────
 export default function App() {
   const [utilisateur, setUtilisateur] = useState(() => getUser());
@@ -695,17 +722,35 @@ export default function App() {
     if (etat.tour_actuel === 0) setTimerRouge(timerChoisi);
     else setTimerNoir(timerChoisi);
 
-    timerRef.current = setInterval(() => {
+   timerRef.current = setInterval(() => {
       const ecoule = Math.floor((Date.now() - tsDebut) / 1000);
       const restant = Math.max(0, timerChoisi - ecoule);
       if (etat.tour_actuel === 0) {
         setTimerRouge(restant);
-        if (restant <= 0) { clearInterval(timerRef.current); setTimeout(() => alert("Temps ecoule ! Noir gagne !"), 100); }
+        if (restant <= 0) {
+          clearInterval(timerRef.current);
+          setPopup({
+            type: "temps_ecoule",
+            titre: "⏱️ Temps écoulé",
+            message: "Le Rouge n'a pas joué à temps.",
+            gagnant: "Noir",
+            couleurGagnant: "noir"
+          });
+        }
       } else {
         setTimerNoir(restant);
-        if (restant <= 0) { clearInterval(timerRef.current); setTimeout(() => alert("Temps ecoule ! Rouge gagne !"), 100); }
+        if (restant <= 0) {
+          clearInterval(timerRef.current);
+          setPopup({
+            type: "temps_ecoule",
+            titre: "⏱️ Temps écoulé",
+            message: "Le Noir n'a pas joué à temps.",
+            gagnant: "Rouge",
+            couleurGagnant: "rouge"
+          });
+        }
       }
-    }, 200);
+    }, 200); 
     return () => clearInterval(timerRef.current);
   }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, attenteChoixPouvoir, popup, modeMultijoueur, statutConnexion, timerChoisi]);
 
@@ -1003,7 +1048,7 @@ export default function App() {
     setMancheTermineeInfo(null); setPauseActive(false); setDemandePauseRecue(null);
     setEtape(utilisateur ? "taille" : "auth");
   };
-
+  
   // ── Rendu étapes ──
   if (etape === "taille") return <div className="app"><EcranTaille onValider={handleTailleValidee} /></div>;
 
@@ -1219,6 +1264,7 @@ export default function App() {
           </div>
         </div>
       )}
+      
 
       {/* Popups */}
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} />}
@@ -1258,11 +1304,34 @@ export default function App() {
           <button onClick={() => { setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>Annuler</button>
         </div>
       )}
-      {popup?.type === "attente_recoloriage" && (
-        <div className="bandeau-cible">
-          <span>{popup.message}</span>
-          <button onClick={async () => { setPopup(null); setAttenteChoixPouvoir(false); await declencherIA(etat, partieId, modeIA, niveauIA); }}>Passer</button>
-        </div>
+        {popup?.type === "attente_recoloriage" && (
+          <div className="bandeau-cible">
+            <span>{popup.message}</span>
+            <button onClick={async () => { setPopup(null); setAttenteChoixPouvoir(false); await declencherIA(etat, partieId, modeIA, niveauIA); }}>Passer</button>
+          </div>
+        )}
+        {popup?.type === "temps_ecoule" && (
+        <PopupFinPartie
+      titre={popup.titre}
+      message={popup.message}
+      gagnant={popup.gagnant}
+      couleurGagnant={popup.couleurGagnant}
+      onFermer={() => {
+        setPopup(null);
+        setEtape("taille"); // retour à l'écran de config
+      }}
+      onRevanche={async () => {
+        setPopup(null);
+        try {
+          const res = await axios.post(`${API}/revanche/${partieId}`);
+          setEtat(res.data.etat);
+          setTimerRouge(timerChoisi);
+          setTimerNoir(timerChoisi);
+        } catch (e) {
+          console.error("Erreur revanche:", e);
+        }
+      }}
+      />
       )}
 
       {/* Header */}
