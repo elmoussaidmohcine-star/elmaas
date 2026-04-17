@@ -644,14 +644,14 @@ function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onR
 
         {gagnant && (
           <div className={`popup-gagnant ${couleurGagnant}`}>
-            🏆 {gagnant} gagne !
+             {gagnant} gagne !
           </div>
         )}
 
         <div className="popup-options-fin">
           {onRevanche && (
             <button className="popup-btn popup-btn-revanche" onClick={onRevanche}>
-              🔄 Revanche
+               Revanche
             </button>
           )}
           <button className="popup-btn" onClick={onFermer}>
@@ -731,7 +731,7 @@ export default function App() {
           clearInterval(timerRef.current);
           setPopup({
             type: "temps_ecoule",
-            titre: "⏱️ Temps écoulé",
+            titre: "Temps écoulé",
             message: "Le Rouge n'a pas joué à temps.",
             gagnant: "Noir",
             couleurGagnant: "noir"
@@ -743,7 +743,7 @@ export default function App() {
           clearInterval(timerRef.current);
           setPopup({
             type: "temps_ecoule",
-            titre: "⏱️ Temps écoulé",
+            titre: "Temps écoulé",
             message: "Le Noir n'a pas joué à temps.",
             gagnant: "Rouge",
             couleurGagnant: "rouge"
@@ -1310,29 +1310,45 @@ export default function App() {
             <button onClick={async () => { setPopup(null); setAttenteChoixPouvoir(false); await declencherIA(etat, partieId, modeIA, niveauIA); }}>Passer</button>
           </div>
         )}
-        {popup?.type === "temps_ecoule" && (
-        <PopupFinPartie
-      titre={popup.titre}
-      message={popup.message}
-      gagnant={popup.gagnant}
-      couleurGagnant={popup.couleurGagnant}
-      onFermer={() => {
-        setPopup(null);
-        setEtape("taille"); // retour à l'écran de config
-      }}
-      onRevanche={async () => {
-        setPopup(null);
-        try {
-          const res = await axios.post(`${API}/revanche/${partieId}`);
+  {popup?.type === "temps_ecoule" && (
+  <PopupFinPartie
+    titre={popup.titre}
+    message={popup.message}
+    gagnant={popup.gagnant}
+    couleurGagnant={popup.couleurGagnant}
+    onFermer={() => {
+      setPopup(null);
+      handleReset();
+    }}
+    onRevanche={async () => {
+      try {
+        const res = await axios.post(`${API}/revanche/${partieId}`);
+        if (res.data.succes) {
+          // Réinitialiser TOUT le state local lié à la partie en cours
           setEtat(res.data.etat);
+          if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
           setTimerRouge(timerChoisi);
           setTimerNoir(timerChoisi);
-        } catch (e) {
-          console.error("Erreur revanche:", e);
+          setPieceIdx(null);
+          setExtractionsEnCours([]);
+          setPieceADonner(null);
+          setAttenteChoixPouvoir(false);
+          setMancheTermineeInfo(null);
+          setBonusDoubleActif(false);
+          setBonusUtilise(false);
+          setReconnaissanceTentee(false);
+          setPopup(null);
+        } else {
+          console.error("Revanche échouée:", res.data);
+          setPopup(null);
         }
-      }}
-      />
-      )}
+      } catch (e) {
+        console.error("Erreur revanche:", e);
+        setPopup(null);
+      }
+    }}
+  />
+)}
 
       {/* Header */}
       <header className="app-header">
