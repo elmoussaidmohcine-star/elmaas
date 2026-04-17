@@ -648,32 +648,43 @@ def refuser_pause(partie_id: str):
 def revanche(partie_id: str):
     if partie_id not in parties:
         return jsonify({"erreur": "Partie introuvable"}), 404
+
     # Récupérer le plateau et les pixels existants
     ancienne_partie = parties[partie_id]
     ancien_plateau = ancienne_partie.plateau
+
     # Mettre à jour le score de manches
     gagnant = ancienne_partie.gagnant
     if gagnant in ("rouge", "noir"):
         scores_manches[partie_id][gagnant] = scores_manches[partie_id].get(gagnant, 0) + 1
+
     # Réinitialiser le jeu sur le même plateau (noir joue en premier)
     nouveau_etat = initialiser_jeu(ancien_plateau)
     nouveau_etat.tour_actuel = 1  # Noir (joueur2) commence
+
+    # ⚡ CRITIQUE : remettre le timestamp à MAINTENANT pour que le timer client reparte à 0
+    import time
+    nouveau_etat.timestamp_debut_tour = time.time()
+
     parties[partie_id] = nouveau_etat
     pause_active[partie_id] = False
     demandes_pause[partie_id] = None
     bonus_double_tour[partie_id] = False
+
+    # Réinitialiser aussi la reconnaissance pour la nouvelle manche
+    reconnaissance_tentee[partie_id] = False
+
     etat_serialise = serialiser_etat(nouveau_etat)
     socketio.emit("revanche_lancee", {
         "etat": etat_serialise,
         "scores_manches": scores_manches[partie_id],
     }, room=partie_id)
+
     return jsonify({
         "succes": True,
         "etat": etat_serialise,
         "scores_manches": scores_manches[partie_id],
     })
-
-
 @app.route("/scores_manches/<partie_id>", methods=["GET"])
 def get_scores_manches(partie_id: str):
     return jsonify({
