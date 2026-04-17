@@ -1320,33 +1320,34 @@ export default function App() {
       setPopup(null);
       handleReset();
     }}
-    onRevanche={async () => {
-      try {
-        const res = await axios.post(`${API}/revanche/${partieId}`);
-        if (res.data.succes) {
-          // Réinitialiser TOUT le state local lié à la partie en cours
-          setEtat(res.data.etat);
-          if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
-          setTimerRouge(timerChoisi);
-          setTimerNoir(timerChoisi);
-          setPieceIdx(null);
-          setExtractionsEnCours([]);
-          setPieceADonner(null);
-          setAttenteChoixPouvoir(false);
-          setMancheTermineeInfo(null);
-          setBonusDoubleActif(false);
-          setBonusUtilise(false);
-          setReconnaissanceTentee(false);
-          setPopup(null);
-        } else {
-          console.error("Revanche échouée:", res.data);
-          setPopup(null);
-        }
-      } catch (e) {
-        console.error("Erreur revanche:", e);
-        setPopup(null);
-      }
-    }}
+onRevanche={async () => {
+  try {
+    const res = await axios.post(`${API}/revanche/${partieId}`);
+    console.log("[REVANCHE] Réponse serveur:", res.data);  // ← AJOUTE CETTE LIGNE
+    if (res.data.succes) {
+      setEtat(res.data.etat);
+      if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
+      setTimerRouge(timerChoisi);
+      setTimerNoir(timerChoisi);
+      setPieceIdx(null);
+      setExtractionsEnCours([]);
+      setPieceADonner(null);
+      setAttenteChoixPouvoir(false);
+      setMancheTermineeInfo(null);
+      setBonusDoubleActif(false);
+      setBonusUtilise(false);
+      setReconnaissanceTentee(false);
+      setPopup(null);
+      console.log("[REVANCHE] État appliqué, tour_actuel:", res.data.etat?.tour_actuel);  // ← ET CELLE-CI
+    } else {
+      console.error("Revanche échouée:", res.data);
+      setPopup(null);
+    }
+  } catch (e) {
+    console.error("Erreur revanche:", e);
+    setPopup(null);
+  }
+}}
   />
 )}
 
