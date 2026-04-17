@@ -1353,10 +1353,15 @@ export default function App() {
         </div>
 
         <div className="timers">
-          <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} />
-          <TimerBloc secondes={timerNoir}  couleur="noir"  actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} />
+          {/* Timer Rouge : caché si l'IA joue Rouge */}
+          {modeIA !== "j1" && (
+            <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} />
+          )}
+          {/* Timer Noir : caché si l'IA joue Noir */}
+          {modeIA !== "j2" && (
+            <TimerBloc secondes={timerNoir}  couleur="noir"  actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} />
+          )}
         </div>
-
         <div className="tour-info">
           Tour {etat?.numero_tour} —
           <span className={"couleur-actif " + joueurActif?.couleur}> {joueurActif?.couleur}</span>
