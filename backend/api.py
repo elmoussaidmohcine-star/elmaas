@@ -687,6 +687,8 @@ def refuser_revanche(partie_id: str):
 # ── Helper : lance effectivement la revanche ──
 def _lancer_revanche(partie_id: str):
     import time
+    from game_engine import reinitialiser_plateau  # ← import du helper
+    
     ancienne_partie = parties[partie_id]
     ancien_plateau = ancienne_partie.plateau
 
@@ -694,7 +696,10 @@ def _lancer_revanche(partie_id: str):
     if gagnant in ("rouge", "noir"):
         scores_manches[partie_id][gagnant] = scores_manches[partie_id].get(gagnant, 0) + 1
 
-    nouveau_etat = initialiser_jeu(ancien_plateau)
+    # ⚡ NETTOYER LE PLATEAU AVANT RÉINITIALISATION
+    plateau_propre = reinitialiser_plateau(ancien_plateau)
+
+    nouveau_etat = initialiser_jeu(plateau_propre)
     nouveau_etat.tour_actuel = 1  # Noir commence
     nouveau_etat.timestamp_debut_tour = time.time()
 
@@ -715,7 +720,6 @@ def _lancer_revanche(partie_id: str):
         "etat": etat_serialise,
         "scores_manches": scores_manches[partie_id],
     })
-
 # ── Revanche directe (mode IA uniquement) ──
 @app.route("/revanche/<partie_id>", methods=["POST"])
 def revanche(partie_id: str):
