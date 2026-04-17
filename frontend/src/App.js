@@ -1298,45 +1298,57 @@ export default function App() {
             handleReset();
           }}
           onRevanche={async () => {
-            const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
-            setPopup(null);
+  const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
 
-            if (modeMultijoueur) {
-              // Mode 2 joueurs : demander la revanche, attendre accord adverse
-              try {
-                const res = await axios.post(`${API}/revanche/demander/${partieId}`, { couleur: maCouleur });
-                if (res.data.en_attente) {
-                  setRevancheDemandeeParMoi(true);
-                }
-              } catch (e) {
-                console.error("Erreur demande revanche:", e);
-              }
-            } else {
-              // Mode IA : revanche directe
-              try {
-                const res = await axios.post(`${API}/revanche/${partieId}`);
-                if (res.data.succes) {
-                  setEtat(res.data.etat);
-                  if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
-                  setTimerRouge(timerChoisi);
-                  setTimerNoir(timerChoisi);
-                  setPieceIdx(null);
-                  setExtractionsEnCours([]);
-                  setPieceADonner(null);
-                  setAttenteChoixPouvoir(false);
-                  setMancheTermineeInfo(null);
-                  setBonusDoubleActif(false);
-                  setBonusUtilise(false);
-                  setReconnaissanceTentee(false);
-                  if (res.data.etat?.tour_actuel !== null) {
-                    await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
-                  }
-                }
-              } catch (e) {
-                console.error("Erreur revanche IA:", e);
-              }
-            }
-          }}
+  if (modeMultijoueur) {
+    try {
+      const res = await axios.post(`${API}/revanche/demander/${partieId}`, { couleur: maCouleur });
+      if (res.data.en_attente) {
+        setRevancheDemandeeParMoi(true);
+      }
+      setPopup(null);
+    } catch (e) {
+      console.error("Erreur demande revanche:", e);
+      setPopup(null);
+    }
+  } else {
+    // Mode IA : revanche directe
+    try {
+      const res = await axios.post(`${API}/revanche/${partieId}`);
+      if (res.data.succes) {
+        // 1. D'abord bloquer le timer en mettant un état "intermédiaire"
+        //    en mettant attenteChoixPouvoir à true temporairement
+        setAttenteChoixPouvoir(true);
+
+        // 2. Reset TOUS les états en même temps
+        setEtat(res.data.etat);
+        if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
+        setTimerRouge(timerChoisi);
+        setTimerNoir(timerChoisi);
+        setPieceIdx(null);
+        setExtractionsEnCours([]);
+        setPieceADonner(null);
+        setMancheTermineeInfo(null);
+        setBonusDoubleActif(false);
+        setBonusUtilise(false);
+        setReconnaissanceTentee(false);
+        setPopup(null);
+
+        // 3. Attendre que React ait flush les updates avant de relancer timer
+        await new Promise(r => setTimeout(r, 100));
+        setAttenteChoixPouvoir(false);
+
+        // 4. Déclencher l'IA si c'est son tour
+        if (res.data.etat?.tour_actuel !== null) {
+          await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+        }
+      }
+    } catch (e) {
+      console.error("Erreur revanche IA:", e);
+      setPopup(null);
+    }
+  }
+}}
         />
       )}
 
