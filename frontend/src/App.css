@@ -194,6 +194,7 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
 .bandeau-cible button { padding: 4px 10px; border: 1px solid var(--rouge-c); background: transparent;
   color: var(--rouge-c); border-radius: 4px; cursor: pointer; font-family: var(--brush); font-size: 14px; }
 .bandeau-cible button:hover { background: var(--rouge)22; }
+
 /* ── Timers ────────────────────────────────────────────────── */
 .timers { display: flex; gap: 8px; align-items: center; }
 .timer-bloc { display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -207,10 +208,9 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
 
 .board-v3.mode-cible { box-shadow: 0 0 0 2px #8888ff, 0 0 30px #4444aa33; cursor: crosshair; }
 .cell-v3.mode-cible-hover { outline: 2px solid #8888ff88; outline-offset: -2px; }
+
 /* ── Popup fin de partie ─────────────────────────────────── */
-.popup-fin {
-  gap: 16px;
-}
+.popup-fin { gap: 16px; }
 .popup-gagnant {
   font-family: var(--brush);
   font-size: 28px;
@@ -258,7 +258,6 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
 
 @media (max-width: 768px) {
 
-  /* ── Header ── */
   .app-header {
     padding: 6px 10px;
     gap: 6px;
@@ -273,14 +272,12 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
   .timer-bloc { padding: 2px 6px; }
   .badge-ia, .badge-serie { font-size: 10px; padding: 1px 5px; }
 
-  /* ── Zone de jeu : passer en colonne ── */
   .zone-jeu {
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
   }
 
-  /* ── Panneaux : horizontaux en haut/bas ── */
   .panneau-main, .panneau-actions {
     width: 100%;
     min-width: unset;
@@ -307,7 +304,6 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
   }
   .serie-info { font-size: 12px; }
 
-  /* ── Plateau : centré et scrollable ── */
   .plateau-central {
     padding: 8px;
     flex: unset;
@@ -315,14 +311,12 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
     overflow: auto;
   }
 
-  /* ── Actions : en ligne ── */
   .btn-action {
     padding: 7px 10px;
     font-size: 13px;
   }
   .hint-action { font-size: 11px; }
 
-  /* ── Zone adverse : compacte ── */
   .zone-adverse {
     padding: 4px 10px;
     gap: 6px;
@@ -330,14 +324,12 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
   .adverse-label { font-size: 11px; }
   .piece-cachee { width: 16px; height: 16px; }
 
-  /* ── Écrans d'accueil ── */
   .ecran-taille { padding: 24px 16px; gap: 20px; }
   .taille-inputs { gap: 16px; flex-wrap: wrap; justify-content: center; }
   .taille-final { font-size: 48px; }
   .lobby-card { padding: 24px 20px; min-width: unset; width: 90%; }
   .lobby-code { font-size: 11px; }
 
-  /* ── Popup ── */
   .popup-pouvoir, .popup-scout {
     min-width: unset;
     width: 90vw;
@@ -346,7 +338,6 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
   .popup-titre { font-size: 20px; }
   .popup-btn { font-size: 14px; padding: 10px 12px; }
 
-  /* ── Bandeau cible ── */
   .bandeau-cible {
     width: 90vw;
     flex-wrap: wrap;
@@ -355,7 +346,6 @@ body { background: var(--bg); color: var(--texte); font-family: var(--brush); mi
     gap: 8px;
   }
 
-  /* ── Scores ── */
   .scores { gap: 8px; }
   .score-lbl { font-size: 9px; }
 }

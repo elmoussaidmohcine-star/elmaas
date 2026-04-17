@@ -538,16 +538,18 @@ def get_pixels(partie_id: str):
     etat = parties.get(partie_id)
     taille = len(pixels)
     nom = noms_par_partie.get(partie_id, "")
+    # Récupérer le timer choisi (lu depuis l'état de la partie)
+    timer_sec = getattr(etat, "timer_sec", 30) if etat else 30
     return jsonify({
         "pixels_photo": pixels,
         "taille": taille,
+        "timer_sec": timer_sec,
         "etat": serialiser_etat(etat) if etat else None,
         "indice": {
             "longueur": len(nom),
             "premiere_lettre": nom[0].upper() if nom else "?"
         }
     })
-
 
 @app.route("/reconnaitre/<partie_id>", methods=["POST"])
 def reconnaitre(partie_id: str):
@@ -644,34 +646,62 @@ def refuser_pause(partie_id: str):
 
 
 # ── Revanche ──
-@app.route("/revanche/<partie_id>", methods=["POST"])
-def revanche(partie_id: str):
+# État des demandes de revanche
+demandes_revanche = {}  # {partie_id: "rouge"|"noir"|None}
+
+# ── Demander une revanche ──
+@app.route("/revanche/demander/<partie_id>", methods=["POST"])
+def demander_revanche(partie_id: str):
     if partie_id not in parties:
         return jsonify({"erreur": "Partie introuvable"}), 404
+    data = request.get_json() or {}
+    couleur = data.get("couleur")
+    if couleur not in ("rouge", "noir"):
+        return jsonify({"erreur": "Couleur invalide"}), 400
 
-    # Récupérer le plateau et les pixels existants
+    # Si l'autre a déjà demandé, on lance directement la revanche
+    demande_existante = demandes_revanche.get(partie_id)
+    if demande_existante and demande_existante != couleur:
+        demandes_revanche[partie_id] = None
+        return _lancer_revanche(partie_id)
+
+    demandes_revanche[partie_id] = couleur
+    socketio.emit("revanche_demandee", {"couleur": couleur}, room=partie_id)
+    return jsonify({"succes": True, "en_attente": True})
+
+# ── Accepter la revanche ──
+@app.route("/revanche/accepter/<partie_id>", methods=["POST"])
+def accepter_revanche(partie_id: str):
+    if partie_id not in parties:
+        return jsonify({"erreur": "Partie introuvable"}), 404
+    demandes_revanche[partie_id] = None
+    return _lancer_revanche(partie_id)
+
+# ── Refuser la revanche ──
+@app.route("/revanche/refuser/<partie_id>", methods=["POST"])
+def refuser_revanche(partie_id: str):
+    demandes_revanche[partie_id] = None
+    socketio.emit("revanche_refusee", {}, room=partie_id)
+    return jsonify({"succes": True})
+
+# ── Helper : lance effectivement la revanche ──
+def _lancer_revanche(partie_id: str):
+    import time
     ancienne_partie = parties[partie_id]
     ancien_plateau = ancienne_partie.plateau
 
-    # Mettre à jour le score de manches
     gagnant = ancienne_partie.gagnant
     if gagnant in ("rouge", "noir"):
         scores_manches[partie_id][gagnant] = scores_manches[partie_id].get(gagnant, 0) + 1
 
-    # Réinitialiser le jeu sur le même plateau (noir joue en premier)
     nouveau_etat = initialiser_jeu(ancien_plateau)
-    nouveau_etat.tour_actuel = 1  # Noir (joueur2) commence
-
-    # ⚡ CRITIQUE : remettre le timestamp à MAINTENANT pour que le timer client reparte à 0
-    import time
+    nouveau_etat.tour_actuel = 1  # Noir commence
     nouveau_etat.timestamp_debut_tour = time.time()
 
     parties[partie_id] = nouveau_etat
     pause_active[partie_id] = False
     demandes_pause[partie_id] = None
     bonus_double_tour[partie_id] = False
-
-    # Réinitialiser aussi la reconnaissance pour la nouvelle manche
     reconnaissance_tentee[partie_id] = False
 
     etat_serialise = serialiser_etat(nouveau_etat)
@@ -685,6 +715,13 @@ def revanche(partie_id: str):
         "etat": etat_serialise,
         "scores_manches": scores_manches[partie_id],
     })
+
+# ── Revanche directe (mode IA uniquement) ──
+@app.route("/revanche/<partie_id>", methods=["POST"])
+def revanche(partie_id: str):
+    if partie_id not in parties:
+        return jsonify({"erreur": "Partie introuvable"}), 404
+    return _lancer_revanche(partie_id)
 @app.route("/scores_manches/<partie_id>", methods=["GET"])
 def get_scores_manches(partie_id: str):
     return jsonify({

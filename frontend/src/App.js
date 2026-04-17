@@ -1,4 +1,4 @@
-// ELMAAS App.js v5 — Timers 5min + popup icônes + flux pouvoirs correct
+// ELMAAS App.js v6 — Revanche mutuelle + timer J2 synchronisé + popup temps écoulé
 import { useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -6,7 +6,6 @@ import Board from "./Board";
 import "./App.css";
 
 const API = "https://elmaas.up.railway.app";
-// TIMER_INITIAL est maintenant choisi par les joueurs
 
 // ── Auth helpers ─────────────────────────────────────────────
 function getToken() { return localStorage.getItem("elmaas_token"); }
@@ -17,7 +16,7 @@ function getUser()  {
 
 // ── Écran Auth (Connexion / Inscription) ──────────────────────
 function EcranAuth({ onConnecte }) {
-  const [mode, setMode] = useState("connexion"); // "connexion" | "inscription"
+  const [mode, setMode] = useState("connexion");
   const [email, setEmail] = useState("");
   const [pseudo, setPseudo] = useState("");
   const [mdp, setMdp] = useState("");
@@ -137,7 +136,6 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
       <h1 className="titre-jeu">ELMAAS</h1>
       <p className="phrase-jeu">Choisissez une photo pour votre plateau</p>
 
-      {/* Nom secret — uniquement en mode multijoueur */}
       {modeIA === "aucune" && (
         <div className="nom-photo-section">
           <label className="nom-photo-label">Nom secret de la photo <span>(max 10 car.)</span></label>
@@ -146,7 +144,6 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
         </div>
       )}
 
-      {/* Grille des 10 photos fixes */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600 }}>
         {photosFixees.map((url, i) => (
           <div key={i} onClick={() => { setPhotoSelectionnee({ url, estFichier: false }); setApercu(null); }}
@@ -161,7 +158,6 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
         ))}
       </div>
 
-      {/* Upload photo perso */}
       {utilisateur ? (
         peutUploader ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
@@ -267,7 +263,6 @@ const TIMER_OPTIONS = [
 
 function EcranTaille({ onValider }) {
   const [prop1, setProp1] = useState(16);
-  const [prop2, setProp2] = useState(16);
   const [modeIA, setModeIA] = useState("aucune");
   const [niveauIA, setNiveauIA] = useState(2);
   const [timerSec, setTimerSec] = useState(30);
@@ -323,55 +318,6 @@ function EcranTaille({ onValider }) {
       <button className="btn-valider" onClick={() => onValider(prop1, prop1, tailleFin, modeIA, niveauIA, timerSec)}>
         Confirmer
       </button>
-    </div>
-  );
-}
-
-// ── Écran Photo ───────────────────────────────────────────────
-function EcranPhoto({ prop1, prop2, onPartieCreee, modeMultijoueur, timerSec }) {
-  const [chargement, setChargement] = useState(false);
-  const [erreur, setErreur] = useState(null);
-  const [apercu, setApercu] = useState(null);
-  const [nomPhoto, setNomPhoto] = useState("");
-  const handleFichier = async (e) => {
-    const fichier = e.target.files[0];
-    if (!fichier) return;
-    setApercu(URL.createObjectURL(fichier));
-    setErreur(null);
-    setChargement(true);
-    try {
-      const formData = new FormData();
-      formData.append("photo", fichier);
-      formData.append("prop_j1", prop1);
-      formData.append("prop_j2", prop2);
-      formData.append("nom_photo", nomPhoto.slice(0, 10));
-      formData.append("timer_sec", timerSec || 30);
-      const res = await axios.post(`${API}/nouvelle-partie`, formData);
-      onPartieCreee(res.data.partie_id, res.data.etat, res.data.pixels_photo, res.data.taille, res.data.timer_sec, res.data.scores_manches);
-    } catch (err) {
-      setErreur("Erreur lors de la creation de la partie.");
-    } finally { setChargement(false); }
-  };
-  return (
-    <div className="uploader">
-      <h1 className="titre-jeu">ELMAAS</h1>
-      <p className="phrase-jeu">Chess is old, ELMAAS is better than gold</p>
-      <p className="sous-titre">Importe ta photo. Perds dessus.</p>
-      {modeMultijoueur && (
-        <div className="nom-photo-section">
-          <label className="nom-photo-label">Nom secret de la photo <span>(max 10 car.)</span></label>
-          <input className="nom-photo-input" maxLength={10} placeholder="ex: vacances"
-            value={nomPhoto} onChange={e => setNomPhoto(e.target.value)} />
-          <div className="nom-photo-compte">{nomPhoto.length}/10</div>
-        </div>
-      )}
-      <label className="zone-upload" htmlFor="photo-input">
-        {apercu ? <img src={apercu} alt="Apercu" className="apercu-photo" />
-          : <div className="upload-placeholder"><div className="upload-icone">+</div><p>Clique ou glisse une photo ici</p></div>}
-        <input id="photo-input" type="file" accept="image/*" onChange={handleFichier} style={{ display: "none" }} />
-      </label>
-      {chargement && <div className="chargement"><div className="spinner" /><p>Generation...</p></div>}
-      {erreur && <p className="erreur">{erreur}</p>}
     </div>
   );
 }
@@ -455,26 +401,25 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   );
 }
 
-// ── Popup Pouvoir avec icônes ─────────────────────────────────
+// ── Popup Pouvoir ─────────────────────────────────────────────
 function PopupPouvoir({ onChoisir, serie }) {
   const estSerie3 = serie >= 3;
   const options = [
-    { id: "rien",     icone: "", label: "Rien faire",       desc: "Passer directement au tour suivant" },
-    { id: "proteger", icone: "", label: "Protéger",         desc: "Une de tes pièces devient invulnérable 1 tour" },
-    { id: "echanger", icone: "", label: "Échanger",         desc: "Recolorie une pièce adverse à ta couleur" },
-    ...(estSerie3 ? [{ id: "extraire", icone: "", label: `Extraire  (série ${serie} !)`, desc: "Retire jusqu'à 2 pièces du plateau" }] : []),
+    { id: "rien",     label: "Rien faire",       desc: "Passer directement au tour suivant" },
+    { id: "proteger", label: "Protéger",         desc: "Une de tes pièces devient invulnérable 1 tour" },
+    { id: "echanger", label: "Échanger",         desc: "Recolorie une pièce adverse à ta couleur" },
+    ...(estSerie3 ? [{ id: "extraire", label: `Extraire (série ${serie})`, desc: "Retire jusqu'à 2 pièces du plateau" }] : []),
   ];
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir">
-        <div className="popup-titre">{estSerie3 ? ` Série de ${serie} !` : " Puzzle complété !"}</div>
+        <div className="popup-titre">{estSerie3 ? `Série de ${serie}` : "Puzzle complété"}</div>
         <div className="popup-sous-titre">Choisissez votre récompense</div>
         <div className="popup-options">
           {options.map(opt => (
             <button key={opt.id}
               className={`popup-btn ${opt.id === "extraire" ? "popup-btn-serie" : ""}`}
               onClick={() => onChoisir(opt.id)}>
-              <span style={{ fontSize: 22, lineHeight: 1 }}>{opt.icone}</span>
               <div style={{ textAlign: "left" }}>
                 <div style={{ fontWeight: 600, fontSize: 16 }}>{opt.label}</div>
                 <div style={{ fontSize: 12, opacity: 0.55, marginTop: 2 }}>{opt.desc}</div>
@@ -520,7 +465,7 @@ function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite }) {
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir">
-        <div className="popup-titre"> Reconnaissance</div>
+        <div className="popup-titre">Reconnaissance</div>
         {!tenteeDejaFaite && !resultat && (
           <>
             <div className="popup-sous-titre">
@@ -535,8 +480,8 @@ function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite }) {
         {resultat && (
           <div style={{ textAlign: "center" }}>
             {resultat.succes
-              ? <div style={{ color: "#88ff88", fontSize: 20 }}> Bravo ! Double tour activé !</div>
-              : <div style={{ color: "#ff8888" }}> Raté. Le nom était : <strong>{resultat.nom_reel}</strong></div>}
+              ? <div style={{ color: "#88ff88", fontSize: 20 }}>Bravo ! Double tour activé</div>
+              : <div style={{ color: "#ff8888" }}>Raté. Le nom était : <strong>{resultat.nom_reel}</strong></div>}
           </div>
         )}
         {tenteeDejaFaite && !resultat && <div style={{ color: "var(--muted)" }}>Tentative déjà utilisée.</div>}
@@ -563,70 +508,27 @@ function PopupManuel({ onFermer }) {
             <p><span className="tag-noir">N</span> Noir — meme logique inversee.</p>
             <p><span className="tag-mixte">R+N</span> Mixte — doit contenir les deux couleurs. Le joueur qui pose la derniere piece le gagne.</p>
             <p>Les puzzles mono ont une taille maximale de 6 cellules. Les puzzles mixtes peuvent etre plus grands.</p>
-            <p>Un puzzle brise survient quand une completion cree un conflit de couleur dans une intersection. Il est exclu du score.</p>
-            <p>Le tag dans le coin indique le type : R, N ou R+N. Un point central indique une cellule en intersection entre deux puzzles.</p>
           </div>
           <div className="manuel-section">
             <div className="manuel-titre-section">Actions par tour</div>
-            <p> <strong>Poser</strong> — sélectionne une pièce et clique sur le plateau pour la placer.</p>
-            <p> <strong>Repiocher</strong> — passe ton tour, échange ta main contre 5 nouvelles pièces.</p>
-            <p> <strong>Scout</strong> — voir 10 prochaines pièces. En échange 2 de ta main sont swappées. Dispo si &gt; 3 pièces en main.</p>
+            <p><strong>Poser</strong> — sélectionne une pièce et clique sur le plateau pour la placer.</p>
+            <p><strong>Repiocher</strong> — passe ton tour, échange ta main contre 5 nouvelles pièces.</p>
+            <p><strong>Scout</strong> — voir 10 prochaines pièces. En échange 2 de ta main sont swappées. Dispo si &gt; 3 pièces en main.</p>
           </div>
           <div className="manuel-section">
             <div className="manuel-titre-section">Après un puzzle complété</div>
-            <p> <strong>Rien</strong> — passer au tour suivant.</p>
-            <p> <strong>Protéger</strong> — clique une de tes pièces. Invulnérable pendant 1 tour.</p>
-            <p> <strong>Échanger</strong> — clique une pièce adverse. Elle devient ta couleur. Les pièces protégées sont immunisées.</p>
+            <p><strong>Rien</strong> — passer au tour suivant.</p>
+            <p><strong>Protéger</strong> — clique une de tes pièces. Invulnérable pendant 1 tour.</p>
+            <p><strong>Échanger</strong> — clique une pièce adverse. Elle devient ta couleur.</p>
           </div>
           <div className="manuel-section">
             <div className="manuel-titre-section">Séries et bonus</div>
-            <p> <strong>3 puzzles d'affilée</strong> — extraire jusqu'à 2 pièces. Si tu extrais une des tiennes → recolorier une pièce adverse.</p>
-            <p> <strong>5 puzzles d'affilée</strong> — victoire immédiate !</p>
-          </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section">️ Timers</div>
-            <p>Chaque joueur dispose de 5 minutes. Le chrono tourne uniquement pendant ton tour. À 0, tu perds.</p>
-          </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section">Pieces disponibles</div>
-            <p>10 formes de pieces existent, chacune avec une probabilite d obtention differente :</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginTop: 6, fontSize: 13 }}>
-              {[
-                ["I2", "2 cases en ligne", "20%"],
-                ["I3", "3 cases en ligne", "15%"],
-                ["I4", "4 cases en ligne", "8%"],
-                ["L",  "Forme L",          "12%"],
-                ["J",  "Forme J",          "12%"],
-                ["T",  "Forme T",          "12%"],
-                ["S",  "Forme S",          "8%"],
-                ["Z",  "Forme Z",          "8%"],
-                ["O",  "Carre 2x2",        "10%"],
-                ["1",  "1 case (rare)",    "5%"],
-              ].map(([nom, desc, pct]) => (
-                <div key={nom} style={{ display: "flex", gap: 8, alignItems: "center", padding: "3px 0", borderBottom: "1px solid var(--bord)" }}>
-                  <span style={{ color: "var(--rouge-c)", fontWeight: 700, minWidth: 24 }}>{nom}</span>
-                  <span style={{ color: "var(--muted)", flex: 1 }}>{desc}</span>
-                  <span style={{ color: "var(--texte)" }}>{pct}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="manuel-section">
-            <div className="manuel-titre-section">Regeneration des pieces</div>
-            <p>Les pieces se regenerent automatiquement quand ta reserve est vide. Tu disposes de 5 pieces pour completer au moins un puzzle. Si tu n'y arrives pas : defaite immediate. Si tu reussis, tu regois 10 nouvelles pieces, puis 15 au cycle suivant.</p>
-          </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section">Score et victoire</div>
-            <p>Le score est calcule en cellules : chaque cellule d'un puzzle complete compte pour le joueur qui l'a complete, peu importe la couleur des pieces. Le joueur avec le plus de cellules remporte la manche.</p>
+            <p><strong>3 puzzles d'affilée</strong> — extraire jusqu'à 2 pièces.</p>
+            <p><strong>5 puzzles d'affilée</strong> — victoire immédiate.</p>
           </div>
           <div className="manuel-section">
             <div className="manuel-titre-section">Pause et revanche</div>
             <p>N'importe quel joueur peut demander une pause. L'adversaire peut l'accepter ou la refuser. En fin de manche, une revanche peut etre lancee : le plateau est conserve, les roles inverses — le joueur Noir commence toujours en revanche.</p>
-          </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section">Reconnaissance (multijoueur)</div>
-            <p>Le J1 saisit un nom secret (max 10 car.). Le J2 peut tenter de le deviner a tout moment. Tolerance : 1 faute si longueur inferieure ou egale a 5, sinon 2. Si reussi : bonus double tour.</p>
           </div>
         </div>
         <button className="popup-btn" onClick={onFermer}>Fermer</button>
@@ -634,8 +536,9 @@ function PopupManuel({ onFermer }) {
     </div>
   );
 }
+
 // ── Popup fin de partie / temps écoulé ────────────────────────
-function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onRevanche }) {
+function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onRevanche, textRevanche }) {
   return (
     <div className="popup-overlay" onClick={onFermer}>
       <div className="popup-pouvoir popup-fin" onClick={(e) => e.stopPropagation()}>
@@ -644,14 +547,14 @@ function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onR
 
         {gagnant && (
           <div className={`popup-gagnant ${couleurGagnant}`}>
-             {gagnant} gagne !
+            {gagnant} gagne
           </div>
         )}
 
         <div className="popup-options-fin">
           {onRevanche && (
             <button className="popup-btn popup-btn-revanche" onClick={onRevanche}>
-               Revanche
+              {textRevanche || "Revanche"}
             </button>
           )}
           <button className="popup-btn" onClick={onFermer}>
@@ -662,6 +565,7 @@ function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onR
     </div>
   );
 }
+
 // ── App principale ────────────────────────────────────────────
 export default function App() {
   const [utilisateur, setUtilisateur] = useState(() => getUser());
@@ -689,40 +593,52 @@ export default function App() {
   const [bonusUtilise, setBonusUtilise] = useState(false);
   const [reconnaissanceTentee, setReconnaissanceTentee] = useState(false);
   const [indiceReconnaissance, setIndiceReconnaissance] = useState(null);
+  const [demandeRevancheRecue, setDemandeRevancheRecue] = useState(null);
+  const [revancheDemandeeParMoi, setRevancheDemandeeParMoi] = useState(false);
 
   // Timers
   const [timerChoisi, setTimerChoisi] = useState(30);
   const [timerRouge, setTimerRouge] = useState(30);
   const [timerNoir, setTimerNoir] = useState(30);
   const [scoresManches, setScoresManches] = useState({ rouge: 0, noir: 0 });
-  const [mancheTermineeInfo, setMancheTermineeInfo] = useState(null); // { gagnant, scoreRouge, scoreNoir }
+  const [mancheTermineeInfo, setMancheTermineeInfo] = useState(null);
   const [pauseActive, setPauseActive] = useState(false);
-  const [demandePauseRecue, setDemandePauseRecue] = useState(null); // couleur demandeur
+  const [demandePauseRecue, setDemandePauseRecue] = useState(null);
   const timerRef = useRef(null);
 
   // Extraction série
   const [extractionsEnCours, setExtractionsEnCours] = useState([]);
-  const [pieceADonner, setPieceADonner] = useState(null); // index de ma pièce à donner dans l'échange
-  // Quand true : puzzle complété, tour PAS encore passé côté serveur
+  const [pieceADonner, setPieceADonner] = useState(null);
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
 
-  // ── Timer synchronisé via timestamp serveur ──
-  // Quand le tour change, le serveur envoie timestamp_debut_tour.
-  // Les deux clients calculent le temps restant à partir du même timestamp.
+  // ── Dérivés ──
+  const joueurActif  = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
+  const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
+  const estTourIA = etat && modeIA !== "aucune" &&
+    ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
+  const estMonTour = !modeMultijoueur || !monRole ||
+    (monRole === "joueur1" && etat?.tour_actuel === 0) ||
+    (monRole === "joueur2" && etat?.tour_actuel === 1);
+
+  const enModeCible = ["attente_cible", "attente_extraire", "attente_recoloriage"].includes(popup?.type);
+
+  // Ref sur popup pour éviter closure stale
+  const popupRef = useRef(null);
+  useEffect(() => { popupRef.current = popup; }, [popup]);
+
+  // ── Timer synchronisé ──
   useEffect(() => {
     clearInterval(timerRef.current);
     if (etape !== "jeu" || !etat || etat.manche_terminee || attenteChoixPouvoir || popup) return;
-    // En multijoueur, attendre que les deux joueurs soient connectés
     if (modeMultijoueur && statutConnexion !== "connecte") return;
-    if (estTourIA) return; // Timer suspendu pendant tour IA
+    if (estTourIA) return;
 
     const tsDebut = etat.timestamp_debut_tour ? etat.timestamp_debut_tour * 1000 : Date.now();
 
-    // Réinitialiser le bon timer au début de chaque tour
     if (etat.tour_actuel === 0) setTimerRouge(timerChoisi);
     else setTimerNoir(timerChoisi);
 
-   timerRef.current = setInterval(() => {
+    timerRef.current = setInterval(() => {
       const ecoule = Math.floor((Date.now() - tsDebut) / 1000);
       const restant = Math.max(0, timerChoisi - ecoule);
       if (etat.tour_actuel === 0) {
@@ -750,9 +666,10 @@ export default function App() {
           });
         }
       }
-    }, 200); 
+    }, 200);
     return () => clearInterval(timerRef.current);
-  }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, attenteChoixPouvoir, popup, modeMultijoueur, statutConnexion, timerChoisi]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, attenteChoixPouvoir, popup, modeMultijoueur, statutConnexion, timerChoisi, estTourIA]);
 
   // ── WebSocket ──
   useEffect(() => {
@@ -768,10 +685,6 @@ export default function App() {
     socket.on("etat_mis_a_jour", (data) => {
       setEtat(data.etat);
       if (data.scores_manches) setScoresManches(data.scores_manches);
-      if (data.regeneration) {
-        // Afficher une notification de régénération (simple)
-        console.log("[ELMAAS] Regeneration:", data.regeneration);
-      }
       if (data.manche_terminee && data.gagnant) {
         const scores = calculer_scores_locaux(data.etat);
         setMancheTermineeInfo({ gagnant: data.gagnant, scores });
@@ -786,12 +699,31 @@ export default function App() {
       if (data.scores_manches) setScoresManches(data.scores_manches);
       setMancheTermineeInfo(null);
       setPauseActive(false);
+      setDemandeRevancheRecue(null);
+      setRevancheDemandeeParMoi(false);
+      setPieceIdx(null);
+      setExtractionsEnCours([]);
+      setPieceADonner(null);
+      setAttenteChoixPouvoir(false);
+      setBonusDoubleActif(false);
+      setBonusUtilise(false);
+      setReconnaissanceTentee(false);
+      setPopup(null);
+      setTimerRouge(timerChoisi);
+      setTimerNoir(timerChoisi);
+    });
+    socket.on("revanche_demandee", (data) => {
+      setDemandeRevancheRecue(data.couleur);
+    });
+    socket.on("revanche_refusee", () => {
+      setDemandeRevancheRecue(null);
+      setRevancheDemandeeParMoi(false);
     });
     socket.on("erreur", () => { setStatutConnexion("erreur"); });
     return () => socket.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Calcule les scores depuis l'état (cellules dans puzzles complétés)
   const calculer_scores_locaux = (etatLocal) => {
     if (!etatLocal) return { rouge: 0, noir: 0 };
     const puzzles = etatLocal.plateau?.puzzles || {};
@@ -836,6 +768,12 @@ export default function App() {
       setTaille(res.data.taille);
       if (res.data.etat) setEtat(res.data.etat);
       if (res.data.indice) setIndiceReconnaissance(res.data.indice);
+      // ⚡ FIX TIMER J2 : récupérer le timer choisi par le J1
+      if (res.data.timer_sec) {
+        setTimerChoisi(res.data.timer_sec);
+        setTimerRouge(res.data.timer_sec);
+        setTimerNoir(res.data.timer_sec);
+      }
     } catch (err) { console.error("Pixels introuvables:", err); }
     socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
   }, []);
@@ -858,25 +796,10 @@ export default function App() {
       const tourIA = modeIA === "j1" ? 0 : 1;
       if (etat.tour_actuel === tourIA && !etat.manche_terminee) declencherIA(etat, partieId, modeIA, niveauIA);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir]);
 
-  // ── Dérivés ──
-  const joueurActif  = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
-  const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
-  const estTourIA = etat && modeIA !== "aucune" &&
-    ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
-  const estMonTour = !modeMultijoueur || !monRole ||
-    (monRole === "joueur1" && etat?.tour_actuel === 0) ||
-    (monRole === "joueur2" && etat?.tour_actuel === 1);
-
-  const enModeCible = ["attente_cible", "attente_extraire", "attente_recoloriage"].includes(popup?.type);
-
-  // Ref sur popup pour éviter closure stale dans les callbacks
-  const popupRef = useRef(null);
-  useEffect(() => { popupRef.current = popup; }, [popup]);
-
-  // ── Envoyer pouvoir → le serveur passe le tour ──
+  // ── Envoyer pouvoir ──
   const envoyerPouvoir = useCallback(async (body) => {
     try {
       const res = await axios.post(`${API}/jouer/${partieId}`, { action: "pouvoir", ...body });
@@ -901,7 +824,6 @@ export default function App() {
       setEtat(res.data.etat);
       setPieceIdx(null);
 
-      // Si le double tour a été consommé côté serveur, mettre à jour l'état client
       if (res.data.double_tour_consomme) {
         setBonusDoubleActif(false);
         setBonusUtilise(false);
@@ -926,15 +848,14 @@ export default function App() {
         await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
       }
     } catch (err) { console.error(err); }
-  }, [partieId, estTourIA, estMonTour, bonusDoubleActif, bonusUtilise, monRole, modeIA, niveauIA, declencherIA]);
+  }, [partieId, estTourIA, estMonTour, modeIA, niveauIA, declencherIA]);
 
-  // ── Choix dans la popup pouvoir ──
+  // ── Choix popup pouvoir ──
   const handlePouvoir = useCallback((choix) => {
     setPopup(null);
     if (choix === "rien") {
       envoyerPouvoir({ pouvoir: "rien" });
     } else if (choix === "proteger") {
-      // Clic direct dans la liste des pièces (panneau gauche)
       setAttenteChoixPouvoir(true);
       setPopup({ type: "attente_cible", pouvoir: "proteger", message: "Clique sur une de tes pièces dans le panneau gauche" });
     } else if (choix === "echanger") {
@@ -982,7 +903,6 @@ export default function App() {
     }
   }, [partieId, modeIA, niveauIA, declencherIA, envoyerPouvoir]);
 
-  // ── Confirmer extraction ──
   const handleConfirmerExtraction = useCallback(async () => {
     setPopup(null);
     if (extractionsEnCours.length === 0) {
@@ -1015,7 +935,6 @@ export default function App() {
   };
 
   const handleAbandon = () => {
-    // Compter les abandons en cours de partie
     if (etape === "jeu" && etat && !etat.manche_terminee) {
       const nouveauxAbandons = nbAbandons + 1;
       setNbAbandons(nouveauxAbandons);
@@ -1026,29 +945,24 @@ export default function App() {
         localStorage.setItem("elmaas_banni_jusque", jusque);
         setNbAbandons(0);
         localStorage.setItem("elmaas_abandons", "0");
-        alert("3 abandons consecutifs — vous etes banni pendant 24h.");
       }
     }
     handleReset();
   };
 
-  const estBanni = () => {
-    if (!banniJusque) return false;
-    return new Date(banniJusque) > new Date();
-  };
-
   const handleReset = () => {
     clearInterval(timerRef.current);
-    setEtape("taille"); setEtat(null); setPartieId(null);
+    setEtat(null); setPartieId(null);
     setMonRole(null); setModeMultijoueur(false); setStatutConnexion("attente");
     setBonusDoubleActif(false); setBonusUtilise(false);
     setReconnaissanceTentee(false); setIndiceReconnaissance(null);
     setTimerRouge(timerChoisi); setTimerNoir(timerChoisi);
     setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null);
     setMancheTermineeInfo(null); setPauseActive(false); setDemandePauseRecue(null);
+    setDemandeRevancheRecue(null); setRevancheDemandeeParMoi(false);
     setEtape(utilisateur ? "taille" : "auth");
   };
-  
+
   // ── Rendu étapes ──
   if (etape === "taille") return <div className="app"><EcranTaille onValider={handleTailleValidee} /></div>;
 
@@ -1092,8 +1006,6 @@ export default function App() {
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ minWidth: 320, gap: 14 }}>
             <div className="popup-titre">Parametres</div>
-
-            {/* Compte */}
             {utilisateur && (
               <div style={{ width: "100%", borderBottom: "1px solid var(--bord)", paddingBottom: 12 }}>
                 <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>Compte</div>
@@ -1111,33 +1023,28 @@ export default function App() {
                 </button>
               </div>
             )}
-
-            {/* Langue */}
             <div style={{ width: "100%" }}>
               <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>Langue</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {[["fr","Francais"],["en","English"],["ar","العربية"],["es","Español"]].map(([code, nom]) => (
-                  <button key={code} className="ia-btn" style={{ fontSize: 13 }}
-                    onClick={() => alert("Traductions a venir !")}>
+                  <button key={code} className="ia-btn" style={{ fontSize: 13 }}>
                     {nom}
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Premium */}
             {utilisateur && !utilisateur.premium && (
               <button className="btn-valider" style={{ fontSize: 14, padding: "10px 24px" }}
                 onClick={async () => {
                   try {
                     const token = localStorage.getItem("elmaas_token");
-                   const res = await fetch(`${API}/stripe/checkout`, {
+                    const res = await fetch(`${API}/stripe/checkout`, {
                       method: "POST",
                       headers: { Authorization: `Bearer ${token}` }
                     });
                     const data = await res.json();
                     if (data.url) window.location.href = data.url;
-                  } catch(e) { alert("Erreur paiement"); }
+                  } catch(e) { console.error("Erreur paiement"); }
                 }}>
                 Passer Premium — 6.99€/mois
               </button>
@@ -1145,17 +1052,15 @@ export default function App() {
             {utilisateur?.premium && (
               <div style={{ color: "#88ff88", fontSize: 14 }}>Premium actif</div>
             )}
-
             <button className="popup-btn" onClick={() => setShowParametres(false)}>Fermer</button>
           </div>
         </div>
       )}
-      
-      {/* Écran fin de manche */}
+
+      {/* Écran fin de manche (score normal) */}
       {mancheTermineeInfo && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
-            {/* Titre victoire/défaite selon le joueur local */}
             {(() => {
               const g = mancheTermineeInfo.gagnant;
               const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
@@ -1167,10 +1072,10 @@ export default function App() {
                     color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
                     fontSize: 32,
                   }}>
-                    {egalite ? "Egalite !" : jaiGagne ? "Victoire !" : "Defaite"}
+                    {egalite ? "Egalite" : jaiGagne ? "Victoire" : "Defaite"}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                    {egalite ? "" : jaiGagne ? "Bien joue !" : `${g === "rouge" ? "Rouge" : "Noir"} remporte la manche`}
+                    {egalite ? "" : jaiGagne ? "Bien joue" : `${g === "rouge" ? "Rouge" : "Noir"} remporte la manche`}
                   </div>
                 </>
               );
@@ -1196,11 +1101,34 @@ export default function App() {
             <div className="popup-options" style={{ flexDirection: "row", gap: 10, justifyContent: "center" }}>
               <button className="popup-btn" style={{ flex: 1 }}
                 onClick={async () => {
-                  const res = await axios.post(`${API}/revanche/${partieId}`);
-                  if (res.data.succes) {
-                    setEtat(res.data.etat);
-                    setScoresManches(res.data.scores_manches);
-                    setMancheTermineeInfo(null);
+                  const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+                  if (modeMultijoueur) {
+                    try {
+                      const res = await axios.post(`${API}/revanche/demander/${partieId}`, { couleur: maCouleur });
+                      if (res.data.en_attente) setRevancheDemandeeParMoi(true);
+                      setMancheTermineeInfo(null);
+                    } catch (e) { console.error("Erreur demande revanche:", e); }
+                  } else {
+                    try {
+                      const res = await axios.post(`${API}/revanche/${partieId}`);
+                      if (res.data.succes) {
+                        setEtat(res.data.etat);
+                        if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
+                        setTimerRouge(timerChoisi);
+                        setTimerNoir(timerChoisi);
+                        setPieceIdx(null);
+                        setExtractionsEnCours([]);
+                        setPieceADonner(null);
+                        setAttenteChoixPouvoir(false);
+                        setMancheTermineeInfo(null);
+                        setBonusDoubleActif(false);
+                        setBonusUtilise(false);
+                        setReconnaissanceTentee(false);
+                        if (res.data.etat?.tour_actuel !== null) {
+                          await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+                        }
+                      }
+                    } catch (e) { console.error("Erreur revanche:", e); }
                   }
                 }}>
                 Revanche
@@ -1218,7 +1146,6 @@ export default function App() {
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
             {demandePauseRecue === (monRole === "joueur2" ? "noir" : "rouge") ? (
-              // C'est nous qui avons demandé — on attend
               <>
                 <div className="popup-titre">Pause demandée</div>
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>
@@ -1230,7 +1157,6 @@ export default function App() {
                 </button>
               </>
             ) : (
-              // C'est l'adversaire qui a demandé — on peut accepter ou refuser
               <>
                 <div className="popup-titre">Pause demandée</div>
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>
@@ -1264,7 +1190,54 @@ export default function App() {
           </div>
         </div>
       )}
-      
+
+      {/* Demande de revanche reçue */}
+      {demandeRevancheRecue && !revancheDemandeeParMoi && (
+        <div className="popup-overlay">
+          <div className="popup-pouvoir" style={{ gap: 16 }}>
+            <div className="popup-titre">Revanche demandée</div>
+            <div style={{ color: "var(--muted)", fontSize: 14, textAlign: "center" }}>
+              L'adversaire ({demandeRevancheRecue}) propose une revanche.
+            </div>
+            <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
+              <button className="popup-btn" style={{ flex: 1 }}
+                onClick={async () => {
+                  await axios.post(`${API}/revanche/accepter/${partieId}`);
+                  setDemandeRevancheRecue(null);
+                }}>
+                Accepter
+              </button>
+              <button className="popup-btn" style={{ flex: 1 }}
+                onClick={async () => {
+                  await axios.post(`${API}/revanche/refuser/${partieId}`);
+                  setDemandeRevancheRecue(null);
+                }}>
+                Refuser
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* En attente de confirmation de revanche */}
+      {revancheDemandeeParMoi && (
+        <div className="popup-overlay">
+          <div className="popup-pouvoir" style={{ gap: 16 }}>
+            <div className="popup-titre">Revanche demandée</div>
+            <div style={{ color: "var(--muted)", fontSize: 14 }}>
+              En attente de la réponse de l'adversaire...
+            </div>
+            <button className="popup-btn"
+              onClick={async () => {
+                await axios.post(`${API}/revanche/refuser/${partieId}`);
+                setRevancheDemandeeParMoi(false);
+                handleReset();
+              }}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Popups */}
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} />}
@@ -1304,52 +1277,67 @@ export default function App() {
           <button onClick={() => { setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>Annuler</button>
         </div>
       )}
-        {popup?.type === "attente_recoloriage" && (
-          <div className="bandeau-cible">
-            <span>{popup.message}</span>
-            <button onClick={async () => { setPopup(null); setAttenteChoixPouvoir(false); await declencherIA(etat, partieId, modeIA, niveauIA); }}>Passer</button>
-          </div>
-        )}
-  {popup?.type === "temps_ecoule" && (
-  <PopupFinPartie
-    titre={popup.titre}
-    message={popup.message}
-    gagnant={popup.gagnant}
-    couleurGagnant={popup.couleurGagnant}
-    onFermer={() => {
-      setPopup(null);
-      handleReset();
-    }}
-onRevanche={async () => {
-  try {
-    const res = await axios.post(`${API}/revanche/${partieId}`);
-    console.log("[REVANCHE] Réponse serveur:", res.data);  // ← AJOUTE CETTE LIGNE
-    if (res.data.succes) {
-      setEtat(res.data.etat);
-      if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
-      setTimerRouge(timerChoisi);
-      setTimerNoir(timerChoisi);
-      setPieceIdx(null);
-      setExtractionsEnCours([]);
-      setPieceADonner(null);
-      setAttenteChoixPouvoir(false);
-      setMancheTermineeInfo(null);
-      setBonusDoubleActif(false);
-      setBonusUtilise(false);
-      setReconnaissanceTentee(false);
-      setPopup(null);
-      console.log("[REVANCHE] État appliqué, tour_actuel:", res.data.etat?.tour_actuel);  // ← ET CELLE-CI
-    } else {
-      console.error("Revanche échouée:", res.data);
-      setPopup(null);
-    }
-  } catch (e) {
-    console.error("Erreur revanche:", e);
-    setPopup(null);
-  }
-}}
-  />
-)}
+      {popup?.type === "attente_recoloriage" && (
+        <div className="bandeau-cible">
+          <span>{popup.message}</span>
+          <button onClick={async () => { setPopup(null); setAttenteChoixPouvoir(false); await declencherIA(etat, partieId, modeIA, niveauIA); }}>Passer</button>
+        </div>
+      )}
+
+      {/* Popup temps écoulé */}
+      {popup?.type === "temps_ecoule" && (
+        <PopupFinPartie
+          titre={popup.titre}
+          message={popup.message}
+          gagnant={popup.gagnant}
+          couleurGagnant={popup.couleurGagnant}
+          textRevanche={modeMultijoueur ? "Demander une revanche" : "Revanche"}
+          onFermer={() => {
+            setPopup(null);
+            handleReset();
+          }}
+          onRevanche={async () => {
+            const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+            setPopup(null);
+
+            if (modeMultijoueur) {
+              // Mode 2 joueurs : demander la revanche, attendre accord adverse
+              try {
+                const res = await axios.post(`${API}/revanche/demander/${partieId}`, { couleur: maCouleur });
+                if (res.data.en_attente) {
+                  setRevancheDemandeeParMoi(true);
+                }
+              } catch (e) {
+                console.error("Erreur demande revanche:", e);
+              }
+            } else {
+              // Mode IA : revanche directe
+              try {
+                const res = await axios.post(`${API}/revanche/${partieId}`);
+                if (res.data.succes) {
+                  setEtat(res.data.etat);
+                  if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
+                  setTimerRouge(timerChoisi);
+                  setTimerNoir(timerChoisi);
+                  setPieceIdx(null);
+                  setExtractionsEnCours([]);
+                  setPieceADonner(null);
+                  setAttenteChoixPouvoir(false);
+                  setMancheTermineeInfo(null);
+                  setBonusDoubleActif(false);
+                  setBonusUtilise(false);
+                  setReconnaissanceTentee(false);
+                  if (res.data.etat?.tour_actuel !== null) {
+                    await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+                  }
+                }
+              } catch (e) {
+                console.error("Erreur revanche IA:", e);
+              }
+            }
+          }}
+        />
+      )}
 
       {/* Header */}
       <header className="app-header">
@@ -1370,15 +1358,14 @@ onRevanche={async () => {
         </div>
 
         <div className="timers">
-          {/* Timer Rouge : caché si l'IA joue Rouge */}
           {modeIA !== "j1" && (
             <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} />
           )}
-          {/* Timer Noir : caché si l'IA joue Noir */}
           {modeIA !== "j2" && (
             <TimerBloc secondes={timerNoir}  couleur="noir"  actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} />
           )}
         </div>
+
         <div className="tour-info">
           Tour {etat?.numero_tour} —
           <span className={"couleur-actif " + joueurActif?.couleur}> {joueurActif?.couleur}</span>
@@ -1393,7 +1380,7 @@ onRevanche={async () => {
             </span>
           )}
           {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
-          {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie"> Série {joueurActif.serie_actuelle}</span>}
+          {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie">Série {joueurActif.serie_actuelle}</span>}
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1426,13 +1413,11 @@ onRevanche={async () => {
       <div className="zone-jeu">
 
         <div className="panneau-main">
-          {/* ── Mes pièces ── */}
           <div className="panneau-titre">
             Mes pièces ({joueurActif?.couleur})
           </div>
           <div className="main-pieces-list">
             {(joueurActif?.main_active || []).map((piece, i) => {
-              // En mode protéger : clic direct sur ma pièce
               const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
               const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
               const estSelectPourDonner = clickEchanger && pieceADonner === i;
@@ -1445,7 +1430,6 @@ onRevanche={async () => {
                         setPopup(null);
                         envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i });
                       } else if (clickEchanger) {
-                        // Sélectionner ma pièce à donner
                         setPieceADonner(pieceADonner === i ? null : i);
                       } else if (!enModeCible && !attenteChoixPouvoir && estMonTour) {
                         setPieceIdx(pieceIdx === i ? null : i);
@@ -1479,15 +1463,12 @@ onRevanche={async () => {
           </div>
           <div className="serie-info">
             Série : {joueurActif?.serie_actuelle}
-            {joueurActif?.serie_actuelle >= 3 ? " !" : ""}
           </div>
 
-          {/* ── Pièces adversaires (visible pour echanger) ── */}
           {(() => {
             const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
             const mainAdverse = joueurAdverse?.main_active || [];
-            const showAdverse = clickEchanger || true; // toujours visible mais grayed sauf en mode echanger
-            return showAdverse ? (
+            return (
               <>
                 <div className="panneau-titre" style={{ marginTop: 14, borderColor: joueurAdverse?.couleur === "rouge" ? "#cc220044" : "#44444444" }}>
                   Adversaire ({joueurAdverse?.couleur})
@@ -1499,10 +1480,7 @@ onRevanche={async () => {
                         estSelectionnee={false}
                         onClick={() => {
                           if (clickEchanger) {
-                            if (pieceADonner === null) {
-                              alert("Choisis d'abord ta pièce à donner (en vert)");
-                              return;
-                            }
+                            if (pieceADonner === null) return;
                             setPopup(null);
                             setPieceADonner(null);
                             envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i, piece_index_donner: pieceADonner });
@@ -1519,7 +1497,7 @@ onRevanche={async () => {
                   <div style={{ fontSize: 12, color: "var(--muted)" }}>Main adverse vide</div>
                 )}
               </>
-            ) : null;
+            );
           })()}
         </div>
 
@@ -1554,11 +1532,11 @@ onRevanche={async () => {
               <button className="btn-action"
                 style={{ borderColor: reconnaissanceTentee ? "#444" : "#cc880044", color: reconnaissanceTentee ? "var(--muted)" : "#ffaa44" }}
                 onClick={() => setPopup({ type: "reconnaissance" })} disabled={reconnaissanceTentee}>
-                {reconnaissanceTentee ? "Déjà tenté" : " Reconnaître"}
+                {reconnaissanceTentee ? "Déjà tenté" : "Reconnaître"}
               </button>
               {bonusDoubleActif && (
                 <div className="hint-action" style={{ color: "#ffaa44", borderColor: "#ffaa4444", background: "#44220011" }}>
-                  Double tour actif !
+                  Double tour actif
                 </div>
               )}
             </>
@@ -1579,7 +1557,7 @@ onRevanche={async () => {
           )}
           {attenteChoixPouvoir && (
             <div className="hint-action" style={{ borderColor: "#cc880044", background: "#44220011", color: "#ffaa44" }}>
-              Choisissez votre récompense…
+              Choisissez votre récompense
             </div>
           )}
           {!estMonTour && modeMultijoueur && (
