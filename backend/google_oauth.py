@@ -29,8 +29,8 @@ def init_google_oauth(app):
     oauth.init_app(app)
     oauth.register(
         name="google",
-        client_id=os.environ.get("GOOGLE_CLIENT_ID"),
-        client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
+        client_id="68474294787-lj8ntgrgf7b3igheug7ln6aqpta7hfuq.apps.googleusercontent.com",
+        client_secret="GOCSPX-TON_SECRET_COMPLET_ICI",
         server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
         client_kwargs={"scope": "openid email profile"},
     )
@@ -50,8 +50,8 @@ def generer_pseudo_unique(base: str) -> str:
 @google_bp.route("/auth/google")
 def google_login():
     """Démarre le flow OAuth Google."""
-    if not os.environ.get("GOOGLE_CLIENT_ID"):
-        return jsonify({"erreur": "Google OAuth non configuré"}), 503
+    #f not os.environ.get("GOOGLE_CLIENT_ID"):
+       #return jsonify({"erreur": "Google OAuth non configuré"}), 503
     redirect_uri = url_for("google_oauth.google_callback", _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
