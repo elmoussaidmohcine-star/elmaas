@@ -230,7 +230,18 @@ def photo_fixe(nom):
 @app.route("/ping", methods=["GET"])
 def ping():
     return jsonify({"status": "ok", "message": "ELMAAS API en ligne"})
-
+@app.route("/debug/env", methods=["GET"])
+def debug_env():
+    import os
+    return jsonify({
+        "google_id_defini": bool(os.environ.get("GOOGLE_CLIENT_ID")),
+        "google_id_longueur": len(os.environ.get("GOOGLE_CLIENT_ID") or ""),
+        "google_id_debut": (os.environ.get("GOOGLE_CLIENT_ID") or "")[:15],
+        "google_secret_defini": bool(os.environ.get("GOOGLE_CLIENT_SECRET")),
+        "google_secret_longueur": len(os.environ.get("GOOGLE_CLIENT_SECRET") or ""),
+        "google_secret_debut": (os.environ.get("GOOGLE_CLIENT_SECRET") or "")[:7],
+        "toutes_vars": sorted([k for k in os.environ.keys() if not k.startswith("_")])
+    })
 
 @app.route("/nouvelle-partie", methods=["POST"])
 def nouvelle_partie():
