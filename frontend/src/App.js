@@ -1,4 +1,4 @@
-// ELMAAS App.js v8 — Traductions fr/en/ar/es + tous les fixes précédents
+// ELMAAS App.js v9 — Bugs revanche fixés, devinette 3 char, ELM, thèmes, Paramètres partout, OCR
 import { useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -8,7 +8,6 @@ import "./App.css";
 
 const API = "https://elmaas.up.railway.app";
 
-// ── Auth helpers ─────────────────────────────────────────────
 function getToken() { return localStorage.getItem("elmaas_token"); }
 function getUser()  {
   try { return JSON.parse(localStorage.getItem("elmaas_user") || "null"); }
@@ -21,7 +20,102 @@ function getLangueInitiale() {
   return 0;
 }
 
-// ── Écran Auth ────────────────────────────────────────────────
+function appliquerTheme(indexLangue) {
+  const html = document.documentElement;
+  LANGUES.forEach(l => html.classList.remove(l.theme));
+  html.classList.add(LANGUES[indexLangue].theme);
+  html.setAttribute("dir", LANGUES[indexLangue].code === "ar" ? "rtl" : "ltr");
+}
+
+// ── Bouton Paramètres flottant (disponible partout) ──
+function BtnParamsFlottant({ onClick, L }) {
+  return (
+    <button className="btn-params-flottant" onClick={onClick} title={t("parametres", L)}>
+      ⚙
+    </button>
+  );
+}
+
+// ── Popup Paramètres (partagé entre tous les écrans) ──
+function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer, onDeconnecter, onPaiement }) {
+  return (
+    <div className="popup-overlay" onClick={onFermer}>
+      <div className="popup-pouvoir" style={{ minWidth: 340, maxWidth: 440, gap: 14, maxHeight: "85vh", overflowY: "auto" }}
+           onClick={(e) => e.stopPropagation()}>
+        <div className="popup-titre">{t("parametres", L)}</div>
+
+        {utilisateur && (
+          <div style={{ width: "100%", borderBottom: "1px solid var(--bord)", paddingBottom: 12 }}>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>{t("compte", L)}</div>
+            <div style={{ fontSize: 15, color: "var(--texte)", marginBottom: 8 }}>{utilisateur.pseudo} — {utilisateur.email}</div>
+            <div style={{ fontSize: 13, color: "var(--rouge-c)", marginBottom: 8 }}>{t("elm", L)} {utilisateur.elo}</div>
+            <button className="popup-btn" style={{ fontSize: 13 }} onClick={onDeconnecter}>
+              {t("seDeconnecter", L)}
+            </button>
+          </div>
+        )}
+
+        {/* Langue + thème */}
+        <div style={{ width: "100%" }}>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>{t("langue", L)} / {t("theme", L)}</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {LANGUES.map((lang, idx) => (
+              <button key={lang.code}
+                className={`ia-btn ${indexLangue === idx ? "actif" : ""}`}
+                style={{ fontSize: 13 }}
+                onClick={() => changerLangue(idx)}>
+                {lang.nom}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Plans Premium */}
+        {utilisateur && (
+          <div className="plans-section">
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>{t("plans", L)}</div>
+
+            <div className="plan-welcome">{t("welcomeElmaasyon", L)}</div>
+
+            <div className={`plan-card ${utilisateur.plan === "elmaasyon" ? "actif" : "premium"}`}>
+              <div className="plan-nom">{t("planElmaasyon", L)}</div>
+              <div className="plan-desc">{t("planElmaasyonDesc", L)}</div>
+              <div className="plan-prix">Gratuit <small>(mois de lancement)</small></div>
+              {utilisateur.plan !== "elmaasyon" && (
+                <button className="btn-valider" style={{ fontSize: 13, padding: "8px 16px" }}
+                  onClick={() => onPaiement("elmaasyon")}>
+                  {t("passerPremiumBtn", L)}
+                </button>
+              )}
+              {utilisateur.plan === "elmaasyon" && (
+                <div style={{ color: "#88ff88", fontSize: 13, textAlign: "center" }}>{t("planActif", L)}</div>
+              )}
+            </div>
+
+            <div className={`plan-card ${utilisateur.plan === "elmaas" ? "actif" : "premium"}`}>
+              <div className="plan-nom">{t("planElmaas", L)}</div>
+              <div className="plan-desc">{t("planElmaasDesc", L)}</div>
+              <div className="plan-prix">6.99€<small>{t("parMois", L)}</small></div>
+              {utilisateur.plan !== "elmaas" && (
+                <button className="btn-valider" style={{ fontSize: 13, padding: "8px 16px" }}
+                  onClick={() => onPaiement("elmaas")}>
+                  {t("passerPremiumBtn", L)}
+                </button>
+              )}
+              {utilisateur.plan === "elmaas" && (
+                <div style={{ color: "#88ff88", fontSize: 13, textAlign: "center" }}>{t("planActif", L)}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Écran Auth ──
 function EcranAuth({ onConnecte, L }) {
   const [mode, setMode] = useState("connexion");
   const [email, setEmail] = useState("");
@@ -31,8 +125,7 @@ function EcranAuth({ onConnecte, L }) {
   const [chargement, setChargement] = useState(false);
 
   const handleSubmit = async () => {
-    setErreur(null);
-    setChargement(true);
+    setErreur(null); setChargement(true);
     try {
       const route = mode === "connexion" ? "/auth/connexion" : "/auth/inscription";
       const body = mode === "connexion"
@@ -47,12 +140,18 @@ function EcranAuth({ onConnecte, L }) {
     } finally { setChargement(false); }
   };
 
+  const handleGoogleLogin = () => {
+    // OAuth Google : redirige vers l'endpoint backend
+    window.location.href = `${API}/auth/google`;
+  };
+
   return (
     <div className="ecran-taille">
       <h1 className="titre-jeu">ELMAAS</h1>
       <p className="phrase-jeu">{t("slogan", L)}</p>
+      <p className="sous-phrase-jeu">{t("sousSlogan", L)}</p>
       <div className="lobby-card" style={{ minWidth: 340 }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {["connexion","inscription"].map(m => (
             <button key={m} className={`ia-btn ${mode===m?"actif":""}`}
               onClick={() => { setMode(m); setErreur(null); }}
@@ -61,6 +160,20 @@ function EcranAuth({ onConnecte, L }) {
             </button>
           ))}
         </div>
+
+        {/* Google OAuth */}
+        <button className="popup-btn" style={{ justifyContent: "center", gap: 10 }} onClick={handleGoogleLogin}>
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          {t("continuerAvecGoogle", L)}
+        </button>
+
+        <div style={{ textAlign: "center", fontSize: 11, color: "var(--muted)", margin: "6px 0" }}>— {t("ouContinuerAvec", L)} —</div>
+
         {mode === "inscription" && (
           <input className="lobby-input" placeholder={t("pseudo", L)} value={pseudo}
             onChange={e => setPseudo(e.target.value)} style={{ marginBottom: 8 }} />
@@ -84,7 +197,7 @@ function EcranAuth({ onConnecte, L }) {
   );
 }
 
-// ── Écran sélection photo ─────────────────────────────────────
+// ── Écran Photo ──
 function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCreee, L }) {
   const [photosFixees, setPhotosFixees] = useState([]);
   const [photoSelectionnee, setPhotoSelectionnee] = useState(null);
@@ -93,23 +206,26 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
   const [erreur, setErreur] = useState(null);
   const [apercu, setApercu] = useState(null);
 
-  const peutUploader = !utilisateur
-    ? false
-    : utilisateur.premium || !utilisateur.photo_perso_utilisee;
+  const peutUploader = !utilisateur ? false : utilisateur.premium || !utilisateur.photo_perso_utilisee;
+  const nomValide = modeIA !== "aucune" || nomPhoto.trim().length >= 3;
 
   useEffect(() => {
     axios.get(`${API}/photos_fixes`).then(res => setPhotosFixees(res.data.photos));
   }, []);
 
   const jouerAvecPhoto = async (urlOuFichier, estFichier = false) => {
-    setErreur(null);
-    setChargement(true);
+    if (!nomValide) {
+      setErreur(t("min3Car", L));
+      return;
+    }
+    setErreur(null); setChargement(true);
     try {
       const formData = new FormData();
       formData.append("prop_j1", prop1);
       formData.append("prop_j2", prop2);
       formData.append("nom_photo", modeIA !== "aucune" ? "" : nomPhoto.slice(0, 10));
       formData.append("timer_sec", timerSec);
+      formData.append("langue", LANGUES[L].code);
       if (estFichier) {
         formData.append("photo", urlOuFichier);
         if (utilisateur && !utilisateur.premium) {
@@ -127,7 +243,12 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
       const res = await axios.post(`${API}/nouvelle-partie`, formData);
       onPartieCreee(res.data.partie_id, res.data.etat, res.data.pixels_photo, res.data.taille, res.data.timer_sec, res.data.scores_manches);
     } catch (err) {
-      setErreur(t("erreurCreation", L));
+      // Erreur OCR (nom de Dieu détecté)
+      if (err.response?.status === 403 && err.response.data?.code === "OCR_BLOCKED") {
+        setErreur(t("ocrBlocage", L));
+      } else {
+        setErreur(t("erreurCreation", L));
+      }
     } finally { setChargement(false); }
   };
 
@@ -145,7 +266,11 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
 
       {modeIA === "aucune" && (
         <div className="nom-photo-section">
-          <label className="nom-photo-label">{t("nomSecretPhoto", L)} <span>{t("max10Car", L)}</span></label>
+          <label className="nom-photo-label">
+            {t("nomSecretPhoto", L)}{" "}
+            <span>{t("max10Car", L)}</span>{" "}
+            <span style={{ color: nomValide ? "#88ff88" : "var(--rouge-c)" }}>{t("min3Car", L)}</span>
+          </label>
           <input className="nom-photo-input" maxLength={10} placeholder={t("exVacances", L)}
             value={nomPhoto} onChange={e => setNomPhoto(e.target.value)} />
         </div>
@@ -198,7 +323,7 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
       {chargement && <div className="chargement"><div className="spinner" /><p>{t("generation", L)}</p></div>}
 
       {photoSelectionnee && !chargement && (
-        <button className="btn-valider"
+        <button className="btn-valider" disabled={!nomValide}
           onClick={() => jouerAvecPhoto(
             photoSelectionnee.estFichier ? photoSelectionnee.fichier : photoSelectionnee.url,
             photoSelectionnee.estFichier
@@ -210,23 +335,21 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
   );
 }
 
-// ── Écran Classement ELO ──────────────────────────────────────
+// ── Classement ──
 function EcranClassement({ onFermer, utilisateur, L }) {
   const [classement, setClassement] = useState([]);
-  useEffect(() => {
-    axios.get(`${API}/classement`).then(res => setClassement(res.data));
-  }, []);
+  useEffect(() => { axios.get(`${API}/classement`).then(res => setClassement(res.data)); }, []);
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir" style={{ maxWidth: 480, maxHeight: "80vh", overflowY: "auto", gap: 12 }}>
-        <div className="popup-titre">{t("classementElo", L)}</div>
+        <div className="popup-titre">{t("classementElm", L)}</div>
         {classement.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>{t("aucunClasse", L)}</div>}
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
             <tr style={{ color: "var(--muted)", borderBottom: "1px solid var(--bord)" }}>
               <th style={{ padding: "4px 8px", textAlign: "left" }}>#</th>
               <th style={{ padding: "4px 8px", textAlign: "left" }}>{t("pseudo", L)}</th>
-              <th style={{ padding: "4px 8px", textAlign: "right" }}>ELO</th>
+              <th style={{ padding: "4px 8px", textAlign: "right" }}>ELM</th>
               <th style={{ padding: "4px 8px", textAlign: "right" }}>{t("parties", L)}</th>
               <th style={{ padding: "4px 8px", textAlign: "right" }}>{t("winPct", L)}</th>
             </tr>
@@ -258,14 +381,9 @@ function EcranClassement({ onFermer, utilisateur, L }) {
   );
 }
 
-// ── Écran Taille ──────────────────────────────────────────────
 const TIMER_OPTIONS = [
-  { label: "10 s",  val: 10 },
-  { label: "20 s",  val: 20 },
-  { label: "30 s",  val: 30 },
-  { label: "1 min", val: 60 },
-  { label: "2 min", val: 120 },
-  { label: "5 min", val: 300 },
+  { label: "10 s", val: 10 }, { label: "20 s", val: 20 }, { label: "30 s", val: 30 },
+  { label: "1 min", val: 60 }, { label: "2 min", val: 120 }, { label: "5 min", val: 300 },
 ];
 
 function EcranTaille({ onValider, L }) {
@@ -278,6 +396,7 @@ function EcranTaille({ onValider, L }) {
     <div className="ecran-taille">
       <h1 className="titre-jeu">ELMAAS</h1>
       <p className="phrase-jeu">{t("slogan", L)}</p>
+      <p className="sous-phrase-jeu">{t("sousSlogan", L)}</p>
       <p className="sous-titre">{t("choisissezTaille", L)}</p>
       <div className="taille-inputs">
         <div className="taille-joueur">
@@ -290,20 +409,16 @@ function EcranTaille({ onValider, L }) {
           <div className="taille-label">{t("plateau", L)}</div>
         </div>
       </div>
-
       <div className="ia-section">
         <div className="ia-titre">{t("tempsParTour", L)}</div>
-        <div className="ia-options" style={{ flexWrap: "wrap", justifyContent: "center" }}>
+        <div className="ia-options">
           {TIMER_OPTIONS.map(opt => (
-            <button key={opt.val}
-              className={`ia-btn ${timerSec === opt.val ? "actif" : ""}`}
-              onClick={() => setTimerSec(opt.val)}>
+            <button key={opt.val} className={`ia-btn ${timerSec === opt.val ? "actif" : ""}`} onClick={() => setTimerSec(opt.val)}>
               {opt.label}
             </button>
           ))}
         </div>
       </div>
-
       <div className="ia-section">
         <div className="ia-titre">{t("modeIA", L)}</div>
         <div className="ia-options">
@@ -329,7 +444,6 @@ function EcranTaille({ onValider, L }) {
   );
 }
 
-// ── Écran Lobby ───────────────────────────────────────────────
 function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellement, L }) {
   const [codeSaisi, setCodeSaisi] = useState("");
   if (monRole === "joueur1") {
@@ -369,7 +483,6 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
   );
 }
 
-// ── Timer ─────────────────────────────────────────────────────
 function TimerBloc({ secondes, couleur, actif, L }) {
   const m = Math.floor(secondes / 60);
   const s = secondes % 60;
@@ -384,7 +497,6 @@ function TimerBloc({ secondes, couleur, actif, L }) {
   );
 }
 
-// ── MiniPiece ─────────────────────────────────────────────────
 function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   if (!piece) return null;
   const cells = piece.cellules || [];
@@ -408,13 +520,12 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   );
 }
 
-// ── Popup Pouvoir ─────────────────────────────────────────────
 function PopupPouvoir({ onChoisir, serie, L }) {
   const estSerie3 = serie >= 3;
   const options = [
-    { id: "rien",     label: t("rienFaire", L),  desc: t("rienFaireDesc", L) },
-    { id: "proteger", label: t("proteger", L),   desc: t("protegerDesc", L) },
-    { id: "echanger", label: t("echanger", L),   desc: t("echangerDesc", L) },
+    { id: "rien", label: t("rienFaire", L), desc: t("rienFaireDesc", L) },
+    { id: "proteger", label: t("proteger", L), desc: t("protegerDesc", L) },
+    { id: "echanger", label: t("echanger", L), desc: t("echangerDesc", L) },
     ...(estSerie3 ? [{ id: "extraire", label: `${t("extraire", L)} (${t("serie", L)} ${serie})`, desc: t("extraireDesc", L) }] : []),
   ];
   return (
@@ -424,8 +535,7 @@ function PopupPouvoir({ onChoisir, serie, L }) {
         <div className="popup-sous-titre">{t("choisirRecompense", L)}</div>
         <div className="popup-options">
           {options.map(opt => (
-            <button key={opt.id}
-              className={`popup-btn ${opt.id === "extraire" ? "popup-btn-serie" : ""}`}
+            <button key={opt.id} className={`popup-btn ${opt.id === "extraire" ? "popup-btn-serie" : ""}`}
               onClick={() => onChoisir(opt.id)}>
               <div style={{ textAlign: "left" }}>
                 <div style={{ fontWeight: 600, fontSize: 16 }}>{opt.label}</div>
@@ -439,7 +549,6 @@ function PopupPouvoir({ onChoisir, serie, L }) {
   );
 }
 
-// ── Popup Scout ───────────────────────────────────────────────
 function PopupScout({ pieces, couleur, echanges, onFermer, L }) {
   return (
     <div className="popup-overlay">
@@ -464,11 +573,22 @@ function PopupScout({ pieces, couleur, echanges, onFermer, L }) {
   );
 }
 
-// ── Popup Reconnaissance ──────────────────────────────────────
+// ── Popup Reconnaissance avec min 3 caractères ──
 function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite, L }) {
   const [proposition, setProposition] = useState("");
   const [resultat, setResultat] = useState(null);
-  const handleTenter = async () => { const res = await onTenter(proposition); setResultat(res); };
+  const [erreurLocale, setErreurLocale] = useState(null);
+  const propValide = proposition.trim().length >= 3;
+
+  const handleTenter = async () => {
+    if (!propValide) {
+      setErreurLocale(t("min3CarDevinette", L));
+      return;
+    }
+    setErreurLocale(null);
+    const res = await onTenter(proposition);
+    setResultat(res);
+  };
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir">
@@ -479,9 +599,10 @@ function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite, L })
               {t("longueur", L)} <strong>{indice?.longueur}</strong> {t("lettres", L)} &nbsp; {t("commencePar", L)} <strong>{indice?.premiere_lettre}</strong>
             </div>
             <input className="lobby-input" placeholder={t("tonEstimation", L)} maxLength={12}
-              value={proposition} onChange={e => setProposition(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && proposition.trim() && handleTenter()} />
-            <button className="btn-valider" onClick={handleTenter} disabled={!proposition.trim()}>{t("valider", L)}</button>
+              value={proposition} onChange={e => { setProposition(e.target.value); setErreurLocale(null); }}
+              onKeyDown={e => e.key === "Enter" && propValide && handleTenter()} />
+            {erreurLocale && <div style={{ color: "#ff6644", fontSize: 12 }}>{erreurLocale}</div>}
+            <button className="btn-valider" onClick={handleTenter} disabled={!propValide}>{t("valider", L)}</button>
           </>
         )}
         {resultat && (
@@ -498,27 +619,47 @@ function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite, L })
   );
 }
 
-// ── Popup Manuel ──────────────────────────────────────────────
+// ── Popup Manuel (riche, plusieurs sections) ──
 function PopupManuel({ onFermer, L }) {
   return (
-    <div className="popup-overlay">
-      <div className="popup-pouvoir" style={{ maxWidth: 560, maxHeight: "80vh", overflowY: "auto" }}>
+    <div className="popup-overlay" onClick={onFermer}>
+      <div className="popup-pouvoir" style={{ maxWidth: 600, maxHeight: "85vh", overflowY: "auto" }}
+           onClick={(e) => e.stopPropagation()}>
         <div className="popup-titre">{t("manuelTitre", L)}</div>
+        <div style={{ fontSize: 14, color: "var(--muted)", fontStyle: "italic", textAlign: "center", lineHeight: 1.5 }}>
+          {t("manuelIntro", L)}
+        </div>
         <div className="manuel-content">
           <div className="manuel-section">
-            <div className="manuel-titre-section">{t("objectif", L)}</div>
+            <div className="manuel-titre-section">✦ {t("objectif", L)}</div>
             <p>{t("objectifDesc", L)}</p>
           </div>
           <div className="manuel-section">
-            <div className="manuel-titre-section">{t("actionsParTour", L)}</div>
-            <p><strong>{t("rienFaire", L).replace("Passer", "Poser")}</strong> — {t("cliquerPlateau", L)}</p>
-            <p><strong>{t("repiocher", L)}</strong></p>
-            <p><strong>Scout</strong></p>
+            <div className="manuel-titre-section">✦ {t("typesPuzzles", L)}</div>
+            <p>{t("typesPuzzlesDesc", L)}</p>
           </div>
           <div className="manuel-section">
-            <div className="manuel-titre-section">{t("series", L)}</div>
-            <p><strong>3</strong> — {t("extraire", L)}</p>
-            <p><strong>5</strong> — {t("victoire", L)}</p>
+            <div className="manuel-titre-section">✦ {t("actionsParTour", L)}</div>
+            <p>• {t("actionPoser", L)}</p>
+            <p>• {t("actionRepiocher", L)}</p>
+            <p>• {t("actionScout", L)}</p>
+          </div>
+          <div className="manuel-section">
+            <div className="manuel-titre-section">✦ {t("apresPuzzle", L)}</div>
+            <p>{t("apresPuzzleDesc", L)}</p>
+          </div>
+          <div className="manuel-section">
+            <div className="manuel-titre-section">✦ {t("series", L)}</div>
+            <p>• {t("serie3Desc", L)}</p>
+            <p>• {t("serie5Desc", L)}</p>
+          </div>
+          <div className="manuel-section">
+            <div className="manuel-titre-section">✦ {t("finPartie", L)}</div>
+            <p>{t("finPartieDesc", L)}</p>
+          </div>
+          <div className="manuel-section" style={{ borderColor: "var(--accent-culture)" }}>
+            <div className="manuel-titre-section">★ {t("astuceTitre", L)}</div>
+            <p style={{ fontStyle: "italic" }}>{t("astuceDesc", L)}</p>
           </div>
         </div>
         <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
@@ -527,36 +668,34 @@ function PopupManuel({ onFermer, L }) {
   );
 }
 
-// ── Popup fin de partie ───────────────────────────────────────
 function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onRevanche, textRevanche, L }) {
   return (
     <div className="popup-overlay" onClick={onFermer}>
       <div className="popup-pouvoir popup-fin" onClick={(e) => e.stopPropagation()}>
         <div className="popup-titre">{titre}</div>
         <div className="popup-sous-titre">{message}</div>
-
         {gagnant && (
           <div className={`popup-gagnant ${couleurGagnant}`}>
             {gagnant} {t("gagne", L)}
           </div>
         )}
-
         <div className="popup-options-fin">
           {onRevanche && (
             <button className="popup-btn popup-btn-revanche" onClick={onRevanche}>
               {textRevanche || t("revanche", L)}
             </button>
           )}
-          <button className="popup-btn" onClick={onFermer}>
-            {t("fermer", L)}
-          </button>
+          <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── App principale ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// ── App principale ──
+// ══════════════════════════════════════════════════════════
+
 export default function App() {
   const [utilisateur, setUtilisateur] = useState(() => getUser());
   const [indexLangue, setIndexLangue] = useState(getLangueInitiale);
@@ -587,7 +726,6 @@ export default function App() {
   const [indiceReconnaissance, setIndiceReconnaissance] = useState(null);
   const [demandeRevancheRecue, setDemandeRevancheRecue] = useState(null);
   const [revancheDemandeeParMoi, setRevancheDemandeeParMoi] = useState(false);
-
   const [timerChoisi, setTimerChoisi] = useState(30);
   const [timerRouge, setTimerRouge] = useState(30);
   const [timerNoir, setTimerNoir] = useState(30);
@@ -596,33 +734,20 @@ export default function App() {
   const [pauseActive, setPauseActive] = useState(false);
   const [demandePauseRecue, setDemandePauseRecue] = useState(null);
   const timerRef = useRef(null);
-
   const [extractionsEnCours, setExtractionsEnCours] = useState([]);
   const [pieceADonner, setPieceADonner] = useState(null);
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
 
-  // Sauvegarde de la langue dans localStorage
+  // Changer langue
   const changerLangue = (idx) => {
     setIndexLangue(idx);
     localStorage.setItem("elmaas_langue", String(idx));
-    // Direction RTL pour l'arabe
-    if (LANGUES[idx].code === "ar") {
-      document.documentElement.setAttribute("dir", "rtl");
-    } else {
-      document.documentElement.setAttribute("dir", "ltr");
-    }
+    appliquerTheme(idx);
   };
 
-  // Appliquer la direction au chargement
-  useEffect(() => {
-    if (LANGUES[indexLangue].code === "ar") {
-      document.documentElement.setAttribute("dir", "rtl");
-    } else {
-      document.documentElement.setAttribute("dir", "ltr");
-    }
-  }, [indexLangue]);
+  useEffect(() => { appliquerTheme(indexLangue); }, [indexLangue]);
 
-  // ── Dérivés ──
+  // Dérivés
   const joueurActif  = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
   const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
   const estTourIA = etat && modeIA !== "aucune" &&
@@ -635,11 +760,8 @@ export default function App() {
       (monRole === "joueur2" && etat?.tour_actuel === 1));
 
   const enModeCible = ["attente_cible", "attente_extraire", "attente_recoloriage"].includes(popup?.type);
-
   const popupRef = useRef(null);
   useEffect(() => { popupRef.current = popup; }, [popup]);
-
-  // ── Helper traduire couleur ──
   const trCouleur = (c) => c === "rouge" ? t("rouge", L) : c === "noir" ? t("noir", L) : c;
 
   // ── Timer ──
@@ -650,7 +772,6 @@ export default function App() {
     if (estTourIA || iaEnCours) return;
 
     const tsDebut = etat.timestamp_debut_tour ? etat.timestamp_debut_tour * 1000 : Date.now();
-
     if (etat.tour_actuel === 0) setTimerRouge(timerChoisi);
     else setTimerNoir(timerChoisi);
 
@@ -707,13 +828,11 @@ export default function App() {
       }
     });
     socket.on("pause_demandee", (data) => { setDemandePauseRecue(data.couleur); });
-    socket.on("pause_active",   () => { setPauseActive(true); setDemandePauseRecue(null); });
-    socket.on("pause_terminee", (data) => {
-      setPauseActive(false);
-      if (data?.etat) setEtat(data.etat);
-    });
-    socket.on("pause_refusee",  () => { setDemandePauseRecue(null); });
+    socket.on("pause_active", () => { setPauseActive(true); setDemandePauseRecue(null); });
+    socket.on("pause_terminee", (data) => { setPauseActive(false); if (data?.etat) setEtat(data.etat); });
+    socket.on("pause_refusee", () => { setDemandePauseRecue(null); });
     socket.on("revanche_lancee", (data) => {
+      // FIX BUG : réinitialiser COMPLÈTEMENT l'état frontend
       setEtat(data.etat);
       if (data.scores_manches) setScoresManches(data.scores_manches);
       setMancheTermineeInfo(null);
@@ -728,14 +847,13 @@ export default function App() {
       setBonusUtilise(false);
       setReconnaissanceTentee(false);
       setPopup(null);
+      setIaEnCours(false); // FIX : reset iaEnCours sinon on reste bloqué
+      // FIX BUG TEMPS : réinitialiser les deux timers
       setTimerRouge(timerChoisi);
       setTimerNoir(timerChoisi);
     });
     socket.on("revanche_demandee", (data) => { setDemandeRevancheRecue(data.couleur); });
-    socket.on("revanche_refusee", () => {
-      setDemandeRevancheRecue(null);
-      setRevancheDemandeeParMoi(false);
-    });
+    socket.on("revanche_refusee", () => { setDemandeRevancheRecue(null); setRevancheDemandeeParMoi(false); });
     socket.on("erreur", () => { setStatutConnexion("erreur"); });
     return () => socket.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -794,6 +912,19 @@ export default function App() {
     socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
   }, []);
 
+  const gererErreur404 = useCallback((err) => {
+    if (err.response?.status === 404) {
+      setPopup({
+        type: "temps_ecoule",
+        titre: t("partiePerdue", L),
+        message: t("serveurRedemarre", L),
+        gagnant: null, couleurGagnant: null
+      });
+      return true;
+    }
+    return false;
+  }, [L]);
+
   const declencherIA = useCallback(async (etatCourant, partieIdCourant, mode, niveau) => {
     if (!partieIdCourant || !etatCourant || mode === "aucune") return;
     const tourIA = mode === "j1" ? 0 : 1;
@@ -805,19 +936,9 @@ export default function App() {
       setEtat(res.data.etat);
     } catch (err) {
       console.error("Erreur IA:", err);
-      if (err.response?.status === 404) {
-        setPopup({
-          type: "temps_ecoule",
-          titre: t("partiePerdue", L),
-          message: t("serveurRedemarre", L),
-          gagnant: null,
-          couleurGagnant: null
-        });
-      }
-    }
-    finally { setIaEnCours(false); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [L]);
+      gererErreur404(err);
+    } finally { setIaEnCours(false); }
+  }, [gererErreur404]);
 
   useEffect(() => {
     if (etape === "jeu" && etat && partieId && modeIA !== "aucune" && !iaEnCours && !attenteChoixPouvoir) {
@@ -826,20 +947,6 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir]);
-
-  const gererErreur404 = (err) => {
-    if (err.response?.status === 404) {
-      setPopup({
-        type: "temps_ecoule",
-        titre: t("partiePerdue", L),
-        message: t("serveurRedemarre", L),
-        gagnant: null,
-        couleurGagnant: null
-      });
-      return true;
-    }
-    return false;
-  };
 
   const envoyerPouvoir = useCallback(async (body) => {
     try {
@@ -856,8 +963,7 @@ export default function App() {
       console.error("Erreur pouvoir:", err);
       gererErreur404(err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partieId, modeIA, niveauIA, declencherIA, L]);
+  }, [partieId, modeIA, niveauIA, declencherIA, L, gererErreur404]);
 
   const handlePoserPiece = useCallback(async (idx, origine) => {
     if (!partieId || estTourIA || !estMonTour) return;
@@ -867,19 +973,16 @@ export default function App() {
       });
       setEtat(res.data.etat);
       setPieceIdx(null);
-
       if (res.data.double_tour_consomme) {
         setBonusDoubleActif(false);
         setBonusUtilise(false);
       }
-
       if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
       if (res.data.manche_terminee || res.data.victoire_immediate) {
         const scores = calculer_scores_locaux(res.data.etat);
         setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
         return;
       }
-
       const puzzlesCompletes = res.data.puzzles_completes || [];
       const attenteServeur = res.data.attente_pouvoir === true;
       if (puzzlesCompletes.length > 0 || attenteServeur) {
@@ -895,14 +998,12 @@ export default function App() {
       console.error("Erreur pose:", err);
       gererErreur404(err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partieId, estTourIA, estMonTour, modeIA, niveauIA, declencherIA, L]);
+  }, [partieId, estTourIA, estMonTour, modeIA, niveauIA, declencherIA, gererErreur404]);
 
   const handlePouvoir = useCallback((choix) => {
     setPopup(null);
-    if (choix === "rien") {
-      envoyerPouvoir({ pouvoir: "rien" });
-    } else if (choix === "proteger") {
+    if (choix === "rien") envoyerPouvoir({ pouvoir: "rien" });
+    else if (choix === "proteger") {
       setAttenteChoixPouvoir(true);
       setPopup({ type: "attente_cible", pouvoir: "proteger", message: t("cliquerTienne", L) });
     } else if (choix === "echanger") {
@@ -914,13 +1015,11 @@ export default function App() {
       setAttenteChoixPouvoir(true);
       setPopup({ type: "attente_extraire", message: t("cliquer1ou2", L) });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [envoyerPouvoir, L]);
 
   const handleCiblePouvoir = useCallback(async (position) => {
     const p = popupRef.current;
     if (!p) return;
-
     if (p.type === "attente_extraire") {
       const posKey = `${position[0]},${position[1]}`;
       setExtractionsEnCours(prev => {
@@ -930,7 +1029,6 @@ export default function App() {
       });
       return;
     }
-
     if (p.type === "attente_recoloriage") {
       setPopup(null);
       try {
@@ -945,22 +1043,17 @@ export default function App() {
       }
       return;
     }
-
     if (p.type === "attente_cible") {
       const pouvoir = p.pouvoir;
       setPopup(null);
       await envoyerPouvoir({ pouvoir, cible_pouvoir: position });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partieId, modeIA, niveauIA, declencherIA, envoyerPouvoir, L]);
+  }, [partieId, modeIA, niveauIA, declencherIA, envoyerPouvoir, gererErreur404]);
 
   const handleConfirmerExtraction = useCallback(async () => {
     setPopup(null);
-    if (extractionsEnCours.length === 0) {
-      await envoyerPouvoir({ pouvoir: "rien" });
-    } else {
-      await envoyerPouvoir({ pouvoir: "extraire", extraire: extractionsEnCours });
-    }
+    if (extractionsEnCours.length === 0) await envoyerPouvoir({ pouvoir: "rien" });
+    else await envoyerPouvoir({ pouvoir: "extraire", extraire: extractionsEnCours });
     setExtractionsEnCours([]);
   }, [extractionsEnCours, envoyerPouvoir]);
 
@@ -1019,11 +1112,17 @@ export default function App() {
     setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null);
     setMancheTermineeInfo(null); setPauseActive(false); setDemandePauseRecue(null);
     setDemandeRevancheRecue(null); setRevancheDemandeeParMoi(false);
+    setIaEnCours(false);
     setEtape(utilisateur ? "taille" : "auth");
   };
 
+  // ── FIX MAJEUR : lancerRevanche ──
   const lancerRevanche = useCallback(async () => {
     const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+
+    // ÉTAPE 1 : TOUJOURS réinitialiser les timers AVANT (fix temps écoulé)
+    setTimerRouge(timerChoisi);
+    setTimerNoir(timerChoisi);
 
     if (modeMultijoueur) {
       try {
@@ -1036,14 +1135,12 @@ export default function App() {
         gererErreur404(e);
       }
     } else {
+      // Mode IA : reset COMPLET avant de relancer
       try {
         const res = await axios.post(`${API}/revanche/${partieId}`);
         if (res.data.succes) {
-          setAttenteChoixPouvoir(true);
-          setEtat(res.data.etat);
-          if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
-          setTimerRouge(timerChoisi);
-          setTimerNoir(timerChoisi);
+          // FIX : reset dans le bon ordre
+          setIaEnCours(false);
           setPieceIdx(null);
           setExtractionsEnCours([]);
           setPieceADonner(null);
@@ -1051,11 +1148,18 @@ export default function App() {
           setBonusDoubleActif(false);
           setBonusUtilise(false);
           setReconnaissanceTentee(false);
+          setAttenteChoixPouvoir(false); // crucial : remettre à false
           setPopup(null);
 
-          await new Promise(r => setTimeout(r, 150));
-          setAttenteChoixPouvoir(false);
+          setEtat(res.data.etat);
+          if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
 
+          // timers remis à zéro
+          setTimerRouge(timerChoisi);
+          setTimerNoir(timerChoisi);
+
+          // Petit délai puis déclencher IA si c'est à elle de jouer
+          await new Promise(r => setTimeout(r, 200));
           if (res.data.etat) {
             await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
           }
@@ -1065,20 +1169,71 @@ export default function App() {
         gererErreur404(e);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monRole, modeMultijoueur, partieId, timerChoisi, modeIA, niveauIA, declencherIA, L]);
+  }, [monRole, modeMultijoueur, partieId, timerChoisi, modeIA, niveauIA, declencherIA, gererErreur404]);
 
-  // ── Rendu étapes ──
-  if (etape === "taille") return <div className="app"><EcranTaille onValider={handleTailleValidee} L={L} /></div>;
+  // ── Paiement ──
+  const handlePaiement = async (plan) => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API}/stripe/checkout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ plan })
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch(e) { console.error("Erreur paiement:", e); }
+  };
+
+  const onDeconnecter = () => {
+    localStorage.removeItem("elmaas_token");
+    localStorage.removeItem("elmaas_user");
+    setUtilisateur(null);
+    setShowParametres(false);
+    handleReset();
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // RENDUS
+  // ══════════════════════════════════════════════════════════
+
+  // Bouton Paramètres flottant (partout sauf jeu où il est dans le header)
+  const boutonParamsFlottant = etape !== "jeu" && (
+    <BtnParamsFlottant L={L} onClick={() => setShowParametres(true)} />
+  );
+
+  const popupParams = showParametres && (
+    <PopupParametres
+      utilisateur={utilisateur}
+      L={L}
+      indexLangue={indexLangue}
+      changerLangue={changerLangue}
+      onFermer={() => setShowParametres(false)}
+      onDeconnecter={onDeconnecter}
+      onPaiement={handlePaiement}
+    />
+  );
+
+  if (etape === "taille") return (
+    <div className="app">
+      {boutonParamsFlottant}
+      {popupParams}
+      <EcranTaille onValider={handleTailleValidee} L={L} />
+    </div>
+  );
 
   if (etape === "auth") return (
     <div className="app">
+      {boutonParamsFlottant}
+      {popupParams}
       <EcranAuth onConnecte={(user) => { setUtilisateur(user); setEtape("taille"); }} L={L} />
     </div>
   );
 
   if (etape === "photo") return (
     <div className="app">
+      {boutonParamsFlottant}
+      {popupParams}
       {modeIA === "aucune" && (
         <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
           <button className="btn-action" style={{ fontSize: 15, padding: "10px 20px" }}
@@ -1089,16 +1244,16 @@ export default function App() {
       )}
       <EcranPhoto2
         prop1={props.j1} prop2={props.j2} timerSec={timerChoisi}
-        utilisateur={utilisateur}
-        modeIA={modeIA}
-        onPartieCreee={handlePartieCreee}
-        L={L}
+        utilisateur={utilisateur} modeIA={modeIA}
+        onPartieCreee={handlePartieCreee} L={L}
       />
     </div>
   );
 
   if (etape === "lobby") return (
     <div className="app">
+      {boutonParamsFlottant}
+      {popupParams}
       <EcranLobby partieId={partieId} monRole={monRole} statutConnexion={statutConnexion}
         onRejoindreManuellement={handleRejoindreManuellement} L={L} />
     </div>
@@ -1109,68 +1264,7 @@ export default function App() {
     <div className="app jeu">
 
       {showClassement && <EcranClassement utilisateur={utilisateur} onFermer={() => setShowClassement(false)} L={L} />}
-
-      {showParametres && (
-        <div className="popup-overlay">
-          <div className="popup-pouvoir" style={{ minWidth: 320, gap: 14 }}>
-            <div className="popup-titre">{t("parametres", L)}</div>
-
-            {utilisateur && (
-              <div style={{ width: "100%", borderBottom: "1px solid var(--bord)", paddingBottom: 12 }}>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>{t("compte", L)}</div>
-                <div style={{ fontSize: 15, color: "var(--texte)", marginBottom: 8 }}>{utilisateur.pseudo} — {utilisateur.email}</div>
-                <div style={{ fontSize: 13, color: "var(--rouge-c)", marginBottom: 8 }}>{t("elo", L)} {utilisateur.elo}</div>
-                <button className="popup-btn" style={{ fontSize: 13 }}
-                  onClick={() => {
-                    localStorage.removeItem("elmaas_token");
-                    localStorage.removeItem("elmaas_user");
-                    setUtilisateur(null);
-                    setShowParametres(false);
-                    handleReset();
-                  }}>
-                  {t("seDeconnecter", L)}
-                </button>
-              </div>
-            )}
-
-            {/* Langue */}
-            <div style={{ width: "100%" }}>
-              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>{t("langue", L)}</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {LANGUES.map((lang, idx) => (
-                  <button key={lang.code}
-                    className={`ia-btn ${indexLangue === idx ? "actif" : ""}`}
-                    style={{ fontSize: 13 }}
-                    onClick={() => changerLangue(idx)}>
-                    {lang.nom}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {utilisateur && !utilisateur.premium && (
-              <button className="btn-valider" style={{ fontSize: 14, padding: "10px 24px" }}
-                onClick={async () => {
-                  try {
-                    const token = localStorage.getItem("elmaas_token");
-                    const res = await fetch(`${API}/stripe/checkout`, {
-                      method: "POST",
-                      headers: { Authorization: `Bearer ${token}` }
-                    });
-                    const data = await res.json();
-                    if (data.url) window.location.href = data.url;
-                  } catch(e) { console.error("Erreur paiement"); }
-                }}>
-                {t("passerPremiumBtn", L)}
-              </button>
-            )}
-            {utilisateur?.premium && (
-              <div style={{ color: "#88ff88", fontSize: 14 }}>{t("premiumActif", L)}</div>
-            )}
-            <button className="popup-btn" onClick={() => setShowParametres(false)}>{t("fermer", L)}</button>
-          </div>
-        </div>
-      )}
+      {popupParams}
 
       {/* Fin de manche */}
       {mancheTermineeInfo && (
@@ -1211,8 +1305,7 @@ export default function App() {
               <span>{t("manchesNoir", L)} <strong style={{ color: "#aaaaaa" }}>{scoresManches.noir}</strong></span>
             </div>
             <div className="popup-options" style={{ flexDirection: "row", gap: 10, justifyContent: "center" }}>
-              <button className="popup-btn" style={{ flex: 1 }}
-                onClick={lancerRevanche}>
+              <button className="popup-btn" style={{ flex: 1 }} onClick={lancerRevanche}>
                 {modeMultijoueur ? t("demanderRevanche", L) : t("revanche", L)}
               </button>
               <button className="popup-btn" style={{ flex: 1 }} onClick={handleReset}>
@@ -1240,12 +1333,10 @@ export default function App() {
                 <div className="popup-titre">{t("pauseDemandee", L)}</div>
                 <div style={{ color: "var(--muted)", fontSize: 14 }}>{t("adversaireDemandePause", L)}</div>
                 <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
-                  <button className="popup-btn" style={{ flex: 1 }}
-                    onClick={() => axios.post(`${API}/pause/accepter/${partieId}`)}>
+                  <button className="popup-btn" style={{ flex: 1 }} onClick={() => axios.post(`${API}/pause/accepter/${partieId}`)}>
                     {t("accepter", L)}
                   </button>
-                  <button className="popup-btn" style={{ flex: 1 }}
-                    onClick={() => axios.post(`${API}/pause/refuser/${partieId}`)}>
+                  <button className="popup-btn" style={{ flex: 1 }} onClick={() => axios.post(`${API}/pause/refuser/${partieId}`)}>
                     {t("refuser", L)}
                   </button>
                 </div>
@@ -1259,8 +1350,7 @@ export default function App() {
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
             <div className="popup-titre">{t("jeuEnPause", L)}</div>
-            <button className="popup-btn"
-              onClick={() => axios.post(`${API}/pause/reprendre/${partieId}`)}>
+            <button className="popup-btn" onClick={() => axios.post(`${API}/pause/reprendre/${partieId}`)}>
               {t("reprendre", L)}
             </button>
           </div>
@@ -1298,9 +1388,7 @@ export default function App() {
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
             <div className="popup-titre">{t("revancheDemandee", L)}</div>
-            <div style={{ color: "var(--muted)", fontSize: 14 }}>
-              {t("attenteReponseAdverse", L)}
-            </div>
+            <div style={{ color: "var(--muted)", fontSize: 14 }}>{t("attenteReponseAdverse", L)}</div>
             <button className="popup-btn"
               onClick={async () => {
                 await axios.post(`${API}/revanche/refuser/${partieId}`);
@@ -1314,8 +1402,8 @@ export default function App() {
       )}
 
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} L={L} />}
-      {popup?.type === "scout"   && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
-      {popup?.type === "manuel"  && <PopupManuel onFermer={() => setPopup(null)} L={L} />}
+      {popup?.type === "scout" && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
+      {popup?.type === "manuel" && <PopupManuel onFermer={() => setPopup(null)} L={L} />}
       {popup?.type === "reconnaissance" && (
         <PopupReconnaissance
           indice={indiceReconnaissance}
@@ -1364,70 +1452,63 @@ export default function App() {
           gagnant={popup.gagnant}
           couleurGagnant={popup.couleurGagnant}
           textRevanche={modeMultijoueur ? t("demanderRevanche", L) : t("revanche", L)}
-          onFermer={() => {
-            setPopup(null);
-            handleReset();
-          }}
+          onFermer={() => { setPopup(null); handleReset(); }}
           onRevanche={lancerRevanche}
           L={L}
         />
       )}
 
-      {/* Header */}
+      {/* Header (layout style Chess.com) */}
       <header className="app-header">
-        <h1 className="titre-jeu-petit">ELMAAS</h1>
-
-        <div className="scores">
-          <div className="score-item rouge">
-            <span className="score-nb">{etat?.scores?.rouge ?? 0}</span>
-            <span className="score-lbl">{t("rouge", L)}</span>
-            <span style={{ fontSize: 10, color: "var(--muted)" }}>{scoresManches.rouge} {scoresManches.rouge > 1 ? t("manches", L) : t("manche", L)}</span>
+        <div className="header-gauche">
+          <h1 className="titre-jeu-petit">ELMAAS</h1>
+          <div className="scores">
+            <div className="score-item rouge">
+              <span className="score-nb">{etat?.scores?.rouge ?? 0}</span>
+              <span className="score-lbl">{t("rouge", L)} · {scoresManches.rouge}</span>
+            </div>
+            <div className="score-sep">vs</div>
+            <div className="score-item noir">
+              <span className="score-nb">{etat?.scores?.noir ?? 0}</span>
+              <span className="score-lbl">{t("noir", L)} · {scoresManches.noir}</span>
+            </div>
           </div>
-          <div className="score-sep">vs</div>
-          <div className="score-item noir">
-            <span className="score-nb">{etat?.scores?.noir ?? 0}</span>
-            <span className="score-lbl">{t("noir", L)}</span>
-            <span style={{ fontSize: 10, color: "var(--muted)" }}>{scoresManches.noir} {scoresManches.noir > 1 ? t("manches", L) : t("manche", L)}</span>
+        </div>
+
+        <div className="header-centre">
+          <div className="timers">
+            {modeIA !== "j1" && (
+              <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} L={L} />
+            )}
+            {modeIA !== "j2" && (
+              <TimerBloc secondes={timerNoir} couleur="noir" actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} L={L} />
+            )}
           </div>
         </div>
 
-        <div className="timers">
-          {modeIA !== "j1" && (
-            <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} L={L} />
-          )}
-          {modeIA !== "j2" && (
-            <TimerBloc secondes={timerNoir}  couleur="noir"  actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} L={L} />
-          )}
-        </div>
+        <div className="header-droite">
+          <div className="tour-info">
+            {t("tour", L)} {etat?.numero_tour}
+            {modeMultijoueur && (
+              <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
+                {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
+              </span>
+            )}
+            {bonusDoubleActif && <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>{t("doubleTourActif", L)}</span>}
+            {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
+            {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurActif.serie_actuelle}</span>}
+          </div>
 
-        <div className="tour-info">
-          {t("tour", L)} {etat?.numero_tour} —
-          <span className={"couleur-actif " + joueurActif?.couleur}> {trCouleur(joueurActif?.couleur)}</span>
-          {modeMultijoueur && (
-            <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
-              {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
-            </span>
-          )}
-          {bonusDoubleActif && monRole === "joueur2" && (
-            <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>
-              {t("doubleTourActif", L)}
-            </span>
-          )}
-          {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
-          {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurActif.serie_actuelle}</span>}
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {utilisateur && (
-            <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "right" }}>
               <div style={{ color: "var(--texte)" }}>{utilisateur.pseudo}</div>
-              <div style={{ color: "var(--rouge-c)" }}>ELO {utilisateur.elo}</div>
+              <div style={{ color: "var(--rouge-c)" }}>ELM {utilisateur.elo}</div>
             </div>
           )}
-          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}
-            style={{ width: 34, height: 34, fontSize: 16 }}>⚙</button>
-          <button className="btn-manuel" onClick={() => setShowClassement(true)} title={t("classementElo", L)}
-            style={{ width: 34, height: 34, fontSize: 14 }}>ELO</button>
+
+          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>⚙</button>
+          <button className="btn-manuel" onClick={() => setShowClassement(true)} title={t("classementElm", L)}
+            style={{ fontSize: 10, letterSpacing: "0.1em" }}>ELM</button>
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
           <button className="btn-reset" onClick={handleAbandon}>{t("nouvellePartie", L)}</button>
         </div>
@@ -1443,11 +1524,8 @@ export default function App() {
       </div>
 
       <div className="zone-jeu">
-
         <div className="panneau-main">
-          <div className="panneau-titre">
-            {t("mesPieces", L)} ({trCouleur(joueurActif?.couleur)})
-          </div>
+          <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurActif?.couleur)})</div>
           <div className="main-pieces-list">
             {(joueurActif?.main_active || []).map((piece, i) => {
               const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
@@ -1458,45 +1536,23 @@ export default function App() {
                   <MiniPiece piece={piece} couleur={joueurActif?.couleur}
                     estSelectionnee={pieceIdx === i || estSelectPourDonner}
                     onClick={() => {
-                      if (clickProteger) {
-                        setPopup(null);
-                        envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i });
-                      } else if (clickEchanger) {
-                        setPieceADonner(pieceADonner === i ? null : i);
-                      } else if (!enModeCible && !attenteChoixPouvoir && estMonTour) {
-                        setPieceIdx(pieceIdx === i ? null : i);
-                      }
+                      if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
+                      else if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
+                      else if (!enModeCible && !attenteChoixPouvoir && estMonTour) { setPieceIdx(pieceIdx === i ? null : i); }
                     }} />
-                  {clickProteger && (
-                    <div style={{ position: "absolute", inset: 0, border: "2px dashed #88ff88",
-                      borderRadius: 6, pointerEvents: "none", opacity: 0.7 }} />
-                  )}
-                  {estSelectPourDonner && (
-                    <div style={{ position: "absolute", inset: 0, border: "2px solid #88ff88",
-                      borderRadius: 6, pointerEvents: "none" }} />
-                  )}
-                  {clickEchanger && pieceADonner === null && (
-                    <div style={{ position: "absolute", inset: 0, border: "2px dashed #88ff8866",
-                      borderRadius: 6, pointerEvents: "none" }} />
-                  )}
+                  {clickProteger && <div style={{ position: "absolute", inset: 0, border: "2px dashed #88ff88", borderRadius: 6, pointerEvents: "none", opacity: 0.7 }} />}
+                  {estSelectPourDonner && <div style={{ position: "absolute", inset: 0, border: "2px solid #88ff88", borderRadius: 6, pointerEvents: "none" }} />}
+                  {clickEchanger && pieceADonner === null && <div style={{ position: "absolute", inset: 0, border: "2px dashed #88ff8866", borderRadius: 6, pointerEvents: "none" }} />}
                 </div>
               );
             })}
           </div>
-          {(joueurActif?.main_active || []).length === 0 && (
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>
-          )}
-
-          <div className="panneau-titre" style={{ marginTop: 10 }}>
-            {t("reserve", L)} {joueurActif?.nb_pieces_reserve}
-          </div>
+          {(joueurActif?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
+          <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurActif?.nb_pieces_reserve}</div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>
             {t("piecesPosees", L)} {joueurActif?.nb_pieces_posees_depuis_regen ?? 0} / {joueurActif?.seuil_regen_actuel ?? 5}
           </div>
-          <div className="serie-info">
-            {t("serieLabel", L)} {joueurActif?.serie_actuelle}
-          </div>
-
+          <div className="serie-info">{t("serieLabel", L)} {joueurActif?.serie_actuelle}</div>
           {(() => {
             const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
             const mainAdverse = joueurAdverse?.main_active || [];
@@ -1513,21 +1569,15 @@ export default function App() {
                         onClick={() => {
                           if (clickEchanger) {
                             if (pieceADonner === null) return;
-                            setPopup(null);
-                            setPieceADonner(null);
+                            setPopup(null); setPieceADonner(null);
                             envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i, piece_index_donner: pieceADonner });
                           }
                         }} />
-                      {clickEchanger && (
-                        <div style={{ position: "absolute", inset: 0, border: "2px dashed #ff8888",
-                          borderRadius: 6, pointerEvents: "none", opacity: 0.8 }} />
-                      )}
+                      {clickEchanger && <div style={{ position: "absolute", inset: 0, border: "2px dashed #ff8888", borderRadius: 6, pointerEvents: "none", opacity: 0.8 }} />}
                     </div>
                   ))}
                 </div>
-                {mainAdverse.length === 0 && (
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainAdverseVide", L)}</div>
-                )}
+                {mainAdverse.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainAdverseVide", L)}</div>}
               </>
             );
           })()}
@@ -1535,15 +1585,12 @@ export default function App() {
 
         <div className="plateau-central">
           <Board
-            etat={etat}
-            taille={taille}
+            etat={etat} taille={taille}
             couleurJoueur={joueurActif?.couleur}
             pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurActif?.main_active[pieceIdx] : null}
-            pieceIdx={pieceIdx}
-            pixelsPhoto={pixelsPhoto}
+            pieceIdx={pieceIdx} pixelsPhoto={pixelsPhoto}
             onPoserPiece={!enModeCible && !attenteChoixPouvoir ? handlePoserPiece : null}
-            modeCible={enModeCible}
-            extractionsEnCours={extractionsEnCours}
+            modeCible={enModeCible} extractionsEnCours={extractionsEnCours}
             onCibleSelectionnee={enModeCible ? handleCiblePouvoir : null}
           />
         </div>

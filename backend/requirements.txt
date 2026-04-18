@@ -11,3 +11,6 @@ bcrypt==5.0.0
 pyjwt==2.10.1
 stripe
 psycopg2-binary==2.9.9
+pytesseract
+Authlib
+requests

@@ -23,6 +23,12 @@ from models import db, Utilisateur, calculer_elo, PartieDB
 import json as _json
 from auth import auth_bp
 from stripe_routes import stripe_bp
+from ocr_check import verifier_photo
+try:
+    from google_oauth import google_bp, init_google_oauth
+    GOOGLE_OAUTH_DISPO = True
+except ImportError:
+    GOOGLE_OAUTH_DISPO = False
 
 app = Flask(__name__)
 db_url = os.environ.get("DATABASE_URL", "sqlite:///elmaas.db")
@@ -35,6 +41,9 @@ CORS(app, origins="*")
 db.init_app(app)
 app.register_blueprint(auth_bp)
 app.register_blueprint(stripe_bp)
+if GOOGLE_OAUTH_DISPO:
+    app.register_blueprint(google_bp)
+    init_google_oauth(app)
 
 with app.app_context():
     db.create_all()
@@ -247,7 +256,17 @@ def nouvelle_partie():
             img.save(chemin_temp)
         else:
             return jsonify({"erreur": "Aucune photo fournie"}), 400
-
+        langue = request.form.get("langue", "fr")
+        ocr_resultat = verifier_photo(chemin_temp, langue=langue)
+        if not ocr_resultat["autorisee"]:
+            import os as _os
+            try: _os.remove(chemin_temp)
+            except: pass
+            return jsonify({
+                "erreur": ocr_resultat["message"],
+                "code": "OCR_BLOCKED",
+                "mot_trouve": ocr_resultat.get("mot_trouve")
+            }), 403
         donnees = traiter_photo(chemin_temp)
         plateau = generer_puzzles(donnees)
         etat = initialiser_jeu(plateau)
@@ -660,12 +679,10 @@ def _lancer_revanche(partie_id: str):
     if gagnant in ("rouge", "noir"):
         scores_manches[partie_id][gagnant] = scores_manches[partie_id].get(gagnant, 0) + 1
 
-    # Nettoyer le plateau
     plateau_propre = reinitialiser_plateau(ancien_plateau)
-
-    # Créer un nouvel état de jeu
     nouveau_etat = initialiser_jeu(plateau_propre)
     nouveau_etat.tour_actuel = 1  # Noir commence
+    # FIX CRUCIAL : timestamp à MAINTENANT (sinon timer = 0 au démarrage)
     nouveau_etat.timestamp_debut_tour = time.time()
 
     parties[partie_id] = nouveau_etat
@@ -673,6 +690,7 @@ def _lancer_revanche(partie_id: str):
     demandes_pause[partie_id] = None
     bonus_double_tour[partie_id] = False
     reconnaissance_tentee[partie_id] = False
+    demandes_revanche[partie_id] = None  # FIX : nettoyer
 
     etat_serialise = serialiser_etat(nouveau_etat)
     socketio.emit("revanche_lancee", {
@@ -685,7 +703,6 @@ def _lancer_revanche(partie_id: str):
         "etat": etat_serialise,
         "scores_manches": scores_manches[partie_id],
     })
-
 
 @app.route("/revanche/<partie_id>", methods=["POST"])
 def revanche(partie_id: str):

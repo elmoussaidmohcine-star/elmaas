@@ -10,7 +10,9 @@ db = SQLAlchemy()
 
 class Utilisateur(db.Model):
     __tablename__ = "utilisateurs"
-
+    google_id = db.Column(db.String(100), unique=True, nullable=True)
+    plan = db.Column(db.String(20), default=None, nullable=True)  # 'elmaasyon' ou 'elmaas'
+    date_inscription = db.Column(db.DateTime, default=db.func.now())
     id            = db.Column(db.Integer, primary_key=True)
     email         = db.Column(db.String(120), unique=True, nullable=False)
     mot_de_passe  = db.Column(db.String(200), nullable=False)  # hashé bcrypt
@@ -40,6 +42,8 @@ class Utilisateur(db.Model):
         return {
             "id": self.id,
             "pseudo": self.pseudo,
+            "plan": self.plan,
+            "date_inscription": self.date_inscription.isoformat() if self.date_inscription else None,
             "email": self.email,
             "elo": self.elo,
             "parties_jouees": self.parties_jouees,

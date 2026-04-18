@@ -19,6 +19,31 @@ WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 # ── Créer une session de paiement Stripe Checkout ───────────
 
 @stripe_bp.route("/stripe/checkout", methods=["POST"])
+def checkout():
+    user = get_user_from_request()
+    if not user:
+        return jsonify({"erreur": "Non authentifié"}), 401
+    data = request.get_json() or {}
+    plan = data.get("plan", "elmaas")  # 'elmaasyon' ou 'elmaas'
+
+    price_id = {
+        "elmaasyon": os.environ.get("STRIPE_PRICE_ID_ELMAASYON"),
+        "elmaas": os.environ.get("STRIPE_PRICE_ID_ELMAAS"),
+    }.get(plan)
+
+    if not price_id:
+        return jsonify({"erreur": "Plan invalide"}), 400
+
+    session = stripe.checkout.Session.create(
+        customer_email=user.email,
+        payment_method_types=["card"],
+        mode="subscription",
+        line_items=[{"price": price_id, "quantity": 1}],
+        success_url=f"{FRONTEND_URL}?paiement=succes&plan={plan}",
+        cancel_url=f"{FRONTEND_URL}?paiement=annule",
+        metadata={"user_id": user.id, "plan": plan},
+    )
+    return jsonify({"url": session.url})
 def create_checkout():
     user = get_user_from_request()
     if not user:
@@ -62,17 +87,16 @@ def webhook():
             )
     except Exception as e:
         return jsonify({"erreur": str(e)}), 400
-
     # Paiement réussi → activer premium
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        user_id = session.get("metadata", {}).get("user_id")
-        if user_id:
-            user = Utilisateur.query.get(int(user_id))
-            if user:
-                user.premium = True
-                user.stripe_customer_id = session.get("customer", "")
-                db.session.commit()
+        user_id = session["metadata"].get("user_id")
+        plan = session["metadata"].get("plan", "elmaas")
+        user = Utilisateur.query.get(user_id)
+        if user:
+            user.premium = True
+            user.plan = plan
+            db.session.commit()
 
     # Abonnement annulé → désactiver premium
     elif event["type"] in ("customer.subscription.deleted", "customer.subscription.paused"):
