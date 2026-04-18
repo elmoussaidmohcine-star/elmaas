@@ -15,7 +15,7 @@ from PIL import Image
 from image_processor import traiter_photo
 from puzzle_generator import generer_puzzles, Plateau, Puzzle
 from pieces_generator import serialiser_piece
-from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, calculer_score_cellules
+from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, calculer_score_cellules, reinitialiser_plateau
 from ai_player import jouer_ia
 from config import DEBUG
 from models import db, Utilisateur, calculer_elo, PartieDB
