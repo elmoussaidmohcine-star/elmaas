@@ -1,4 +1,4 @@
-// ELMAAS App.js v6 — Revanche mutuelle + timer J2 synchronisé + popup temps écoulé
+// ELMAAS App.js v7 — Fix complet revanche + timer IA + estMonTour
 import { useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -14,7 +14,7 @@ function getUser()  {
   catch { return null; }
 }
 
-// ── Écran Auth (Connexion / Inscription) ──────────────────────
+// ── Écran Auth ────────────────────────────────────────────────
 function EcranAuth({ onConnecte }) {
   const [mode, setMode] = useState("connexion");
   const [email, setEmail] = useState("");
@@ -366,7 +366,7 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
 function TimerBloc({ secondes, couleur, actif }) {
   const m = Math.floor(secondes / 60);
   const s = secondes % 60;
-  const danger = secondes <= 30;
+  const danger = secondes <= 10;
   return (
     <div className={`timer-bloc ${couleur} ${actif ? "actif" : ""}`}>
       <span className="timer-label">{couleur === "rouge" ? "Rouge" : "Noir"}</span>
@@ -504,31 +504,20 @@ function PopupManuel({ onFermer }) {
           </div>
           <div className="manuel-section">
             <div className="manuel-titre-section">Types de puzzles</div>
-            <p><span className="tag-rouge">R</span> Rouge — completé si toutes ses cellules sont rouges (rouge gagne) ou toutes noires (noir gagne). Un melange bloque la completion.</p>
+            <p><span className="tag-rouge">R</span> Rouge — completé si toutes ses cellules sont rouges (rouge gagne) ou toutes noires (noir gagne).</p>
             <p><span className="tag-noir">N</span> Noir — meme logique inversee.</p>
-            <p><span className="tag-mixte">R+N</span> Mixte — doit contenir les deux couleurs. Le joueur qui pose la derniere piece le gagne.</p>
-            <p>Les puzzles mono ont une taille maximale de 6 cellules. Les puzzles mixtes peuvent etre plus grands.</p>
+            <p><span className="tag-mixte">R+N</span> Mixte — doit contenir les deux couleurs.</p>
           </div>
           <div className="manuel-section">
             <div className="manuel-titre-section">Actions par tour</div>
-            <p><strong>Poser</strong> — sélectionne une pièce et clique sur le plateau pour la placer.</p>
-            <p><strong>Repiocher</strong> — passe ton tour, échange ta main contre 5 nouvelles pièces.</p>
-            <p><strong>Scout</strong> — voir 10 prochaines pièces. En échange 2 de ta main sont swappées. Dispo si &gt; 3 pièces en main.</p>
+            <p><strong>Poser</strong> — sélectionne une pièce et clique sur le plateau.</p>
+            <p><strong>Repiocher</strong> — passe ton tour, échange ta main.</p>
+            <p><strong>Scout</strong> — voir 10 prochaines pièces.</p>
           </div>
           <div className="manuel-section">
-            <div className="manuel-titre-section">Après un puzzle complété</div>
-            <p><strong>Rien</strong> — passer au tour suivant.</p>
-            <p><strong>Protéger</strong> — clique une de tes pièces. Invulnérable pendant 1 tour.</p>
-            <p><strong>Échanger</strong> — clique une pièce adverse. Elle devient ta couleur.</p>
-          </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section">Séries et bonus</div>
+            <div className="manuel-titre-section">Séries</div>
             <p><strong>3 puzzles d'affilée</strong> — extraire jusqu'à 2 pièces.</p>
             <p><strong>5 puzzles d'affilée</strong> — victoire immédiate.</p>
-          </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section">Pause et revanche</div>
-            <p>N'importe quel joueur peut demander une pause. L'adversaire peut l'accepter ou la refuser. En fin de manche, une revanche peut etre lancee : le plateau est conserve, les roles inverses — le joueur Noir commence toujours en revanche.</p>
           </div>
         </div>
         <button className="popup-btn" onClick={onFermer}>Fermer</button>
@@ -537,7 +526,7 @@ function PopupManuel({ onFermer }) {
   );
 }
 
-// ── Popup fin de partie / temps écoulé ────────────────────────
+// ── Popup fin de partie ───────────────────────────────────────
 function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onRevanche, textRevanche }) {
   return (
     <div className="popup-overlay" onClick={onFermer}>
@@ -606,7 +595,6 @@ export default function App() {
   const [demandePauseRecue, setDemandePauseRecue] = useState(null);
   const timerRef = useRef(null);
 
-  // Extraction série
   const [extractionsEnCours, setExtractionsEnCours] = useState([]);
   const [pieceADonner, setPieceADonner] = useState(null);
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
@@ -616,24 +604,25 @@ export default function App() {
   const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
   const estTourIA = etat && modeIA !== "aucune" &&
     ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
+
+  // FIX: en mode IA, estMonTour = pas le tour de l'IA
   const estMonTour = modeIA !== "aucune"
-      ? !estTourIA
-      : (!modeMultijoueur || !monRole ||
-        (monRole === "joueur1" && etat?.tour_actuel === 0) ||
-        (monRole === "joueur2" && etat?.tour_actuel === 1));
+    ? !estTourIA
+    : (!modeMultijoueur || !monRole ||
+      (monRole === "joueur1" && etat?.tour_actuel === 0) ||
+      (monRole === "joueur2" && etat?.tour_actuel === 1));
 
   const enModeCible = ["attente_cible", "attente_extraire", "attente_recoloriage"].includes(popup?.type);
 
-  // Ref sur popup pour éviter closure stale
   const popupRef = useRef(null);
   useEffect(() => { popupRef.current = popup; }, [popup]);
 
-  // ── Timer synchronisé ──
+  // ── Timer ──
   useEffect(() => {
     clearInterval(timerRef.current);
     if (etape !== "jeu" || !etat || etat.manche_terminee || attenteChoixPouvoir || popup) return;
     if (modeMultijoueur && statutConnexion !== "connecte") return;
-    if (estTourIA || iaEnCours) return; // Timer suspendu pendant tour IA
+    if (estTourIA || iaEnCours) return;
 
     const tsDebut = etat.timestamp_debut_tour ? etat.timestamp_debut_tour * 1000 : Date.now();
 
@@ -694,7 +683,10 @@ export default function App() {
     });
     socket.on("pause_demandee", (data) => { setDemandePauseRecue(data.couleur); });
     socket.on("pause_active",   () => { setPauseActive(true); setDemandePauseRecue(null); });
-    socket.on("pause_terminee", () => { setPauseActive(false); });
+    socket.on("pause_terminee", (data) => {
+      setPauseActive(false);
+      if (data?.etat) setEtat(data.etat);
+    });
     socket.on("pause_refusee",  () => { setDemandePauseRecue(null); });
     socket.on("revanche_lancee", (data) => {
       setEtat(data.etat);
@@ -714,9 +706,7 @@ export default function App() {
       setTimerRouge(timerChoisi);
       setTimerNoir(timerChoisi);
     });
-    socket.on("revanche_demandee", (data) => {
-      setDemandeRevancheRecue(data.couleur);
-    });
+    socket.on("revanche_demandee", (data) => { setDemandeRevancheRecue(data.couleur); });
     socket.on("revanche_refusee", () => {
       setDemandeRevancheRecue(null);
       setRevancheDemandeeParMoi(false);
@@ -770,7 +760,6 @@ export default function App() {
       setTaille(res.data.taille);
       if (res.data.etat) setEtat(res.data.etat);
       if (res.data.indice) setIndiceReconnaissance(res.data.indice);
-      // ⚡ FIX TIMER J2 : récupérer le timer choisi par le J1
       if (res.data.timer_sec) {
         setTimerChoisi(res.data.timer_sec);
         setTimerRouge(res.data.timer_sec);
@@ -795,14 +784,13 @@ export default function App() {
         setPopup({
           type: "temps_ecoule",
           titre: "Partie perdue",
-          message: "Le serveur a redémarré et la partie a été perdue. Recommencez une nouvelle partie.",
+          message: "Le serveur a redémarré. Recommencez une nouvelle partie.",
           gagnant: null,
           couleurGagnant: null
         });
       }
     }
     finally { setIaEnCours(false); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -813,7 +801,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir]);
 
-  // ── Envoyer pouvoir ──
+  const gererErreur404 = (err, msg = "Le serveur a redémarré. Recommencez une nouvelle partie.") => {
+    if (err.response?.status === 404) {
+      setPopup({
+        type: "temps_ecoule",
+        titre: "Partie perdue",
+        message: msg,
+        gagnant: null,
+        couleurGagnant: null
+      });
+      return true;
+    }
+    return false;
+  };
+
   const envoyerPouvoir = useCallback(async (body) => {
     try {
       const res = await axios.post(`${API}/jouer/${partieId}`, { action: "pouvoir", ...body });
@@ -825,10 +826,12 @@ export default function App() {
         return;
       }
       await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
-    } catch (err) { console.error("Erreur pouvoir:", err); }
+    } catch (err) {
+      console.error("Erreur pouvoir:", err);
+      gererErreur404(err);
+    }
   }, [partieId, modeIA, niveauIA, declencherIA]);
 
-  // ── Poser une pièce ──
   const handlePoserPiece = useCallback(async (idx, origine) => {
     if (!partieId || estTourIA || !estMonTour) return;
     try {
@@ -861,10 +864,12 @@ export default function App() {
       } else {
         await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error("Erreur pose:", err);
+      gererErreur404(err);
+    }
   }, [partieId, estTourIA, estMonTour, modeIA, niveauIA, declencherIA]);
 
-  // ── Choix popup pouvoir ──
   const handlePouvoir = useCallback((choix) => {
     setPopup(null);
     if (choix === "rien") {
@@ -875,7 +880,7 @@ export default function App() {
     } else if (choix === "echanger") {
       setPieceADonner(null);
       setAttenteChoixPouvoir(true);
-      setPopup({ type: "attente_cible", pouvoir: "echanger", message: "1) Clique sur ta pièce à donner (vert), puis la pièce adverse à prendre (rouge)" });
+      setPopup({ type: "attente_cible", pouvoir: "echanger", message: "Clique ta pièce à donner puis la pièce adverse à prendre" });
     } else if (choix === "extraire") {
       setExtractionsEnCours([]);
       setAttenteChoixPouvoir(true);
@@ -883,7 +888,6 @@ export default function App() {
     }
   }, [envoyerPouvoir]);
 
-  // ── Clic plateau en mode pouvoir ──
   const handleCiblePouvoir = useCallback(async (position) => {
     const p = popupRef.current;
     if (!p) return;
@@ -906,7 +910,10 @@ export default function App() {
         });
         setEtat(res.data.etat);
         await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
-      } catch (err) { console.error("Erreur recoloriage:", err); }
+      } catch (err) {
+        console.error("Erreur recoloriage:", err);
+        gererErreur404(err);
+      }
       return;
     }
 
@@ -929,9 +936,14 @@ export default function App() {
 
   const handleRepiocher = async () => {
     if (!estMonTour) return;
-    const res = await axios.post(`${API}/jouer/${partieId}`, { action: "repiocher" });
-    setEtat(res.data.etat);
-    await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+    try {
+      const res = await axios.post(`${API}/jouer/${partieId}`, { action: "repiocher" });
+      setEtat(res.data.etat);
+      await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+    } catch (err) {
+      console.error("Erreur repiocher:", err);
+      gererErreur404(err);
+    }
   };
 
   const [scoutEchanges, setScoutEchanges] = useState([]);
@@ -945,7 +957,10 @@ export default function App() {
       setScoutPieces(res.data.pieces_vues || []);
       setScoutEchanges(res.data.echanges || []);
       setPopup({ type: "scout" });
-    } catch (err) { console.error("Erreur scout:", err); }
+    } catch (err) {
+      console.error("Erreur scout:", err);
+      gererErreur404(err);
+    }
   };
 
   const handleAbandon = () => {
@@ -977,6 +992,54 @@ export default function App() {
     setEtape(utilisateur ? "taille" : "auth");
   };
 
+  // Fonction revanche unifiée
+  const lancerRevanche = useCallback(async () => {
+    const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+
+    if (modeMultijoueur) {
+      try {
+        const res = await axios.post(`${API}/revanche/demander/${partieId}`, { couleur: maCouleur });
+        if (res.data.en_attente) setRevancheDemandeeParMoi(true);
+        setMancheTermineeInfo(null);
+        setPopup(null);
+      } catch (e) {
+        console.error("Erreur demande revanche:", e);
+        gererErreur404(e);
+      }
+    } else {
+      try {
+        const res = await axios.post(`${API}/revanche/${partieId}`);
+        if (res.data.succes) {
+          // Bloquer timer temporairement pour éviter déclenchement instantané
+          setAttenteChoixPouvoir(true);
+          setEtat(res.data.etat);
+          if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
+          setTimerRouge(timerChoisi);
+          setTimerNoir(timerChoisi);
+          setPieceIdx(null);
+          setExtractionsEnCours([]);
+          setPieceADonner(null);
+          setMancheTermineeInfo(null);
+          setBonusDoubleActif(false);
+          setBonusUtilise(false);
+          setReconnaissanceTentee(false);
+          setPopup(null);
+
+          await new Promise(r => setTimeout(r, 150));
+          setAttenteChoixPouvoir(false);
+
+          // Déclencher l'IA si c'est son tour (Noir commence = tour_actuel 1)
+          if (res.data.etat) {
+            await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+          }
+        }
+      } catch (e) {
+        console.error("Erreur revanche IA:", e);
+        gererErreur404(e);
+      }
+    }
+  }, [monRole, modeMultijoueur, partieId, timerChoisi, modeIA, niveauIA, declencherIA]);
+
   // ── Rendu étapes ──
   if (etape === "taille") return <div className="app"><EcranTaille onValider={handleTailleValidee} /></div>;
 
@@ -1004,22 +1067,14 @@ export default function App() {
       />
     </div>
   );
+
   if (etape === "lobby") return (
     <div className="app">
       <EcranLobby partieId={partieId} monRole={monRole} statutConnexion={statutConnexion}
         onRejoindreManuellement={handleRejoindreManuellement} />
     </div>
   );
-  console.log("[DEBUG]", {
-  modeIA,
-  tour_actuel: etat?.tour_actuel,
-  monRole,
-  estMonTour,
-  estTourIA,
-  timestamp: etat?.timestamp_debut_tour,
-  now: Date.now()/1000,
-  diff: Date.now()/1000 - (etat?.timestamp_debut_tour || 0)
-});
+
   // ── Écran jeu ──
   return (
     <div className="app jeu">
@@ -1047,16 +1102,6 @@ export default function App() {
                 </button>
               </div>
             )}
-            <div style={{ width: "100%" }}>
-              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>Langue</div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {[["fr","Francais"],["en","English"],["ar","العربية"],["es","Español"]].map(([code, nom]) => (
-                  <button key={code} className="ia-btn" style={{ fontSize: 13 }}>
-                    {nom}
-                  </button>
-                ))}
-              </div>
-            </div>
             {utilisateur && !utilisateur.premium && (
               <button className="btn-valider" style={{ fontSize: 14, padding: "10px 24px" }}
                 onClick={async () => {
@@ -1081,7 +1126,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Écran fin de manche (score normal) */}
+      {/* Fin de manche (score normal) */}
       {mancheTermineeInfo && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
@@ -1115,47 +1160,14 @@ export default function App() {
                 <div style={{ fontSize: 11, color: "var(--muted)" }}>Noir</div>
               </div>
             </div>
-            <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center" }}>
-              Score en cellules de puzzles completes
-            </div>
             <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 13, color: "var(--muted)" }}>
               <span>Manches Rouge : <strong style={{ color: "var(--rouge-c)" }}>{scoresManches.rouge}</strong></span>
               <span>Manches Noir : <strong style={{ color: "#aaaaaa" }}>{scoresManches.noir}</strong></span>
             </div>
             <div className="popup-options" style={{ flexDirection: "row", gap: 10, justifyContent: "center" }}>
               <button className="popup-btn" style={{ flex: 1 }}
-                onClick={async () => {
-                  const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
-                  if (modeMultijoueur) {
-                    try {
-                      const res = await axios.post(`${API}/revanche/demander/${partieId}`, { couleur: maCouleur });
-                      if (res.data.en_attente) setRevancheDemandeeParMoi(true);
-                      setMancheTermineeInfo(null);
-                    } catch (e) { console.error("Erreur demande revanche:", e); }
-                  } else {
-                    try {
-                      const res = await axios.post(`${API}/revanche/${partieId}`);
-                      if (res.data.succes) {
-                        setEtat(res.data.etat);
-                        if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
-                        setTimerRouge(timerChoisi);
-                        setTimerNoir(timerChoisi);
-                        setPieceIdx(null);
-                        setExtractionsEnCours([]);
-                        setPieceADonner(null);
-                        setAttenteChoixPouvoir(false);
-                        setMancheTermineeInfo(null);
-                        setBonusDoubleActif(false);
-                        setBonusUtilise(false);
-                        setReconnaissanceTentee(false);
-                        if (res.data.etat?.tour_actuel !== null) {
-                          await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
-                        }
-                      }
-                    } catch (e) { console.error("Erreur revanche:", e); }
-                  }
-                }}>
-                Revanche
+                onClick={lancerRevanche}>
+                {modeMultijoueur ? "Demander revanche" : "Revanche"}
               </button>
               <button className="popup-btn" style={{ flex: 1 }} onClick={handleReset}>
                 Nouvelle partie
@@ -1165,16 +1177,14 @@ export default function App() {
         </div>
       )}
 
-      {/* Demande de pause reçue */}
+      {/* Pause reçue */}
       {demandePauseRecue && !pauseActive && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
             {demandePauseRecue === (monRole === "joueur2" ? "noir" : "rouge") ? (
               <>
                 <div className="popup-titre">Pause demandée</div>
-                <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                  En attente de la réponse de l'adversaire...
-                </div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>En attente de la réponse de l'adversaire...</div>
                 <button className="popup-btn"
                   onClick={() => { setDemandePauseRecue(null); axios.post(`${API}/pause/refuser/${partieId}`); }}>
                   Annuler
@@ -1183,9 +1193,7 @@ export default function App() {
             ) : (
               <>
                 <div className="popup-titre">Pause demandée</div>
-                <div style={{ color: "var(--muted)", fontSize: 14 }}>
-                  L'adversaire demande une pause.
-                </div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>L'adversaire demande une pause.</div>
                 <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
                   <button className="popup-btn" style={{ flex: 1 }}
                     onClick={() => axios.post(`${API}/pause/accepter/${partieId}`)}>
@@ -1202,7 +1210,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Pause active */}
       {pauseActive && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
@@ -1215,7 +1222,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Demande de revanche reçue */}
       {demandeRevancheRecue && !revancheDemandeeParMoi && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
@@ -1243,7 +1249,6 @@ export default function App() {
         </div>
       )}
 
-      {/* En attente de confirmation de revanche */}
       {revancheDemandeeParMoi && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
@@ -1281,7 +1286,6 @@ export default function App() {
         />
       )}
 
-      {/* Bandeaux mode cible */}
       {popup?.type === "attente_cible" && (
         <div className="bandeau-cible">
           <span>{popup.message}</span>
@@ -1308,70 +1312,18 @@ export default function App() {
         </div>
       )}
 
-      {/* Popup temps écoulé */}
       {popup?.type === "temps_ecoule" && (
         <PopupFinPartie
           titre={popup.titre}
           message={popup.message}
           gagnant={popup.gagnant}
           couleurGagnant={popup.couleurGagnant}
-          textRevanche={modeMultijoueur ? "Demander une revanche" : "Revanche"}
+          textRevanche={modeMultijoueur ? "Demander revanche" : "Revanche"}
           onFermer={() => {
             setPopup(null);
             handleReset();
           }}
-          onRevanche={async () => {
-  const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
-
-  if (modeMultijoueur) {
-    try {
-      const res = await axios.post(`${API}/revanche/demander/${partieId}`, { couleur: maCouleur });
-      if (res.data.en_attente) {
-        setRevancheDemandeeParMoi(true);
-      }
-      setPopup(null);
-    } catch (e) {
-      console.error("Erreur demande revanche:", e);
-      setPopup(null);
-    }
-  } else {
-    // Mode IA : revanche directe
-    try {
-      const res = await axios.post(`${API}/revanche/${partieId}`);
-      if (res.data.succes) {
-        // 1. D'abord bloquer le timer en mettant un état "intermédiaire"
-        //    en mettant attenteChoixPouvoir à true temporairement
-        setAttenteChoixPouvoir(true);
-
-        // 2. Reset TOUS les états en même temps
-        setEtat(res.data.etat);
-        if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
-        setTimerRouge(timerChoisi);
-        setTimerNoir(timerChoisi);
-        setPieceIdx(null);
-        setExtractionsEnCours([]);
-        setPieceADonner(null);
-        setMancheTermineeInfo(null);
-        setBonusDoubleActif(false);
-        setBonusUtilise(false);
-        setReconnaissanceTentee(false);
-        setPopup(null);
-
-        // 3. Attendre que React ait flush les updates avant de relancer timer
-        await new Promise(r => setTimeout(r, 100));
-        setAttenteChoixPouvoir(false);
-
-        // 4. Déclencher l'IA si c'est son tour
-        if (res.data.etat?.tour_actuel !== null) {
-          await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
-        }
-      }
-    } catch (e) {
-      console.error("Erreur revanche IA:", e);
-      setPopup(null);
-    }
-  }
-}}
+          onRevanche={lancerRevanche}
         />
       )}
 

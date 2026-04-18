@@ -1,12 +1,13 @@
 import os
 # ============================================================
-#  ELMAAS — api.py (original qui marche + reconnaissance)
+#  ELMAAS — api.py (fix revanche + timestamp IA)
 # ============================================================
 
 import json
 import uuid
 import base64
 import io
+import time
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, join_room, emit
@@ -41,7 +42,7 @@ with app.app_context():
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
                     logger=False, engineio_logger=False)
 
-# Cache mémoire (rapide) + DB (persistant)
+# Cache mémoire
 parties: dict[str, EtatJeu] = {}
 pixels_par_partie: dict[str, list] = {}
 noms_par_partie: dict[str, str] = {}
@@ -52,10 +53,10 @@ demandes_pause: dict[str, str] = {}
 pause_active: dict[str, bool] = {}
 scores_manches: dict[str, dict] = {}
 timer_par_partie: dict[str, int] = {}
+demandes_revanche: dict[str, str] = {}
 
 
 def sauvegarder_partie(partie_id: str):
-    """Sauvegarde l'état d'une partie en base de données."""
     try:
         etat = parties.get(partie_id)
         if not etat:
@@ -183,9 +184,6 @@ def on_rejoindre_partie(data):
         joueurs_connectes[partie_id] = {}
     joueurs_connectes[partie_id][role] = request.sid
 
-    if DEBUG:
-        print(f"[ws] {role} a rejoint {partie_id}")
-
     emit("rejoint", {
         "partie_id": partie_id,
         "ton_role": role,
@@ -194,11 +192,12 @@ def on_rejoindre_partie(data):
 
     slots = joueurs_connectes[partie_id]
     if "joueur1" in slots and "joueur2" in slots:
+        # Réinitialiser le timestamp quand les 2 joueurs sont prêts
+        parties[partie_id].timestamp_debut_tour = time.time()
         socketio.emit("partie_prete", {
             "message": "Les deux joueurs sont connectés !",
             "etat": serialiser_etat(parties[partie_id]),
         }, room=partie_id)
-
 
 
 @app.route("/photos_fixes", methods=["GET"])
@@ -210,6 +209,7 @@ def photos_fixes():
         "champ-lavande-au-coucher-du-soleil-pres-valensole_268835-3910.avif"
     ]
     return jsonify({"photos": [f"/photo_fixe/{p}" for p in photos]})
+
 
 @app.route("/photo_fixe/<nom>", methods=["GET"])
 def photo_fixe(nom):
@@ -251,6 +251,8 @@ def nouvelle_partie():
         donnees = traiter_photo(chemin_temp)
         plateau = generer_puzzles(donnees)
         etat = initialiser_jeu(plateau)
+        # S'assurer que le timestamp est bien à présent
+        etat.timestamp_debut_tour = time.time()
 
         import numpy as np
         img_redim = Image.open(chemin_temp).convert("RGB").resize((taille, taille), Image.LANCZOS)
@@ -285,34 +287,11 @@ def nouvelle_partie():
         return jsonify({"erreur": str(e)}), 500
 
 
-def charger_partie_depuis_db(partie_id: str) -> bool:
-    """Charge une partie depuis la DB si elle n'est pas en mémoire."""
-    if partie_id in parties:
-        return True
-    try:
-        partie_db = PartieDB.query.get(partie_id)
-        if not partie_db:
-            return False
-        # On ne peut pas reconstruire EtatJeu depuis JSON facilement
-        # Mais on peut au moins recharger les métadonnées
-        pixels_par_partie[partie_id] = _json.loads(partie_db.pixels_json or "[]")
-        noms_par_partie[partie_id] = partie_db.nom_photo or ""
-        bonus_double_tour[partie_id] = partie_db.bonus_double or False
-        reconnaissance_tentee[partie_id] = partie_db.recon_tentee or False
-        timer_par_partie[partie_id] = partie_db.timer_sec or 30
-        scores_manches[partie_id] = _json.loads(partie_db.scores_manches_json or '{"rouge":0,"noir":0}')
-        return False  # La partie EtatJeu n'est pas reconstituée
-    except Exception as e:
-        if DEBUG:
-            print(f"[DB] Erreur chargement: {e}")
-        return False
-
-
 @app.route("/etat/<partie_id>", methods=["GET"])
 def get_etat(partie_id: str):
     etat = parties.get(partie_id)
     if not etat:
-        return jsonify({"erreur": "Partie introuvable — redémarrez une nouvelle partie"}), 404
+        return jsonify({"erreur": "Partie introuvable"}), 404
     return jsonify(serialiser_etat(etat))
 
 
@@ -341,14 +320,11 @@ def jouer(partie_id: str):
     if "recoloriage" in data:
         kwargs["recoloriage"] = tuple(data["recoloriage"])
 
-    # Action pouvoir seule (proteger/echanger/extraire/recoloriage apres popup)
     if action == "pouvoir":
         from game_engine import appliquer_pouvoir, appliquer_bonus_serie, recolorier_piece
         pouvoir = data.get("pouvoir", "rien")
         cible = tuple(data["cible_pouvoir"]) if "cible_pouvoir" in data else None
         resultat = {"succes": True}
-        # Par défaut on passe le tour après le pouvoir
-        # Sauf si extraire génère un droit de recoloriage (le tour passera après recoloriage)
         passer = True
 
         if pouvoir == "extraire":
@@ -357,20 +333,17 @@ def jouer(partie_id: str):
             resultat.update(bonus)
             nb_recol = bonus.get("recoloriages_possibles", 0)
             resultat["recoloriages_possibles"] = nb_recol
-            # Si recoloriage possible, on ne passe pas encore le tour
             if nb_recol > 0:
                 passer = False
         elif pouvoir == "recoloriage":
             if cible:
                 r = recolorier_piece(etat, cible)
                 resultat.update(r)
-            # Le tour passe après le recoloriage (passer=True par défaut)
         elif pouvoir == "proteger_main":
-            # Protéger une pièce de la main par index (pas par position plateau)
             idx = data.get("piece_index")
             joueur = etat.joueur_actif()
             if idx is not None and 0 <= int(idx) < len(joueur.main_active):
-                cle = f"main_{idx}"  # clé virtuelle pour pièce en main
+                cle = f"main_{idx}"
                 joueur.pieces_protegees.add(cle)
                 resultat["succes"] = True
                 resultat["protege"] = cle
@@ -378,15 +351,14 @@ def jouer(partie_id: str):
                 resultat["succes"] = False
                 resultat["erreur"] = "Index invalide"
         elif pouvoir == "echanger_main":
-            # Échange symétrique : on donne une pièce et on prend une pièce adverse
             idx_adverse = data.get("piece_index_adverse")
-            idx_donner  = data.get("piece_index_donner")
+            idx_donner = data.get("piece_index_donner")
             joueur = etat.joueur_actif()
             adverse = etat.joueur_adverse()
             ok_adverse = idx_adverse is not None and 0 <= int(idx_adverse) < len(adverse.main_active)
-            ok_donner  = idx_donner is not None and 0 <= int(idx_donner) < len(joueur.main_active)
+            ok_donner = idx_donner is not None and 0 <= int(idx_donner) < len(joueur.main_active)
             if ok_adverse and ok_donner:
-                piece_prise  = adverse.main_active.pop(int(idx_adverse))
+                piece_prise = adverse.main_active.pop(int(idx_adverse))
                 piece_donnee = joueur.main_active.pop(int(idx_donner))
                 joueur.main_active.append(piece_prise)
                 adverse.main_active.append(piece_donnee)
@@ -418,18 +390,14 @@ def jouer(partie_id: str):
         }, room=partie_id)
         return jsonify(resultat)
 
-    # Mémoriser le joueur qui joue AVANT jouer_tour (qui peut passer le tour)
     joueur_avant = etat.tour_actuel
-
     resultat = jouer_tour(etat, action, **kwargs)
 
-    # Double tour : si le bonus est actif pour le joueur qui vient de jouer,
-    # et que le tour a bien été passé (pas d'attente pouvoir), on annule le passage
     if resultat.get("succes") and not resultat.get("attente_pouvoir", False):
         if bonus_double_tour.get(partie_id):
-            # Annuler le passer_tour : revenir au joueur qui vient de jouer
             etat.tour_actuel = joueur_avant
             etat.numero_tour -= 1
+            etat.timestamp_debut_tour = time.time()  # FIX: remettre timestamp au double tour
             bonus_double_tour[partie_id] = False
             resultat["double_tour_consomme"] = True
 
@@ -489,8 +457,8 @@ def coup_ia(partie_id: str):
     if coup is None:
         from game_engine import action_passer_repiocher
         action_passer_repiocher(etat)
+        etat.passer_tour()  # Met à jour le timestamp automatiquement
         etat_serialise = serialiser_etat(etat)
-        etat.passer_tour()
         socketio.emit("etat_mis_a_jour", {
             "etat": etat_serialise, "action": "repiocher",
             "puzzles_completes": [], "manche_terminee": etat.manche_terminee,
@@ -506,14 +474,16 @@ def coup_ia(partie_id: str):
         joueur_ia = etat.joueur_actif()
         adverse = etat.joueur_adverse()
         if niveau >= 2 and adverse.main_active:
-            # Echanger : prendre la première pièce adverse, donner la dernière de sa main
             piece_prise = adverse.main_active.pop(0)
             if joueur_ia.main_active:
                 piece_donnee = joueur_ia.main_active.pop(-1)
                 adverse.main_active.append(piece_donnee)
             joueur_ia.main_active.append(piece_prise)
-        # Passer le tour après le pouvoir IA
-        etat.passer_tour()
+        etat.passer_tour()  # Met à jour le timestamp
+
+    # FIX CRITIQUE : s'assurer que le timestamp est bien à MAINTENANT après le tour IA
+    # (le passer_tour a déjà été appelé dans jouer_tour si pas d'attente_pouvoir)
+    etat.timestamp_debut_tour = time.time()
 
     etat_serialise = serialiser_etat(etat)
     resultat["etat"] = etat_serialise
@@ -538,8 +508,7 @@ def get_pixels(partie_id: str):
     etat = parties.get(partie_id)
     taille = len(pixels)
     nom = noms_par_partie.get(partie_id, "")
-    # Récupérer le timer choisi (lu depuis l'état de la partie)
-    timer_sec = getattr(etat, "timer_sec", 30) if etat else 30
+    timer_sec = timer_par_partie.get(partie_id, 30)
     return jsonify({
         "pixels_photo": pixels,
         "taille": taille,
@@ -550,6 +519,7 @@ def get_pixels(partie_id: str):
             "premiere_lettre": nom[0].upper() if nom else "?"
         }
     })
+
 
 @app.route("/reconnaitre/<partie_id>", methods=["POST"])
 def reconnaitre(partie_id: str):
@@ -632,7 +602,9 @@ def reprendre_pause(partie_id: str):
     if partie_id not in parties:
         return jsonify({"erreur": "Partie introuvable"}), 404
     pause_active[partie_id] = False
-    socketio.emit("pause_terminee", {}, room=partie_id)
+    # Remettre le timestamp à la reprise pour que le timer reparte
+    parties[partie_id].timestamp_debut_tour = time.time()
+    socketio.emit("pause_terminee", {"etat": serialiser_etat(parties[partie_id])}, room=partie_id)
     return jsonify({"succes": True})
 
 
@@ -646,10 +618,6 @@ def refuser_pause(partie_id: str):
 
 
 # ── Revanche ──
-# État des demandes de revanche
-demandes_revanche = {}  # {partie_id: "rouge"|"noir"|None}
-
-# ── Demander une revanche ──
 @app.route("/revanche/demander/<partie_id>", methods=["POST"])
 def demander_revanche(partie_id: str):
     if partie_id not in parties:
@@ -659,7 +627,6 @@ def demander_revanche(partie_id: str):
     if couleur not in ("rouge", "noir"):
         return jsonify({"erreur": "Couleur invalide"}), 400
 
-    # Si l'autre a déjà demandé, on lance directement la revanche
     demande_existante = demandes_revanche.get(partie_id)
     if demande_existante and demande_existante != couleur:
         demandes_revanche[partie_id] = None
@@ -669,7 +636,7 @@ def demander_revanche(partie_id: str):
     socketio.emit("revanche_demandee", {"couleur": couleur}, room=partie_id)
     return jsonify({"succes": True, "en_attente": True})
 
-# ── Accepter la revanche ──
+
 @app.route("/revanche/accepter/<partie_id>", methods=["POST"])
 def accepter_revanche(partie_id: str):
     if partie_id not in parties:
@@ -677,18 +644,15 @@ def accepter_revanche(partie_id: str):
     demandes_revanche[partie_id] = None
     return _lancer_revanche(partie_id)
 
-# ── Refuser la revanche ──
+
 @app.route("/revanche/refuser/<partie_id>", methods=["POST"])
 def refuser_revanche(partie_id: str):
     demandes_revanche[partie_id] = None
     socketio.emit("revanche_refusee", {}, room=partie_id)
     return jsonify({"succes": True})
 
-# ── Helper : lance effectivement la revanche ──
+
 def _lancer_revanche(partie_id: str):
-    import time
-    from game_engine import reinitialiser_plateau  # ← import du helper
-    
     ancienne_partie = parties[partie_id]
     ancien_plateau = ancienne_partie.plateau
 
@@ -696,9 +660,10 @@ def _lancer_revanche(partie_id: str):
     if gagnant in ("rouge", "noir"):
         scores_manches[partie_id][gagnant] = scores_manches[partie_id].get(gagnant, 0) + 1
 
-    # ⚡ NETTOYER LE PLATEAU AVANT RÉINITIALISATION
+    # Nettoyer le plateau
     plateau_propre = reinitialiser_plateau(ancien_plateau)
 
+    # Créer un nouvel état de jeu
     nouveau_etat = initialiser_jeu(plateau_propre)
     nouveau_etat.tour_actuel = 1  # Noir commence
     nouveau_etat.timestamp_debut_tour = time.time()
@@ -720,12 +685,15 @@ def _lancer_revanche(partie_id: str):
         "etat": etat_serialise,
         "scores_manches": scores_manches[partie_id],
     })
-# ── Revanche directe (mode IA uniquement) ──
+
+
 @app.route("/revanche/<partie_id>", methods=["POST"])
 def revanche(partie_id: str):
     if partie_id not in parties:
         return jsonify({"erreur": "Partie introuvable"}), 404
     return _lancer_revanche(partie_id)
+
+
 @app.route("/scores_manches/<partie_id>", methods=["GET"])
 def get_scores_manches(partie_id: str):
     return jsonify({
@@ -744,6 +712,7 @@ def supprimer_partie(partie_id: str):
         bonus_double_tour.pop(partie_id, None)
         reconnaissance_tentee.pop(partie_id, None)
         joueurs_connectes.pop(partie_id, None)
+        demandes_revanche.pop(partie_id, None)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
 
@@ -751,9 +720,7 @@ def supprimer_partie(partie_id: str):
 if __name__ == "__main__":
     print("=" * 50)
     print("  ELMAAS API — Démarrage")
-    print("  http://localhost:5000")
-    print("  WebSocket actif (threading)")
     print("=" * 50)
-    port = int(__import__("os").environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 8080))
     socketio.run(app, debug=False, port=port, host="0.0.0.0",
                  allow_unsafe_werkzeug=True)
