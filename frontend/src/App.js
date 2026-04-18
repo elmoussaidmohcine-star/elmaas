@@ -697,6 +697,22 @@ function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onR
 // ══════════════════════════════════════════════════════════
 
 export default function App() {
+  useEffect(() => {
+     const params = new URLSearchParams(window.location.search);
+     const googleToken = params.get("google_token");
+     if (googleToken) {
+       localStorage.setItem("elmaas_token", googleToken);
+       fetch(`${API}/auth/moi`, {
+         headers: { Authorization: `Bearer ${googleToken}` }
+       }).then(r => r.json()).then(u => {
+         localStorage.setItem("elmaas_user", JSON.stringify(u));
+         setUtilisateur(u);
+         window.history.replaceState({}, "", "/");
+         setEtape("taille");
+       });
+     }
+   }, []);
+
   const [utilisateur, setUtilisateur] = useState(() => getUser());
   const [indexLangue, setIndexLangue] = useState(getLangueInitiale);
   const L = indexLangue;
