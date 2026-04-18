@@ -112,7 +112,28 @@ def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
         total += len(piece["cellules"])
     return pieces
 
-
+def reinitialiser_plateau(plateau: Plateau) -> Plateau:
+    """Nettoie un plateau pour une revanche : garde la structure des puzzles,
+    mais vide les pièces posées et remet les puzzles à l'état non complété."""
+    # Vider toutes les pièces posées
+    plateau.pieces = {}
+    
+    # Réinitialiser les puzzles
+    for puzzle in plateau.puzzles.values():
+        puzzle.complete_par = None
+        puzzle.brise = False
+        puzzle.protege = False
+    
+    # Recalculer cellules libres = toutes les cellules actives des puzzles
+    toutes_cellules = set()
+    for puzzle in plateau.puzzles.values():
+        for cell in puzzle.cellules:
+            toutes_cellules.add(tuple(cell) if not isinstance(cell, tuple) else cell)
+    
+    plateau.cellules_actives = toutes_cellules
+    plateau.cellules_libres = list(toutes_cellules)
+    
+    return plateau
 def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     from pieces_generator import generer_piece
 
