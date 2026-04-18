@@ -1,8 +1,9 @@
-// ELMAAS App.js v7 — Fix complet revanche + timer IA + estMonTour
+// ELMAAS App.js v8 — Traductions fr/en/ar/es + tous les fixes précédents
 import { useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import Board from "./Board";
+import { T, LANGUES, t } from "./translations";
 import "./App.css";
 
 const API = "https://elmaas.up.railway.app";
@@ -13,9 +14,15 @@ function getUser()  {
   try { return JSON.parse(localStorage.getItem("elmaas_user") || "null"); }
   catch { return null; }
 }
+function getLangueInitiale() {
+  const saved = localStorage.getItem("elmaas_langue");
+  const idx = parseInt(saved);
+  if (!isNaN(idx) && idx >= 0 && idx < LANGUES.length) return idx;
+  return 0;
+}
 
 // ── Écran Auth ────────────────────────────────────────────────
-function EcranAuth({ onConnecte }) {
+function EcranAuth({ onConnecte, L }) {
   const [mode, setMode] = useState("connexion");
   const [email, setEmail] = useState("");
   const [pseudo, setPseudo] = useState("");
@@ -36,41 +43,41 @@ function EcranAuth({ onConnecte }) {
       localStorage.setItem("elmaas_user", JSON.stringify(res.data.utilisateur));
       onConnecte(res.data.utilisateur);
     } catch (err) {
-      setErreur(err.response?.data?.erreur || "Erreur de connexion");
+      setErreur(err.response?.data?.erreur || t("erreurConnexion", L));
     } finally { setChargement(false); }
   };
 
   return (
     <div className="ecran-taille">
       <h1 className="titre-jeu">ELMAAS</h1>
-      <p className="phrase-jeu">Chess is old, ELMAAS is better than gold</p>
+      <p className="phrase-jeu">{t("slogan", L)}</p>
       <div className="lobby-card" style={{ minWidth: 340 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           {["connexion","inscription"].map(m => (
             <button key={m} className={`ia-btn ${mode===m?"actif":""}`}
               onClick={() => { setMode(m); setErreur(null); }}
-              style={{ flex: 1, textTransform: "capitalize" }}>
-              {m === "connexion" ? "Connexion" : "Inscription"}
+              style={{ flex: 1 }}>
+              {m === "connexion" ? t("connexion", L) : t("inscription", L)}
             </button>
           ))}
         </div>
         {mode === "inscription" && (
-          <input className="lobby-input" placeholder="Pseudo" value={pseudo}
+          <input className="lobby-input" placeholder={t("pseudo", L)} value={pseudo}
             onChange={e => setPseudo(e.target.value)} style={{ marginBottom: 8 }} />
         )}
-        <input className="lobby-input" placeholder="Email" type="email" value={email}
+        <input className="lobby-input" placeholder={t("email", L)} type="email" value={email}
           onChange={e => setEmail(e.target.value)} style={{ marginBottom: 8 }} />
-        <input className="lobby-input" placeholder="Mot de passe" type="password" value={mdp}
+        <input className="lobby-input" placeholder={t("motDePasse", L)} type="password" value={mdp}
           onChange={e => setMdp(e.target.value)}
           onKeyDown={e => e.key === "Enter" && handleSubmit()}
           style={{ marginBottom: 8 }} />
         {erreur && <div style={{ color: "#ff6644", fontSize: 13 }}>{erreur}</div>}
         <button className="btn-valider" onClick={handleSubmit} disabled={chargement}>
-          {chargement ? "..." : mode === "connexion" ? "Se connecter" : "Créer un compte"}
+          {chargement ? "..." : mode === "connexion" ? t("seConnecter", L) : t("creerCompte", L)}
         </button>
         <button style={{ background:"none", border:"none", color:"var(--muted)", cursor:"pointer", fontSize:13, marginTop:4 }}
           onClick={() => onConnecte(null)}>
-          Continuer sans compte
+          {t("continuerSansCompte", L)}
         </button>
       </div>
     </div>
@@ -78,7 +85,7 @@ function EcranAuth({ onConnecte }) {
 }
 
 // ── Écran sélection photo ─────────────────────────────────────
-function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCreee }) {
+function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCreee, L }) {
   const [photosFixees, setPhotosFixees] = useState([]);
   const [photoSelectionnee, setPhotoSelectionnee] = useState(null);
   const [nomPhoto, setNomPhoto] = useState("");
@@ -120,7 +127,7 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
       const res = await axios.post(`${API}/nouvelle-partie`, formData);
       onPartieCreee(res.data.partie_id, res.data.etat, res.data.pixels_photo, res.data.taille, res.data.timer_sec, res.data.scores_manches);
     } catch (err) {
-      setErreur("Erreur lors de la création de la partie.");
+      setErreur(t("erreurCreation", L));
     } finally { setChargement(false); }
   };
 
@@ -134,12 +141,12 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
   return (
     <div className="ecran-taille" style={{ gap: 20 }}>
       <h1 className="titre-jeu">ELMAAS</h1>
-      <p className="phrase-jeu">Choisissez une photo pour votre plateau</p>
+      <p className="phrase-jeu">{t("choisissezPhoto", L)}</p>
 
       {modeIA === "aucune" && (
         <div className="nom-photo-section">
-          <label className="nom-photo-label">Nom secret de la photo <span>(max 10 car.)</span></label>
-          <input className="nom-photo-input" maxLength={10} placeholder="ex: vacances"
+          <label className="nom-photo-label">{t("nomSecretPhoto", L)} <span>{t("max10Car", L)}</span></label>
+          <input className="nom-photo-input" maxLength={10} placeholder={t("exVacances", L)}
             value={nomPhoto} onChange={e => setNomPhoto(e.target.value)} />
         </div>
       )}
@@ -162,7 +169,7 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
         peutUploader ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
             <div style={{ fontSize: 13, color: "var(--muted)" }}>
-              {utilisateur.premium ? "Premium — uploads illimités" : "1 photo personnelle gratuite disponible"}
+              {utilisateur.premium ? t("premiumIllimite", L) : t("unePhotoGratuite", L)}
             </div>
             <label className="zone-upload" htmlFor="photo-perso-input"
               style={{ width: 200, minHeight: 80, cursor: "pointer" }}>
@@ -170,7 +177,7 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
                 ? <img src={apercu} alt="apercu" style={{ width: "100%", height: 80, objectFit: "cover" }} />
                 : <div className="upload-placeholder" style={{ fontSize: 13 }}>
                     <div className="upload-icone" style={{ fontSize: 24 }}>+</div>
-                    <p>Ma photo</p>
+                    <p>{t("maPhoto", L)}</p>
                   </div>}
               <input id="photo-perso-input" type="file" accept="image/*"
                 onChange={handleFichier} style={{ display: "none" }} />
@@ -178,17 +185,17 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
           </div>
         ) : (
           <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
-            Photo personnelle utilisée — <span style={{ color: "var(--rouge-c)" }}>Passer Premium pour en uploader plus</span>
+            {t("photoUtilisee", L)} — <span style={{ color: "var(--rouge-c)" }}>{t("passerPremium", L)}</span>
           </div>
         )
       ) : (
         <div style={{ fontSize: 13, color: "var(--muted)" }}>
-          Connectez-vous pour uploader votre propre photo
+          {t("connectezVous", L)}
         </div>
       )}
 
       {erreur && <p className="erreur">{erreur}</p>}
-      {chargement && <div className="chargement"><div className="spinner" /><p>Génération...</p></div>}
+      {chargement && <div className="chargement"><div className="spinner" /><p>{t("generation", L)}</p></div>}
 
       {photoSelectionnee && !chargement && (
         <button className="btn-valider"
@@ -196,7 +203,7 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
             photoSelectionnee.estFichier ? photoSelectionnee.fichier : photoSelectionnee.url,
             photoSelectionnee.estFichier
           )}>
-          Jouer avec cette photo
+          {t("jouerAvecPhoto", L)}
         </button>
       )}
     </div>
@@ -204,7 +211,7 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
 }
 
 // ── Écran Classement ELO ──────────────────────────────────────
-function EcranClassement({ onFermer, utilisateur }) {
+function EcranClassement({ onFermer, utilisateur, L }) {
   const [classement, setClassement] = useState([]);
   useEffect(() => {
     axios.get(`${API}/classement`).then(res => setClassement(res.data));
@@ -212,16 +219,16 @@ function EcranClassement({ onFermer, utilisateur }) {
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir" style={{ maxWidth: 480, maxHeight: "80vh", overflowY: "auto", gap: 12 }}>
-        <div className="popup-titre">Classement ELO</div>
-        {classement.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>Aucun joueur classé pour l'instant.</div>}
+        <div className="popup-titre">{t("classementElo", L)}</div>
+        {classement.length === 0 && <div style={{ color: "var(--muted)", fontSize: 14 }}>{t("aucunClasse", L)}</div>}
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
           <thead>
             <tr style={{ color: "var(--muted)", borderBottom: "1px solid var(--bord)" }}>
               <th style={{ padding: "4px 8px", textAlign: "left" }}>#</th>
-              <th style={{ padding: "4px 8px", textAlign: "left" }}>Pseudo</th>
+              <th style={{ padding: "4px 8px", textAlign: "left" }}>{t("pseudo", L)}</th>
               <th style={{ padding: "4px 8px", textAlign: "right" }}>ELO</th>
-              <th style={{ padding: "4px 8px", textAlign: "right" }}>Parties</th>
-              <th style={{ padding: "4px 8px", textAlign: "right" }}>Win%</th>
+              <th style={{ padding: "4px 8px", textAlign: "right" }}>{t("parties", L)}</th>
+              <th style={{ padding: "4px 8px", textAlign: "right" }}>{t("winPct", L)}</th>
             </tr>
           </thead>
           <tbody>
@@ -245,7 +252,7 @@ function EcranClassement({ onFermer, utilisateur }) {
             ))}
           </tbody>
         </table>
-        <button className="popup-btn" onClick={onFermer}>Fermer</button>
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
       </div>
     </div>
   );
@@ -261,7 +268,7 @@ const TIMER_OPTIONS = [
   { label: "5 min", val: 300 },
 ];
 
-function EcranTaille({ onValider }) {
+function EcranTaille({ onValider, L }) {
   const [prop1, setProp1] = useState(16);
   const [modeIA, setModeIA] = useState("aucune");
   const [niveauIA, setNiveauIA] = useState(2);
@@ -270,22 +277,22 @@ function EcranTaille({ onValider }) {
   return (
     <div className="ecran-taille">
       <h1 className="titre-jeu">ELMAAS</h1>
-      <p className="phrase-jeu">Chess is old, ELMAAS is better than gold</p>
-      <p className="sous-titre">Choisissez la taille du plateau</p>
+      <p className="phrase-jeu">{t("slogan", L)}</p>
+      <p className="sous-titre">{t("choisissezTaille", L)}</p>
       <div className="taille-inputs">
         <div className="taille-joueur">
-          <label>Taille du plateau</label>
+          <label>{t("tailleDuPlateau", L)}</label>
           <input type="range" min="10" max="20" step="2" value={prop1} onChange={e => setProp1(Number(e.target.value))} />
           <span className="taille-val">{prop1}</span>
         </div>
         <div className="taille-result">
           <div className="taille-final">{tailleFin}</div>
-          <div className="taille-label">plateau</div>
+          <div className="taille-label">{t("plateau", L)}</div>
         </div>
       </div>
 
       <div className="ia-section">
-        <div className="ia-titre">Temps par tour</div>
+        <div className="ia-titre">{t("tempsParTour", L)}</div>
         <div className="ia-options" style={{ flexWrap: "wrap", justifyContent: "center" }}>
           {TIMER_OPTIONS.map(opt => (
             <button key={opt.val}
@@ -298,47 +305,47 @@ function EcranTaille({ onValider }) {
       </div>
 
       <div className="ia-section">
-        <div className="ia-titre">Mode IA</div>
+        <div className="ia-titre">{t("modeIA", L)}</div>
         <div className="ia-options">
-          {[["aucune","2 joueurs"],["j2","IA joue Noir"],["j1","IA joue Rouge"]].map(([val, label]) => (
+          {[["aucune", t("deuxJoueurs", L)],["j2", t("iaJoueNoir", L)],["j1", t("iaJoueRouge", L)]].map(([val, label]) => (
             <button key={val} className={`ia-btn ${modeIA === val ? "actif" : ""}`} onClick={() => setModeIA(val)}>{label}</button>
           ))}
         </div>
         {modeIA !== "aucune" && (
           <div className="ia-niveau">
-            <span>Niveau IA :</span>
+            <span>{t("niveauIA", L)}</span>
             {[1,2,3].map(n => (
               <button key={n} className={`ia-btn-niveau ${niveauIA === n ? "actif" : ""}`} onClick={() => setNiveauIA(n)}>
-                {n === 1 ? "Facile" : n === 2 ? "Moyen" : "Expert"}
+                {n === 1 ? t("facile", L) : n === 2 ? t("moyen", L) : t("expert", L)}
               </button>
             ))}
           </div>
         )}
       </div>
       <button className="btn-valider" onClick={() => onValider(prop1, prop1, tailleFin, modeIA, niveauIA, timerSec)}>
-        Confirmer
+        {t("confirmer", L)}
       </button>
     </div>
   );
 }
 
 // ── Écran Lobby ───────────────────────────────────────────────
-function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellement }) {
+function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellement, L }) {
   const [codeSaisi, setCodeSaisi] = useState("");
   if (monRole === "joueur1") {
     return (
       <div className="ecran-lobby">
         <h1 className="titre-jeu">ELMAAS</h1>
-        <p className="phrase-jeu">Chess is old, ELMAAS is better than gold</p>
+        <p className="phrase-jeu">{t("slogan", L)}</p>
         <div className="lobby-card">
-          <div className="lobby-titre">Partie créée</div>
-          <div className="lobby-sous">Donne ce code au Joueur 2</div>
+          <div className="lobby-titre">{t("partieCreee", L)}</div>
+          <div className="lobby-sous">{t("donnezCodeJ2", L)}</div>
           <div className="lobby-code">{partieId}</div>
-          <button className="lobby-copier" onClick={() => navigator.clipboard.writeText(partieId)}>Copier le code</button>
+          <button className="lobby-copier" onClick={() => navigator.clipboard.writeText(partieId)}>{t("copierCode", L)}</button>
           <div className={`lobby-statut ${statutConnexion}`}>
-            {statutConnexion === "attente" && "En attente du Joueur 2..."}
-            {statutConnexion === "connecte" && "Joueur 2 connecté !"}
-            {statutConnexion === "erreur" && "Erreur de connexion"}
+            {statutConnexion === "attente" && t("attenteJ2", L)}
+            {statutConnexion === "connecte" && t("j2Connecte", L)}
+            {statutConnexion === "erreur" && t("erreurConnex", L)}
           </div>
         </div>
       </div>
@@ -347,29 +354,29 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
   return (
     <div className="ecran-lobby">
       <h1 className="titre-jeu">ELMAAS</h1>
-      <p className="phrase-jeu">Chess is old, ELMAAS is better than gold</p>
+      <p className="phrase-jeu">{t("slogan", L)}</p>
       <div className="lobby-card">
-        <div className="lobby-titre">Rejoindre une partie</div>
-        <div className="lobby-sous">Entre le code donné par le Joueur 1</div>
-        <input className="lobby-input" placeholder="Code de partie..."
+        <div className="lobby-titre">{t("rejoindrePartie", L)}</div>
+        <div className="lobby-sous">{t("entrerCode", L)}</div>
+        <input className="lobby-input" placeholder={t("codePartie", L)}
           value={codeSaisi} onChange={e => setCodeSaisi(e.target.value)} />
         <button className="btn-valider" onClick={() => onRejoindreManuellement(codeSaisi.trim())} disabled={!codeSaisi.trim()}>
-          Rejoindre
+          {t("rejoindre", L)}
         </button>
-        {statutConnexion === "erreur" && <div className="lobby-statut erreur">Partie introuvable</div>}
+        {statutConnexion === "erreur" && <div className="lobby-statut erreur">{t("partieIntrouvable", L)}</div>}
       </div>
     </div>
   );
 }
 
 // ── Timer ─────────────────────────────────────────────────────
-function TimerBloc({ secondes, couleur, actif }) {
+function TimerBloc({ secondes, couleur, actif, L }) {
   const m = Math.floor(secondes / 60);
   const s = secondes % 60;
   const danger = secondes <= 10;
   return (
     <div className={`timer-bloc ${couleur} ${actif ? "actif" : ""}`}>
-      <span className="timer-label">{couleur === "rouge" ? "Rouge" : "Noir"}</span>
+      <span className="timer-label">{couleur === "rouge" ? t("rouge", L) : t("noir", L)}</span>
       <span className={`timer-val${danger && actif ? " danger" : ""}`}>
         {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
       </span>
@@ -402,19 +409,19 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
 }
 
 // ── Popup Pouvoir ─────────────────────────────────────────────
-function PopupPouvoir({ onChoisir, serie }) {
+function PopupPouvoir({ onChoisir, serie, L }) {
   const estSerie3 = serie >= 3;
   const options = [
-    { id: "rien",     label: "Rien faire",       desc: "Passer directement au tour suivant" },
-    { id: "proteger", label: "Protéger",         desc: "Une de tes pièces devient invulnérable 1 tour" },
-    { id: "echanger", label: "Échanger",         desc: "Recolorie une pièce adverse à ta couleur" },
-    ...(estSerie3 ? [{ id: "extraire", label: `Extraire (série ${serie})`, desc: "Retire jusqu'à 2 pièces du plateau" }] : []),
+    { id: "rien",     label: t("rienFaire", L),  desc: t("rienFaireDesc", L) },
+    { id: "proteger", label: t("proteger", L),   desc: t("protegerDesc", L) },
+    { id: "echanger", label: t("echanger", L),   desc: t("echangerDesc", L) },
+    ...(estSerie3 ? [{ id: "extraire", label: `${t("extraire", L)} (${t("serie", L)} ${serie})`, desc: t("extraireDesc", L) }] : []),
   ];
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir">
-        <div className="popup-titre">{estSerie3 ? `Série de ${serie}` : "Puzzle complété"}</div>
-        <div className="popup-sous-titre">Choisissez votre récompense</div>
+        <div className="popup-titre">{estSerie3 ? `${t("serieDe", L)} ${serie}` : t("puzzleComplete", L)}</div>
+        <div className="popup-sous-titre">{t("choisirRecompense", L)}</div>
         <div className="popup-options">
           {options.map(opt => (
             <button key={opt.id}
@@ -433,14 +440,14 @@ function PopupPouvoir({ onChoisir, serie }) {
 }
 
 // ── Popup Scout ───────────────────────────────────────────────
-function PopupScout({ pieces, couleur, echanges, onFermer }) {
+function PopupScout({ pieces, couleur, echanges, onFermer, L }) {
   return (
     <div className="popup-overlay">
       <div className="popup-scout">
-        <div className="popup-titre">Scout — {pieces.length} prochaines pièces</div>
+        <div className="popup-titre">Scout — {pieces.length} {t("scoutProchaines", L)}</div>
         {echanges && echanges.length > 0 && (
           <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
-            {echanges.length} pièce{echanges.length > 1 ? "s" : ""} de ta main échangée{echanges.length > 1 ? "s" : ""} aléatoirement
+            {echanges.length} {t("pieces", L)} {t("echangeAleatoire", L)}
           </div>
         )}
         <div className="scout-pieces">
@@ -451,83 +458,77 @@ function PopupScout({ pieces, couleur, echanges, onFermer }) {
             </div>
           ))}
         </div>
-        <button className="popup-btn" onClick={onFermer}>Fermer</button>
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
       </div>
     </div>
   );
 }
 
 // ── Popup Reconnaissance ──────────────────────────────────────
-function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite }) {
+function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite, L }) {
   const [proposition, setProposition] = useState("");
   const [resultat, setResultat] = useState(null);
   const handleTenter = async () => { const res = await onTenter(proposition); setResultat(res); };
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir">
-        <div className="popup-titre">Reconnaissance</div>
+        <div className="popup-titre">{t("reconnaissance", L)}</div>
         {!tenteeDejaFaite && !resultat && (
           <>
             <div className="popup-sous-titre">
-              Longueur : <strong>{indice?.longueur}</strong> lettres &nbsp; Commence par : <strong>{indice?.premiere_lettre}</strong>
+              {t("longueur", L)} <strong>{indice?.longueur}</strong> {t("lettres", L)} &nbsp; {t("commencePar", L)} <strong>{indice?.premiere_lettre}</strong>
             </div>
-            <input className="lobby-input" placeholder="Ton estimation..." maxLength={12}
+            <input className="lobby-input" placeholder={t("tonEstimation", L)} maxLength={12}
               value={proposition} onChange={e => setProposition(e.target.value)}
               onKeyDown={e => e.key === "Enter" && proposition.trim() && handleTenter()} />
-            <button className="btn-valider" onClick={handleTenter} disabled={!proposition.trim()}>Valider</button>
+            <button className="btn-valider" onClick={handleTenter} disabled={!proposition.trim()}>{t("valider", L)}</button>
           </>
         )}
         {resultat && (
           <div style={{ textAlign: "center" }}>
             {resultat.succes
-              ? <div style={{ color: "#88ff88", fontSize: 20 }}>Bravo ! Double tour activé</div>
-              : <div style={{ color: "#ff8888" }}>Raté. Le nom était : <strong>{resultat.nom_reel}</strong></div>}
+              ? <div style={{ color: "#88ff88", fontSize: 20 }}>{t("bravoDoubleTour", L)}</div>
+              : <div style={{ color: "#ff8888" }}>{t("rateNomEtait", L)} <strong>{resultat.nom_reel}</strong></div>}
           </div>
         )}
-        {tenteeDejaFaite && !resultat && <div style={{ color: "var(--muted)" }}>Tentative déjà utilisée.</div>}
-        <button className="popup-btn" onClick={onFermer}>Fermer</button>
+        {tenteeDejaFaite && !resultat && <div style={{ color: "var(--muted)" }}>{t("tentativeUtilisee", L)}</div>}
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
       </div>
     </div>
   );
 }
 
 // ── Popup Manuel ──────────────────────────────────────────────
-function PopupManuel({ onFermer }) {
+function PopupManuel({ onFermer, L }) {
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir" style={{ maxWidth: 560, maxHeight: "80vh", overflowY: "auto" }}>
-        <div className="popup-titre">Manuel ELMAAS</div>
+        <div className="popup-titre">{t("manuelTitre", L)}</div>
         <div className="manuel-content">
           <div className="manuel-section">
-            <div className="manuel-titre-section">Objectif</div>
-            <p>Chaque joueur pose des pièces tetrominos sur un plateau généré depuis une photo. Complétez le plus de puzzles à votre couleur pour gagner la manche.</p>
+            <div className="manuel-titre-section">{t("objectif", L)}</div>
+            <p>{t("objectifDesc", L)}</p>
           </div>
           <div className="manuel-section">
-            <div className="manuel-titre-section">Types de puzzles</div>
-            <p><span className="tag-rouge">R</span> Rouge — completé si toutes ses cellules sont rouges (rouge gagne) ou toutes noires (noir gagne).</p>
-            <p><span className="tag-noir">N</span> Noir — meme logique inversee.</p>
-            <p><span className="tag-mixte">R+N</span> Mixte — doit contenir les deux couleurs.</p>
+            <div className="manuel-titre-section">{t("actionsParTour", L)}</div>
+            <p><strong>{t("rienFaire", L).replace("Passer", "Poser")}</strong> — {t("cliquerPlateau", L)}</p>
+            <p><strong>{t("repiocher", L)}</strong></p>
+            <p><strong>Scout</strong></p>
           </div>
           <div className="manuel-section">
-            <div className="manuel-titre-section">Actions par tour</div>
-            <p><strong>Poser</strong> — sélectionne une pièce et clique sur le plateau.</p>
-            <p><strong>Repiocher</strong> — passe ton tour, échange ta main.</p>
-            <p><strong>Scout</strong> — voir 10 prochaines pièces.</p>
-          </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section">Séries</div>
-            <p><strong>3 puzzles d'affilée</strong> — extraire jusqu'à 2 pièces.</p>
-            <p><strong>5 puzzles d'affilée</strong> — victoire immédiate.</p>
+            <div className="manuel-titre-section">{t("series", L)}</div>
+            <p><strong>3</strong> — {t("extraire", L)}</p>
+            <p><strong>5</strong> — {t("victoire", L)}</p>
           </div>
         </div>
-        <button className="popup-btn" onClick={onFermer}>Fermer</button>
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
       </div>
     </div>
   );
 }
 
 // ── Popup fin de partie ───────────────────────────────────────
-function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onRevanche, textRevanche }) {
+function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onRevanche, textRevanche, L }) {
   return (
     <div className="popup-overlay" onClick={onFermer}>
       <div className="popup-pouvoir popup-fin" onClick={(e) => e.stopPropagation()}>
@@ -536,18 +537,18 @@ function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onR
 
         {gagnant && (
           <div className={`popup-gagnant ${couleurGagnant}`}>
-            {gagnant} gagne
+            {gagnant} {t("gagne", L)}
           </div>
         )}
 
         <div className="popup-options-fin">
           {onRevanche && (
             <button className="popup-btn popup-btn-revanche" onClick={onRevanche}>
-              {textRevanche || "Revanche"}
+              {textRevanche || t("revanche", L)}
             </button>
           )}
           <button className="popup-btn" onClick={onFermer}>
-            Fermer
+            {t("fermer", L)}
           </button>
         </div>
       </div>
@@ -558,6 +559,8 @@ function PopupFinPartie({ titre, message, gagnant, couleurGagnant, onFermer, onR
 // ── App principale ────────────────────────────────────────────
 export default function App() {
   const [utilisateur, setUtilisateur] = useState(() => getUser());
+  const [indexLangue, setIndexLangue] = useState(getLangueInitiale);
+  const L = indexLangue;
   const [showClassement, setShowClassement] = useState(false);
   const [showParametres, setShowParametres] = useState(false);
   const [nbAbandons, setNbAbandons] = useState(() => parseInt(localStorage.getItem("elmaas_abandons") || "0"));
@@ -585,7 +588,6 @@ export default function App() {
   const [demandeRevancheRecue, setDemandeRevancheRecue] = useState(null);
   const [revancheDemandeeParMoi, setRevancheDemandeeParMoi] = useState(false);
 
-  // Timers
   const [timerChoisi, setTimerChoisi] = useState(30);
   const [timerRouge, setTimerRouge] = useState(30);
   const [timerNoir, setTimerNoir] = useState(30);
@@ -599,13 +601,33 @@ export default function App() {
   const [pieceADonner, setPieceADonner] = useState(null);
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
 
+  // Sauvegarde de la langue dans localStorage
+  const changerLangue = (idx) => {
+    setIndexLangue(idx);
+    localStorage.setItem("elmaas_langue", String(idx));
+    // Direction RTL pour l'arabe
+    if (LANGUES[idx].code === "ar") {
+      document.documentElement.setAttribute("dir", "rtl");
+    } else {
+      document.documentElement.setAttribute("dir", "ltr");
+    }
+  };
+
+  // Appliquer la direction au chargement
+  useEffect(() => {
+    if (LANGUES[indexLangue].code === "ar") {
+      document.documentElement.setAttribute("dir", "rtl");
+    } else {
+      document.documentElement.setAttribute("dir", "ltr");
+    }
+  }, [indexLangue]);
+
   // ── Dérivés ──
   const joueurActif  = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
   const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
   const estTourIA = etat && modeIA !== "aucune" &&
     ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
 
-  // FIX: en mode IA, estMonTour = pas le tour de l'IA
   const estMonTour = modeIA !== "aucune"
     ? !estTourIA
     : (!modeMultijoueur || !monRole ||
@@ -616,6 +638,9 @@ export default function App() {
 
   const popupRef = useRef(null);
   useEffect(() => { popupRef.current = popup; }, [popup]);
+
+  // ── Helper traduire couleur ──
+  const trCouleur = (c) => c === "rouge" ? t("rouge", L) : c === "noir" ? t("noir", L) : c;
 
   // ── Timer ──
   useEffect(() => {
@@ -638,9 +663,9 @@ export default function App() {
           clearInterval(timerRef.current);
           setPopup({
             type: "temps_ecoule",
-            titre: "Temps écoulé",
-            message: "Le Rouge n'a pas joué à temps.",
-            gagnant: "Noir",
+            titre: t("tempsEcoule", L),
+            message: t("rougeNonJoue", L),
+            gagnant: t("noir", L),
             couleurGagnant: "noir"
           });
         }
@@ -650,9 +675,9 @@ export default function App() {
           clearInterval(timerRef.current);
           setPopup({
             type: "temps_ecoule",
-            titre: "Temps écoulé",
-            message: "Le Noir n'a pas joué à temps.",
-            gagnant: "Rouge",
+            titre: t("tempsEcoule", L),
+            message: t("noirNonJoue", L),
+            gagnant: t("rouge", L),
             couleurGagnant: "rouge"
           });
         }
@@ -660,7 +685,7 @@ export default function App() {
     }, 200);
     return () => clearInterval(timerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, attenteChoixPouvoir, popup, modeMultijoueur, statutConnexion, timerChoisi, estTourIA, iaEnCours]);
+  }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, attenteChoixPouvoir, popup, modeMultijoueur, statutConnexion, timerChoisi, estTourIA, iaEnCours, L]);
 
   // ── WebSocket ──
   useEffect(() => {
@@ -739,8 +764,8 @@ export default function App() {
     setEtape("photo");
   };
 
-  const handlePartieCreee = useCallback((id, etatInit, pixels, t, timerSec, scoresManchesInit) => {
-    setPartieId(id); setEtat(etatInit); setPixelsPhoto(pixels); setTaille(t || 16);
+  const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, scoresManchesInit) => {
+    setPartieId(id); setEtat(etatInit); setPixelsPhoto(pixels); setTaille(tt || 16);
     if (timerSec) { setTimerChoisi(timerSec); setTimerRouge(timerSec); setTimerNoir(timerSec); }
     if (scoresManchesInit) setScoresManches(scoresManchesInit);
     if (modeIA !== "aucune") {
@@ -783,15 +808,16 @@ export default function App() {
       if (err.response?.status === 404) {
         setPopup({
           type: "temps_ecoule",
-          titre: "Partie perdue",
-          message: "Le serveur a redémarré. Recommencez une nouvelle partie.",
+          titre: t("partiePerdue", L),
+          message: t("serveurRedemarre", L),
           gagnant: null,
           couleurGagnant: null
         });
       }
     }
     finally { setIaEnCours(false); }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [L]);
 
   useEffect(() => {
     if (etape === "jeu" && etat && partieId && modeIA !== "aucune" && !iaEnCours && !attenteChoixPouvoir) {
@@ -801,12 +827,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir]);
 
-  const gererErreur404 = (err, msg = "Le serveur a redémarré. Recommencez une nouvelle partie.") => {
+  const gererErreur404 = (err) => {
     if (err.response?.status === 404) {
       setPopup({
         type: "temps_ecoule",
-        titre: "Partie perdue",
-        message: msg,
+        titre: t("partiePerdue", L),
+        message: t("serveurRedemarre", L),
         gagnant: null,
         couleurGagnant: null
       });
@@ -822,7 +848,7 @@ export default function App() {
       setAttenteChoixPouvoir(false);
       setPopup(null);
       if ((res.data.recoloriages_possibles ?? 0) > 0) {
-        setPopup({ type: "attente_recoloriage", message: "Clique sur une pièce adverse pour la recolorier" });
+        setPopup({ type: "attente_recoloriage", message: t("cliquerPieceAdverse", L) });
         return;
       }
       await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
@@ -830,7 +856,8 @@ export default function App() {
       console.error("Erreur pouvoir:", err);
       gererErreur404(err);
     }
-  }, [partieId, modeIA, niveauIA, declencherIA]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partieId, modeIA, niveauIA, declencherIA, L]);
 
   const handlePoserPiece = useCallback(async (idx, origine) => {
     if (!partieId || estTourIA || !estMonTour) return;
@@ -868,7 +895,8 @@ export default function App() {
       console.error("Erreur pose:", err);
       gererErreur404(err);
     }
-  }, [partieId, estTourIA, estMonTour, modeIA, niveauIA, declencherIA]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partieId, estTourIA, estMonTour, modeIA, niveauIA, declencherIA, L]);
 
   const handlePouvoir = useCallback((choix) => {
     setPopup(null);
@@ -876,17 +904,18 @@ export default function App() {
       envoyerPouvoir({ pouvoir: "rien" });
     } else if (choix === "proteger") {
       setAttenteChoixPouvoir(true);
-      setPopup({ type: "attente_cible", pouvoir: "proteger", message: "Clique sur une de tes pièces dans le panneau gauche" });
+      setPopup({ type: "attente_cible", pouvoir: "proteger", message: t("cliquerTienne", L) });
     } else if (choix === "echanger") {
       setPieceADonner(null);
       setAttenteChoixPouvoir(true);
-      setPopup({ type: "attente_cible", pouvoir: "echanger", message: "Clique ta pièce à donner puis la pièce adverse à prendre" });
+      setPopup({ type: "attente_cible", pouvoir: "echanger", message: t("cliquerDonnerPrendre", L) });
     } else if (choix === "extraire") {
       setExtractionsEnCours([]);
       setAttenteChoixPouvoir(true);
-      setPopup({ type: "attente_extraire", message: "Clique sur 1 ou 2 pièces sur le plateau, puis Confirmer" });
+      setPopup({ type: "attente_extraire", message: t("cliquer1ou2", L) });
     }
-  }, [envoyerPouvoir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [envoyerPouvoir, L]);
 
   const handleCiblePouvoir = useCallback(async (position) => {
     const p = popupRef.current;
@@ -922,7 +951,8 @@ export default function App() {
       setPopup(null);
       await envoyerPouvoir({ pouvoir, cible_pouvoir: position });
     }
-  }, [partieId, modeIA, niveauIA, declencherIA, envoyerPouvoir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partieId, modeIA, niveauIA, declencherIA, envoyerPouvoir, L]);
 
   const handleConfirmerExtraction = useCallback(async () => {
     setPopup(null);
@@ -992,7 +1022,6 @@ export default function App() {
     setEtape(utilisateur ? "taille" : "auth");
   };
 
-  // Fonction revanche unifiée
   const lancerRevanche = useCallback(async () => {
     const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
 
@@ -1010,7 +1039,6 @@ export default function App() {
       try {
         const res = await axios.post(`${API}/revanche/${partieId}`);
         if (res.data.succes) {
-          // Bloquer timer temporairement pour éviter déclenchement instantané
           setAttenteChoixPouvoir(true);
           setEtat(res.data.etat);
           if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
@@ -1028,7 +1056,6 @@ export default function App() {
           await new Promise(r => setTimeout(r, 150));
           setAttenteChoixPouvoir(false);
 
-          // Déclencher l'IA si c'est son tour (Noir commence = tour_actuel 1)
           if (res.data.etat) {
             await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
           }
@@ -1038,14 +1065,15 @@ export default function App() {
         gererErreur404(e);
       }
     }
-  }, [monRole, modeMultijoueur, partieId, timerChoisi, modeIA, niveauIA, declencherIA]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monRole, modeMultijoueur, partieId, timerChoisi, modeIA, niveauIA, declencherIA, L]);
 
   // ── Rendu étapes ──
-  if (etape === "taille") return <div className="app"><EcranTaille onValider={handleTailleValidee} /></div>;
+  if (etape === "taille") return <div className="app"><EcranTaille onValider={handleTailleValidee} L={L} /></div>;
 
   if (etape === "auth") return (
     <div className="app">
-      <EcranAuth onConnecte={(user) => { setUtilisateur(user); setEtape("taille"); }} />
+      <EcranAuth onConnecte={(user) => { setUtilisateur(user); setEtape("taille"); }} L={L} />
     </div>
   );
 
@@ -1055,7 +1083,7 @@ export default function App() {
         <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
           <button className="btn-action" style={{ fontSize: 15, padding: "10px 20px" }}
             onClick={() => { setMonRole("joueur2"); setEtape("lobby"); }}>
-            Je suis le Joueur 2 — Rejoindre une partie
+            {t("jeSuisJoueur2", L)}
           </button>
         </div>
       )}
@@ -1064,6 +1092,7 @@ export default function App() {
         utilisateur={utilisateur}
         modeIA={modeIA}
         onPartieCreee={handlePartieCreee}
+        L={L}
       />
     </div>
   );
@@ -1071,7 +1100,7 @@ export default function App() {
   if (etape === "lobby") return (
     <div className="app">
       <EcranLobby partieId={partieId} monRole={monRole} statutConnexion={statutConnexion}
-        onRejoindreManuellement={handleRejoindreManuellement} />
+        onRejoindreManuellement={handleRejoindreManuellement} L={L} />
     </div>
   );
 
@@ -1079,17 +1108,18 @@ export default function App() {
   return (
     <div className="app jeu">
 
-      {showClassement && <EcranClassement utilisateur={utilisateur} onFermer={() => setShowClassement(false)} />}
+      {showClassement && <EcranClassement utilisateur={utilisateur} onFermer={() => setShowClassement(false)} L={L} />}
 
       {showParametres && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ minWidth: 320, gap: 14 }}>
-            <div className="popup-titre">Parametres</div>
+            <div className="popup-titre">{t("parametres", L)}</div>
+
             {utilisateur && (
               <div style={{ width: "100%", borderBottom: "1px solid var(--bord)", paddingBottom: 12 }}>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>Compte</div>
+                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>{t("compte", L)}</div>
                 <div style={{ fontSize: 15, color: "var(--texte)", marginBottom: 8 }}>{utilisateur.pseudo} — {utilisateur.email}</div>
-                <div style={{ fontSize: 13, color: "var(--rouge-c)", marginBottom: 8 }}>ELO : {utilisateur.elo}</div>
+                <div style={{ fontSize: 13, color: "var(--rouge-c)", marginBottom: 8 }}>{t("elo", L)} {utilisateur.elo}</div>
                 <button className="popup-btn" style={{ fontSize: 13 }}
                   onClick={() => {
                     localStorage.removeItem("elmaas_token");
@@ -1098,10 +1128,26 @@ export default function App() {
                     setShowParametres(false);
                     handleReset();
                   }}>
-                  Se deconnecter
+                  {t("seDeconnecter", L)}
                 </button>
               </div>
             )}
+
+            {/* Langue */}
+            <div style={{ width: "100%" }}>
+              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>{t("langue", L)}</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {LANGUES.map((lang, idx) => (
+                  <button key={lang.code}
+                    className={`ia-btn ${indexLangue === idx ? "actif" : ""}`}
+                    style={{ fontSize: 13 }}
+                    onClick={() => changerLangue(idx)}>
+                    {lang.nom}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {utilisateur && !utilisateur.premium && (
               <button className="btn-valider" style={{ fontSize: 14, padding: "10px 24px" }}
                 onClick={async () => {
@@ -1115,18 +1161,18 @@ export default function App() {
                     if (data.url) window.location.href = data.url;
                   } catch(e) { console.error("Erreur paiement"); }
                 }}>
-                Passer Premium — 6.99€/mois
+                {t("passerPremiumBtn", L)}
               </button>
             )}
             {utilisateur?.premium && (
-              <div style={{ color: "#88ff88", fontSize: 14 }}>Premium actif</div>
+              <div style={{ color: "#88ff88", fontSize: 14 }}>{t("premiumActif", L)}</div>
             )}
-            <button className="popup-btn" onClick={() => setShowParametres(false)}>Fermer</button>
+            <button className="popup-btn" onClick={() => setShowParametres(false)}>{t("fermer", L)}</button>
           </div>
         </div>
       )}
 
-      {/* Fin de manche (score normal) */}
+      {/* Fin de manche */}
       {mancheTermineeInfo && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
@@ -1141,10 +1187,10 @@ export default function App() {
                     color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
                     fontSize: 32,
                   }}>
-                    {egalite ? "Egalite" : jaiGagne ? "Victoire" : "Defaite"}
+                    {egalite ? t("egalite", L) : jaiGagne ? t("victoire", L) : t("defaite", L)}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                    {egalite ? "" : jaiGagne ? "Bien joue" : `${g === "rouge" ? "Rouge" : "Noir"} remporte la manche`}
+                    {egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
                   </div>
                 </>
               );
@@ -1152,56 +1198,55 @@ export default function App() {
             <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 32, fontFamily: "var(--brush)", alignItems: "center" }}>
               <div style={{ textAlign: "center" }}>
                 <div style={{ color: "var(--rouge-c)", fontWeight: 700 }}>{mancheTermineeInfo.scores?.rouge ?? 0}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>Rouge</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("rouge", L)}</div>
               </div>
               <span style={{ color: "var(--muted)", fontSize: 20 }}>vs</span>
               <div style={{ textAlign: "center" }}>
                 <div style={{ color: "#aaaaaa", fontWeight: 700 }}>{mancheTermineeInfo.scores?.noir ?? 0}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>Noir</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("noir", L)}</div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 13, color: "var(--muted)" }}>
-              <span>Manches Rouge : <strong style={{ color: "var(--rouge-c)" }}>{scoresManches.rouge}</strong></span>
-              <span>Manches Noir : <strong style={{ color: "#aaaaaa" }}>{scoresManches.noir}</strong></span>
+              <span>{t("manchesRouge", L)} <strong style={{ color: "var(--rouge-c)" }}>{scoresManches.rouge}</strong></span>
+              <span>{t("manchesNoir", L)} <strong style={{ color: "#aaaaaa" }}>{scoresManches.noir}</strong></span>
             </div>
             <div className="popup-options" style={{ flexDirection: "row", gap: 10, justifyContent: "center" }}>
               <button className="popup-btn" style={{ flex: 1 }}
                 onClick={lancerRevanche}>
-                {modeMultijoueur ? "Demander revanche" : "Revanche"}
+                {modeMultijoueur ? t("demanderRevanche", L) : t("revanche", L)}
               </button>
               <button className="popup-btn" style={{ flex: 1 }} onClick={handleReset}>
-                Nouvelle partie
+                {t("nouvellePartie", L)}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Pause reçue */}
       {demandePauseRecue && !pauseActive && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
             {demandePauseRecue === (monRole === "joueur2" ? "noir" : "rouge") ? (
               <>
-                <div className="popup-titre">Pause demandée</div>
-                <div style={{ color: "var(--muted)", fontSize: 14 }}>En attente de la réponse de l'adversaire...</div>
+                <div className="popup-titre">{t("pauseDemandee", L)}</div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>{t("attenteReponseAdverse", L)}</div>
                 <button className="popup-btn"
                   onClick={() => { setDemandePauseRecue(null); axios.post(`${API}/pause/refuser/${partieId}`); }}>
-                  Annuler
+                  {t("annuler", L)}
                 </button>
               </>
             ) : (
               <>
-                <div className="popup-titre">Pause demandée</div>
-                <div style={{ color: "var(--muted)", fontSize: 14 }}>L'adversaire demande une pause.</div>
+                <div className="popup-titre">{t("pauseDemandee", L)}</div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>{t("adversaireDemandePause", L)}</div>
                 <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
                   <button className="popup-btn" style={{ flex: 1 }}
                     onClick={() => axios.post(`${API}/pause/accepter/${partieId}`)}>
-                    Accepter
+                    {t("accepter", L)}
                   </button>
                   <button className="popup-btn" style={{ flex: 1 }}
                     onClick={() => axios.post(`${API}/pause/refuser/${partieId}`)}>
-                    Refuser
+                    {t("refuser", L)}
                   </button>
                 </div>
               </>
@@ -1213,10 +1258,10 @@ export default function App() {
       {pauseActive && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
-            <div className="popup-titre">Jeu en pause</div>
+            <div className="popup-titre">{t("jeuEnPause", L)}</div>
             <button className="popup-btn"
               onClick={() => axios.post(`${API}/pause/reprendre/${partieId}`)}>
-              Reprendre
+              {t("reprendre", L)}
             </button>
           </div>
         </div>
@@ -1225,9 +1270,9 @@ export default function App() {
       {demandeRevancheRecue && !revancheDemandeeParMoi && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
-            <div className="popup-titre">Revanche demandée</div>
+            <div className="popup-titre">{t("revancheDemandee", L)}</div>
             <div style={{ color: "var(--muted)", fontSize: 14, textAlign: "center" }}>
-              L'adversaire ({demandeRevancheRecue}) propose une revanche.
+              {t("adversaire", L)} ({trCouleur(demandeRevancheRecue)}) {t("adversaireProposeRevanche", L)}
             </div>
             <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
               <button className="popup-btn" style={{ flex: 1 }}
@@ -1235,14 +1280,14 @@ export default function App() {
                   await axios.post(`${API}/revanche/accepter/${partieId}`);
                   setDemandeRevancheRecue(null);
                 }}>
-                Accepter
+                {t("accepter", L)}
               </button>
               <button className="popup-btn" style={{ flex: 1 }}
                 onClick={async () => {
                   await axios.post(`${API}/revanche/refuser/${partieId}`);
                   setDemandeRevancheRecue(null);
                 }}>
-                Refuser
+                {t("refuser", L)}
               </button>
             </div>
           </div>
@@ -1252,9 +1297,9 @@ export default function App() {
       {revancheDemandeeParMoi && (
         <div className="popup-overlay">
           <div className="popup-pouvoir" style={{ gap: 16 }}>
-            <div className="popup-titre">Revanche demandée</div>
+            <div className="popup-titre">{t("revancheDemandee", L)}</div>
             <div style={{ color: "var(--muted)", fontSize: 14 }}>
-              En attente de la réponse de l'adversaire...
+              {t("attenteReponseAdverse", L)}
             </div>
             <button className="popup-btn"
               onClick={async () => {
@@ -1262,16 +1307,15 @@ export default function App() {
                 setRevancheDemandeeParMoi(false);
                 handleReset();
               }}>
-              Annuler
+              {t("annuler", L)}
             </button>
           </div>
         </div>
       )}
 
-      {/* Popups */}
-      {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} />}
-      {popup?.type === "scout"   && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} />}
-      {popup?.type === "manuel"  && <PopupManuel onFermer={() => setPopup(null)} />}
+      {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} L={L} />}
+      {popup?.type === "scout"   && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
+      {popup?.type === "manuel"  && <PopupManuel onFermer={() => setPopup(null)} L={L} />}
       {popup?.type === "reconnaissance" && (
         <PopupReconnaissance
           indice={indiceReconnaissance}
@@ -1283,32 +1327,33 @@ export default function App() {
             return res.data;
           }}
           onFermer={() => setPopup(null)}
+          L={L}
         />
       )}
 
       {popup?.type === "attente_cible" && (
         <div className="bandeau-cible">
           <span>{popup.message}</span>
-          <button onClick={() => { setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>Annuler</button>
+          <button onClick={() => { setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>{t("annuler", L)}</button>
         </div>
       )}
       {popup?.type === "attente_extraire" && (
         <div className="bandeau-cible">
           <span>{popup.message}</span>
           <span style={{ color: "#ffaa44", fontWeight: 700 }}>
-            {extractionsEnCours.length}/2 sélectionnée{extractionsEnCours.length > 1 ? "s" : ""}
+            {extractionsEnCours.length}/2 {extractionsEnCours.length > 1 ? t("selectionnees", L) : t("selectionnee", L)}
           </span>
           <button style={{ background: "#22441188", color: "#88ff88", borderColor: "#88ff8844" }}
             onClick={handleConfirmerExtraction}>
-            Confirmer
+            {t("confirmer", L)}
           </button>
-          <button onClick={() => { setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>Annuler</button>
+          <button onClick={() => { setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>{t("annuler", L)}</button>
         </div>
       )}
       {popup?.type === "attente_recoloriage" && (
         <div className="bandeau-cible">
           <span>{popup.message}</span>
-          <button onClick={async () => { setPopup(null); setAttenteChoixPouvoir(false); await declencherIA(etat, partieId, modeIA, niveauIA); }}>Passer</button>
+          <button onClick={async () => { setPopup(null); setAttenteChoixPouvoir(false); await declencherIA(etat, partieId, modeIA, niveauIA); }}>{t("passer", L)}</button>
         </div>
       )}
 
@@ -1318,12 +1363,13 @@ export default function App() {
           message={popup.message}
           gagnant={popup.gagnant}
           couleurGagnant={popup.couleurGagnant}
-          textRevanche={modeMultijoueur ? "Demander revanche" : "Revanche"}
+          textRevanche={modeMultijoueur ? t("demanderRevanche", L) : t("revanche", L)}
           onFermer={() => {
             setPopup(null);
             handleReset();
           }}
           onRevanche={lancerRevanche}
+          L={L}
         />
       )}
 
@@ -1334,41 +1380,41 @@ export default function App() {
         <div className="scores">
           <div className="score-item rouge">
             <span className="score-nb">{etat?.scores?.rouge ?? 0}</span>
-            <span className="score-lbl">Rouge</span>
-            <span style={{ fontSize: 10, color: "var(--muted)" }}>{scoresManches.rouge} manche{scoresManches.rouge > 1 ? "s" : ""}</span>
+            <span className="score-lbl">{t("rouge", L)}</span>
+            <span style={{ fontSize: 10, color: "var(--muted)" }}>{scoresManches.rouge} {scoresManches.rouge > 1 ? t("manches", L) : t("manche", L)}</span>
           </div>
           <div className="score-sep">vs</div>
           <div className="score-item noir">
             <span className="score-nb">{etat?.scores?.noir ?? 0}</span>
-            <span className="score-lbl">Noir</span>
-            <span style={{ fontSize: 10, color: "var(--muted)" }}>{scoresManches.noir} manche{scoresManches.noir > 1 ? "s" : ""}</span>
+            <span className="score-lbl">{t("noir", L)}</span>
+            <span style={{ fontSize: 10, color: "var(--muted)" }}>{scoresManches.noir} {scoresManches.noir > 1 ? t("manches", L) : t("manche", L)}</span>
           </div>
         </div>
 
         <div className="timers">
           {modeIA !== "j1" && (
-            <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} />
+            <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !attenteChoixPouvoir && !popup} L={L} />
           )}
           {modeIA !== "j2" && (
-            <TimerBloc secondes={timerNoir}  couleur="noir"  actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} />
+            <TimerBloc secondes={timerNoir}  couleur="noir"  actif={etat?.tour_actuel === 1 && !attenteChoixPouvoir && !popup} L={L} />
           )}
         </div>
 
         <div className="tour-info">
-          Tour {etat?.numero_tour} —
-          <span className={"couleur-actif " + joueurActif?.couleur}> {joueurActif?.couleur}</span>
+          {t("tour", L)} {etat?.numero_tour} —
+          <span className={"couleur-actif " + joueurActif?.couleur}> {trCouleur(joueurActif?.couleur)}</span>
           {modeMultijoueur && (
             <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
-              {estMonTour ? "Ton tour" : "Adversaire joue"}
+              {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
             </span>
           )}
           {bonusDoubleActif && monRole === "joueur2" && (
             <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>
-              Double tour actif
+              {t("doubleTourActif", L)}
             </span>
           )}
           {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
-          {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie">Série {joueurActif.serie_actuelle}</span>}
+          {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurActif.serie_actuelle}</span>}
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1378,18 +1424,17 @@ export default function App() {
               <div style={{ color: "var(--rouge-c)" }}>ELO {utilisateur.elo}</div>
             </div>
           )}
-          <button className="btn-manuel" onClick={() => setShowParametres(true)} title="Parametres"
+          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}
             style={{ width: 34, height: 34, fontSize: 16 }}>⚙</button>
-          <button className="btn-manuel" onClick={() => setShowClassement(true)} title="Classement"
+          <button className="btn-manuel" onClick={() => setShowClassement(true)} title={t("classementElo", L)}
             style={{ width: 34, height: 34, fontSize: 14 }}>ELO</button>
-          <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title="Manuel">?</button>
-          <button className="btn-reset" onClick={handleAbandon}>Nouvelle partie</button>
+          <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
+          <button className="btn-reset" onClick={handleAbandon}>{t("nouvellePartie", L)}</button>
         </div>
       </header>
 
-      {/* Zone adverse */}
       <div className="zone-adverse">
-        <div className="adverse-label">Adversaire ({joueurAdverse?.couleur}) — {(joueurAdverse?.nb_pieces_reserve || 0) + (joueurAdverse?.main_active?.length || 0)} pièces</div>
+        <div className="adverse-label">{t("adversaire", L)} ({trCouleur(joueurAdverse?.couleur)}) — {(joueurAdverse?.nb_pieces_reserve || 0) + (joueurAdverse?.main_active?.length || 0)} {t("pieces", L)}</div>
         <div className="adverse-pieces">
           {(joueurAdverse?.main_active || []).map((_, i) => (
             <div key={i} className={"piece-cachee " + joueurAdverse?.couleur} />
@@ -1397,12 +1442,11 @@ export default function App() {
         </div>
       </div>
 
-      {/* Zone de jeu */}
       <div className="zone-jeu">
 
         <div className="panneau-main">
           <div className="panneau-titre">
-            Mes pièces ({joueurActif?.couleur})
+            {t("mesPieces", L)} ({trCouleur(joueurActif?.couleur)})
           </div>
           <div className="main-pieces-list">
             {(joueurActif?.main_active || []).map((piece, i) => {
@@ -1440,17 +1484,17 @@ export default function App() {
             })}
           </div>
           {(joueurActif?.main_active || []).length === 0 && (
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>Main vide</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>
           )}
 
           <div className="panneau-titre" style={{ marginTop: 10 }}>
-            Réserve : {joueurActif?.nb_pieces_reserve}
+            {t("reserve", L)} {joueurActif?.nb_pieces_reserve}
           </div>
           <div style={{ fontSize: 11, color: "var(--muted)" }}>
-            Pièces posées : {joueurActif?.nb_pieces_posees_depuis_regen ?? 0} / {joueurActif?.seuil_regen_actuel ?? 5}
+            {t("piecesPosees", L)} {joueurActif?.nb_pieces_posees_depuis_regen ?? 0} / {joueurActif?.seuil_regen_actuel ?? 5}
           </div>
           <div className="serie-info">
-            Série : {joueurActif?.serie_actuelle}
+            {t("serieLabel", L)} {joueurActif?.serie_actuelle}
           </div>
 
           {(() => {
@@ -1459,7 +1503,7 @@ export default function App() {
             return (
               <>
                 <div className="panneau-titre" style={{ marginTop: 14, borderColor: joueurAdverse?.couleur === "rouge" ? "#cc220044" : "#44444444" }}>
-                  Adversaire ({joueurAdverse?.couleur})
+                  {t("adversaire", L)} ({trCouleur(joueurAdverse?.couleur)})
                 </div>
                 <div className="main-pieces-list">
                   {mainAdverse.map((piece, i) => (
@@ -1482,7 +1526,7 @@ export default function App() {
                   ))}
                 </div>
                 {mainAdverse.length === 0 && (
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>Main adverse vide</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainAdverseVide", L)}</div>
                 )}
               </>
             );
@@ -1505,14 +1549,14 @@ export default function App() {
         </div>
 
         <div className="panneau-actions">
-          <div className="panneau-titre">Actions</div>
+          <div className="panneau-titre">{t("actions", L)}</div>
           <button className="btn-action" onClick={handleRepiocher}
             disabled={!estMonTour || enModeCible || attenteChoixPouvoir || estTourIA}>
-            Repiocher
+            {t("repiocher", L)}
           </button>
           <button className="btn-action scout" onClick={handleScout}
             disabled={!estMonTour || enModeCible || attenteChoixPouvoir || estTourIA}>
-            Scout
+            {t("scout", L)}
           </button>
 
           {modeMultijoueur && modeIA === "aucune" && monRole === "joueur2" && indiceReconnaissance && (
@@ -1520,18 +1564,18 @@ export default function App() {
               <button className="btn-action"
                 style={{ borderColor: reconnaissanceTentee ? "#444" : "#cc880044", color: reconnaissanceTentee ? "var(--muted)" : "#ffaa44" }}
                 onClick={() => setPopup({ type: "reconnaissance" })} disabled={reconnaissanceTentee}>
-                {reconnaissanceTentee ? "Déjà tenté" : "Reconnaître"}
+                {reconnaissanceTentee ? t("dejaTente", L) : t("reconnaitre", L)}
               </button>
               {bonusDoubleActif && (
                 <div className="hint-action" style={{ color: "#ffaa44", borderColor: "#ffaa4444", background: "#44220011" }}>
-                  Double tour actif
+                  {t("doubleTourActif", L)}
                 </div>
               )}
             </>
           )}
 
           {pieceIdx !== null && estMonTour && !enModeCible && !attenteChoixPouvoir && (
-            <div className="hint-action">Clique sur le plateau pour placer</div>
+            <div className="hint-action">{t("cliquerPlateau", L)}</div>
           )}
           {modeIA === "aucune" && (
             <button className="btn-action" style={{ marginTop: "auto", borderColor: "#4444aa44", color: "var(--muted)" }}
@@ -1540,17 +1584,17 @@ export default function App() {
                 axios.post(`${API}/pause/demander/${partieId}`, { couleur });
                 setDemandePauseRecue(couleur);
               }}>
-              Pause
+              {t("pause", L)}
             </button>
           )}
           {attenteChoixPouvoir && (
             <div className="hint-action" style={{ borderColor: "#cc880044", background: "#44220011", color: "#ffaa44" }}>
-              Choisissez votre récompense
+              {t("choisirRecompense", L)}
             </div>
           )}
           {!estMonTour && modeMultijoueur && (
             <div className="hint-action" style={{ borderColor: "#ff444444", background: "#ff000011", color: "#ff8888" }}>
-              Attends ton tour...
+              {t("attendsTonTour", L)}
             </div>
           )}
         </div>
