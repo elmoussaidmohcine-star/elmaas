@@ -996,7 +996,16 @@ export default function App() {
         onRejoindreManuellement={handleRejoindreManuellement} />
     </div>
   );
-
+  console.log("[DEBUG]", {
+  modeIA,
+  tour_actuel: etat?.tour_actuel,
+  monRole,
+  estMonTour,
+  estTourIA,
+  timestamp: etat?.timestamp_debut_tour,
+  now: Date.now()/1000,
+  diff: Date.now()/1000 - (etat?.timestamp_debut_tour || 0)
+});
   // ── Écran jeu ──
   return (
     <div className="app jeu">
