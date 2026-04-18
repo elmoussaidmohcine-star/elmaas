@@ -616,9 +616,11 @@ export default function App() {
   const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
   const estTourIA = etat && modeIA !== "aucune" &&
     ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
-  const estMonTour = !modeMultijoueur || !monRole ||
-    (monRole === "joueur1" && etat?.tour_actuel === 0) ||
-    (monRole === "joueur2" && etat?.tour_actuel === 1);
+  const estMonTour = modeIA !== "aucune"
+      ? !estTourIA
+      : (!modeMultijoueur || !monRole ||
+        (monRole === "joueur1" && etat?.tour_actuel === 0) ||
+        (monRole === "joueur2" && etat?.tour_actuel === 1));
 
   const enModeCible = ["attente_cible", "attente_extraire", "attente_recoloriage"].includes(popup?.type);
 
@@ -631,7 +633,7 @@ export default function App() {
     clearInterval(timerRef.current);
     if (etape !== "jeu" || !etat || etat.manche_terminee || attenteChoixPouvoir || popup) return;
     if (modeMultijoueur && statutConnexion !== "connecte") return;
-    if (estTourIA) return;
+    if (estTourIA || iaEnCours) return; // Timer suspendu pendant tour IA
 
     const tsDebut = etat.timestamp_debut_tour ? etat.timestamp_debut_tour * 1000 : Date.now();
 
@@ -669,7 +671,7 @@ export default function App() {
     }, 200);
     return () => clearInterval(timerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, attenteChoixPouvoir, popup, modeMultijoueur, statutConnexion, timerChoisi, estTourIA]);
+  }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, attenteChoixPouvoir, popup, modeMultijoueur, statutConnexion, timerChoisi, estTourIA, iaEnCours]);
 
   // ── WebSocket ──
   useEffect(() => {
@@ -787,8 +789,20 @@ export default function App() {
     try {
       const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
       setEtat(res.data.etat);
-    } catch (err) { console.error("Erreur IA:", err); }
+    } catch (err) {
+      console.error("Erreur IA:", err);
+      if (err.response?.status === 404) {
+        setPopup({
+          type: "temps_ecoule",
+          titre: "Partie perdue",
+          message: "Le serveur a redémarré et la partie a été perdue. Recommencez une nouvelle partie.",
+          gagnant: null,
+          couleurGagnant: null
+        });
+      }
+    }
     finally { setIaEnCours(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
