@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import Board from "./Board";
-import { T, LANGUES, t } from "./translations";
+import { T, LANGUES, t, getSloganAleatoire } from "./translations";
 import "./App.css";
 
 const API = "https://elmaas.up.railway.app";
@@ -148,7 +148,7 @@ function EcranAuth({ onConnecte, L }) {
   return (
     <div className="ecran-taille">
       <h1 className="titre-jeu">ELMAAS</h1>
-      <p className="phrase-jeu">{t("slogan", L)}</p>
+      <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
       <p className="sous-phrase-jeu">{t("sousSlogan", L)}</p>
       <div className="lobby-card" style={{ minWidth: 340 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -395,7 +395,7 @@ function EcranTaille({ onValider, L }) {
   return (
     <div className="ecran-taille">
       <h1 className="titre-jeu">ELMAAS</h1>
-      <p className="phrase-jeu">{t("slogan", L)}</p>
+      <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
       <p className="sous-phrase-jeu">{t("sousSlogan", L)}</p>
       <p className="sous-titre">{t("choisissezTaille", L)}</p>
       <div className="taille-inputs">
@@ -450,7 +450,7 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
     return (
       <div className="ecran-lobby">
         <h1 className="titre-jeu">ELMAAS</h1>
-        <p className="phrase-jeu">{t("slogan", L)}</p>
+        <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
         <div className="lobby-card">
           <div className="lobby-titre">{t("partieCreee", L)}</div>
           <div className="lobby-sous">{t("donnezCodeJ2", L)}</div>
@@ -468,7 +468,7 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
   return (
     <div className="ecran-lobby">
       <h1 className="titre-jeu">ELMAAS</h1>
-      <p className="phrase-jeu">{t("slogan", L)}</p>
+      <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
       <div className="lobby-card">
         <div className="lobby-titre">{t("rejoindrePartie", L)}</div>
         <div className="lobby-sous">{t("entrerCode", L)}</div>
@@ -762,6 +762,40 @@ export default function App() {
   };
 
   useEffect(() => { appliquerTheme(indexLangue); }, [indexLangue]);
+    // Récupérer le token Google après retour de Google OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleToken = params.get("google_token");
+    const authError = params.get("auth_error");
+ 
+    if (authError) {
+      console.error("Erreur OAuth:", authError);
+      window.history.replaceState({}, "", "/");
+      return;
+    }
+ 
+    if (googleToken) {
+      localStorage.setItem("elmaas_token", googleToken);
+      fetch(`${API}/auth/moi`, {
+        headers: { Authorization: `Bearer ${googleToken}` }
+      })
+        .then(r => r.json())
+        .then(user => {
+          if (user && !user.erreur) {
+            localStorage.setItem("elmaas_user", JSON.stringify(user));
+            setUtilisateur(user);
+            setEtape("taille");
+          }
+          // Nettoyer l'URL pour ne pas garder le token visible
+          window.history.replaceState({}, "", "/");
+        })
+        .catch(err => {
+          console.error("Erreur récupération utilisateur:", err);
+          window.history.replaceState({}, "", "/");
+        });
+    }
+  }, []);
+ 
 
   // Dérivés
   const joueurActif  = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;

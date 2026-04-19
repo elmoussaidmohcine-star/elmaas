@@ -1,5 +1,4 @@
-// ELMAAS — translations.js v2
-// Chaque entrée = liste [fr, en, ar, es]
+// ELMAAS — translations.js v3 — SLOGANS EN ROTATION ALÉATOIRE
 
 export const LANGUES = [
   { code: "fr", nom: "Français", theme: "theme-fr" },
@@ -8,13 +7,82 @@ export const LANGUES = [
   { code: "es", nom: "Español",  theme: "theme-es" },
 ];
 
-export const T = {
-  // ── SLOGANS CULTURELS (chacun avec sa personnalité) ──
-  slogan: [
-    "Les échecs ont leur gloire, ELMAAS est le diamant brut.",
+// ── SLOGANS : un choisi au hasard à chaque chargement du site ──
+export const SLOGANS = {
+  fr: [
+    "Les échecs sont vieux, ELMAAS vaut plus que l'or.",
+    "Merci au français d'avoir trouvé le meilleur nom : les échecs. Un aveu franc.",
+    "Pas de roi à protéger — c'est toi, le roi.",
+    "Un cheval qui vole en L... je jure l'avoir déjà vu quelque part.",
+    "Un pion devient reine. Saint Pion.",
+    "Comment gagner une guerre si tes soldats ne voient ni à gauche ni à droite ?",
+    "Une guerre à huit soldats — c'est plutôt une bagarre de quartier.",
+    "Si la reine est plus forte que le roi, donnez-lui le trône.",
+    "La tour est en cours de construction.",
+    "Comment les Noirs pourraient-ils commencer ? Il faudrait qu'ils deviennent blancs d'abord.",
+    "Je reconnais ce coup : l'ouverture Istobranctuscolobantus, jouée par M. Kholobanfris dans son jardin en 1800,99.",
+    "Aux échecs, tu déplaces des statues. Ici, tu peins le monde.",
+  ],
+  en: [
     "Chess is old, ELMAAS is better than gold.",
-    "الشطرنج ملك الزمان، وإلماس جوهرة الأوان",
-    "Ajedrez es historia, ELMAAS es la joya que brilla."
+    "No king to protect — you are the king.",
+    "A flying L-shaped horse... hmm, I swear I've seen that somewhere.",
+    "A pawn promoted to queen. Holy pawn.",
+    "How do you win a war if your soldiers can't see left or right?",
+    "A war with 8 soldiers? That's a neighborhood scuffle.",
+    "If the queen is stronger than the king, just give her the throne.",
+    "The rook is currently under construction.",
+    "How could Black move first? They'd have to turn white.",
+    "I recognize this move — the Istobranctuscolobantus opening, played by Mr. Kholobanfris in his garden in 1800.99.",
+    "Chess moves statues. ELMAAS paints the world.",
+    "Sixty-four squares is cute. Try two hundred.",
+  ],
+  ar: [
+    "الشطرنج قديم، وإلماس أثمن من الذهب.",
+    "لا ملك تحميه — أنت الملك.",
+    "حصان يطير على شكل حرف... أقسم أني رأيت هذه الحركة في مكان ما.",
+    "جنديون يسيرون وراء الران. نحن لسنا متفائلين لهذا الحد.",
+    "كيف تنتصر في حرب وجنودك لا يرون يميناً ولا يساراً؟",
+    "حرب بثمانية جنود؟ هذا مجرد شجار في الحي.",
+    "إن كانت الملكة أقوى من الملك، فأعطوها العرش.",
+    "القلعة قيد الإنشاء.",
+    "كيف يبدأ الأسود أولاً؟ يجب أن يصير أبيض أولاً.",
+    "أعرف هذه الافتتاحية — استبرنكتوسكولوبنطوس، لعبها السيد خلوبنفريس في حديقته عام 1800,99.",
+    "الشطرنج يحرك التماثيل. إلماس يلون العالم.",
+  ],
+  es: [
+    "El ajedrez es viejo, ELMAAS vale más que el oro.",
+    "No hay rey que proteger — tú eres el rey.",
+    "Un caballo que vuela en forma de L... juro haberlo visto antes.",
+    "Un peón coronado reina. San Peón.",
+    "¿Cómo ganar una guerra si tus soldados no ven a izquierda ni derecha?",
+    "¿Una guerra con 8 soldados? Eso es una pelea de barrio.",
+    "Si la reina es más fuerte que el rey, dale el trono.",
+    "La torre está en construcción.",
+    "¿Cómo van a empezar las negras? Tendrían que volverse blancas primero.",
+    "Reconozco esta jugada — la apertura Istobranctuscolobantus, jugada por el Sr. Kholobanfris en su jardín en 1800,99.",
+    "El ajedrez mueve estatuas. ELMAAS pinta el mundo.",
+  ],
+};
+
+// Slogan choisi une fois par session (ne change pas à chaque re-render)
+let _sloganCache = null;
+export function getSloganAleatoire(indexLangue) {
+  if (_sloganCache && _sloganCache.langue === indexLangue) return _sloganCache.phrase;
+  const code = LANGUES[indexLangue].code;
+  const liste = SLOGANS[code] || SLOGANS.fr;
+  const phrase = liste[Math.floor(Math.random() * liste.length)];
+  _sloganCache = { langue: indexLangue, phrase };
+  return phrase;
+}
+export function reinitSloganCache() { _sloganCache = null; }
+
+export const T = {
+  slogan: [
+    "Les échecs sont vieux, ELMAAS vaut plus que l'or.",
+    "Chess is old, ELMAAS is better than gold.",
+    "الشطرنج قديم، وإلماس أثمن من الذهب.",
+    "El ajedrez es viejo, ELMAAS vale más que el oro."
   ],
   sousSlogan: [
     "Un jeu de stratégie, d'art et d'intuition.",
@@ -22,8 +90,6 @@ export const T = {
     "لعبة الاستراتيجية والفن والحدس",
     "Un juego de estrategia, arte e instinto."
   ],
-
-  // ── Auth ──
   connexion: ["Connexion", "Login", "تسجيل الدخول", "Iniciar sesión"],
   inscription: ["Inscription", "Sign up", "التسجيل", "Registrarse"],
   email: ["Email", "Email", "البريد الإلكتروني", "Correo"],
@@ -35,8 +101,6 @@ export const T = {
   ouContinuerAvec: ["ou continuer avec", "or continue with", "أو تابع باستخدام", "o continúa con"],
   continuerAvecGoogle: ["Continuer avec Google", "Continue with Google", "المتابعة بواسطة Google", "Continuar con Google"],
   erreurConnexion: ["Erreur de connexion", "Connection error", "خطأ في الاتصال", "Error de conexión"],
-
-  // ── Écran Taille ──
   choisissezTaille: ["Choisissez la taille du plateau", "Choose the board size", "اختر حجم اللوحة", "Elige el tamaño del tablero"],
   tailleDuPlateau: ["Taille du plateau", "Board size", "حجم اللوحة", "Tamaño del tablero"],
   plateau: ["plateau", "board", "اللوحة", "tablero"],
@@ -50,8 +114,6 @@ export const T = {
   moyen: ["Moyen", "Medium", "متوسط", "Medio"],
   expert: ["Expert", "Expert", "خبير", "Experto"],
   confirmer: ["Confirmer", "Confirm", "تأكيد", "Confirmar"],
-
-  // ── Écran Photo ──
   choisissezPhoto: ["Choisissez une photo pour votre plateau", "Choose a photo for your board", "اختر صورة للوحتك", "Elige una foto para tu tablero"],
   nomSecretPhoto: ["Nom secret de la photo", "Secret photo name", "الاسم السري للصورة", "Nombre secreto de la foto"],
   max10Car: ["(max 10 car.)", "(max 10 chars.)", "(10 أحرف كحد أقصى)", "(máx 10 car.)"],
@@ -67,15 +129,7 @@ export const T = {
   jouerAvecPhoto: ["Jouer avec cette photo", "Play with this photo", "اللعب بهذه الصورة", "Jugar con esta foto"],
   erreurCreation: ["Erreur lors de la création de la partie.", "Error creating the game.", "خطأ في إنشاء اللعبة.", "Error al crear la partida."],
   jeSuisJoueur2: ["Je suis le Joueur 2 — Rejoindre une partie", "I am Player 2 — Join a game", "أنا اللاعب 2 — الانضمام إلى لعبة", "Soy el Jugador 2 — Unirse a partida"],
-  // OCR
-  ocrBlocage: [
-    "Le nom de Dieu n'est pas pour jouer. Veuillez choisir une autre photo.",
-    "The name of God is not for playing. Please choose another photo.",
-    "اسم الله ليس للعب. الرجاء اختيار صورة أخرى.",
-    "El nombre de Dios no es para jugar. Elige otra foto."
-  ],
-
-  // ── Lobby ──
+  ocrBlocage: ["Le nom de Dieu n'est pas pour jouer. Veuillez choisir une autre photo.", "The name of God is not for playing. Please choose another photo.", "اسم الله ليس للعب. الرجاء اختيار صورة أخرى.", "El nombre de Dios no es para jugar. Elige otra foto."],
   partieCreee: ["Partie créée", "Game created", "تم إنشاء اللعبة", "Partida creada"],
   donnezCodeJ2: ["Donne ce code au Joueur 2", "Give this code to Player 2", "أعط هذا الرمز للاعب 2", "Dale este código al Jugador 2"],
   copierCode: ["Copier le code", "Copy code", "نسخ الرمز", "Copiar código"],
@@ -87,12 +141,8 @@ export const T = {
   codePartie: ["Code de partie...", "Game code...", "رمز اللعبة...", "Código de partida..."],
   rejoindre: ["Rejoindre", "Join", "انضم", "Unirse"],
   partieIntrouvable: ["Partie introuvable", "Game not found", "اللعبة غير موجودة", "Partida no encontrada"],
-
-  // ── Couleurs ──
   rouge: ["Rouge", "Red", "أحمر", "Rojo"],
   noir: ["Noir", "Black", "أسود", "Negro"],
-
-  // ── Header ──
   manche: ["manche", "round", "جولة", "ronda"],
   manches: ["manches", "rounds", "جولات", "rondas"],
   tour: ["Tour", "Turn", "الدور", "Turno"],
@@ -101,20 +151,14 @@ export const T = {
   doubleTourActif: ["Double tour actif", "Double turn active", "دور مزدوج نشط", "Doble turno activo"],
   serie: ["Série", "Streak", "سلسلة", "Racha"],
   nouvellePartie: ["Nouvelle partie", "New game", "لعبة جديدة", "Nueva partida"],
-
-  // ── Zone adverse ──
   adversaire: ["Adversaire", "Opponent", "الخصم", "Rival"],
   pieces: ["pièces", "pieces", "قطع", "piezas"],
-
-  // ── Panneau main ──
   mesPieces: ["Mes pièces", "My pieces", "قطعي", "Mis piezas"],
   mainVide: ["Main vide", "Empty hand", "اليد فارغة", "Mano vacía"],
   reserve: ["Réserve :", "Reserve:", "الاحتياطي:", "Reserva:"],
   piecesPosees: ["Pièces posées :", "Pieces placed:", "القطع الموضوعة:", "Piezas colocadas:"],
   serieLabel: ["Série :", "Streak:", "السلسلة:", "Racha:"],
   mainAdverseVide: ["Main adverse vide", "Opponent hand empty", "يد الخصم فارغة", "Mano del rival vacía"],
-
-  // ── Panneau actions ──
   actions: ["Actions", "Actions", "الإجراءات", "Acciones"],
   repiocher: ["Repiocher", "Redraw", "سحب جديد", "Volver a robar"],
   scout: ["Scout", "Scout", "استكشاف", "Explorar"],
@@ -124,8 +168,6 @@ export const T = {
   pause: ["Pause", "Pause", "إيقاف مؤقت", "Pausa"],
   choisirRecompense: ["Choisissez votre récompense", "Choose your reward", "اختر مكافأتك", "Elige tu recompensa"],
   attendsTonTour: ["Attends ton tour...", "Wait your turn...", "انتظر دورك...", "Espera tu turno..."],
-
-  // ── Popup pouvoir ──
   puzzleComplete: ["Puzzle complété", "Puzzle completed", "اللغز مكتمل", "Rompecabezas completado"],
   serieDe: ["Série de", "Streak of", "سلسلة من", "Racha de"],
   rienFaire: ["Rien faire", "Do nothing", "لا شيء", "No hacer nada"],
@@ -136,12 +178,8 @@ export const T = {
   echangerDesc: ["Recolorie une pièce adverse à ta couleur", "Recolor an opponent piece", "إعادة تلوين قطعة الخصم", "Recolorea una pieza rival"],
   extraire: ["Extraire", "Extract", "استخراج", "Extraer"],
   extraireDesc: ["Retire jusqu'à 2 pièces du plateau", "Remove up to 2 pieces", "إزالة قطعتين من اللوحة", "Retira hasta 2 piezas"],
-
-  // ── Scout ──
   scoutProchaines: ["prochaines pièces", "next pieces", "القطع التالية", "próximas piezas"],
   echangeAleatoire: ["de ta main échangée(s) aléatoirement", "of your hand swapped randomly", "من يدك تم تبديلها عشوائياً", "de tu mano cambiadas aleatoriamente"],
-
-  // ── Reconnaissance ──
   reconnaissance: ["Reconnaissance", "Recognition", "التعرف", "Reconocimiento"],
   longueur: ["Longueur :", "Length:", "الطول:", "Longitud:"],
   lettres: ["lettres", "letters", "حروف", "letras"],
@@ -152,90 +190,26 @@ export const T = {
   rateNomEtait: ["Raté. Le nom était :", "Missed. The name was:", "فشلت. الاسم كان:", "Fallaste. El nombre era:"],
   tentativeUtilisee: ["Tentative déjà utilisée.", "Attempt already used.", "تم استخدام المحاولة.", "Intento ya usado."],
   fermer: ["Fermer", "Close", "إغلاق", "Cerrar"],
-  min3CarDevinette: [
-    "La devinette doit faire au moins 3 caractères.",
-    "The guess must be at least 3 characters.",
-    "يجب أن يتكون التخمين من 3 أحرف على الأقل.",
-    "La estimación debe tener al menos 3 caracteres."
-  ],
-
-  // ── MANUEL RICHE ──
+  min3CarDevinette: ["La devinette doit faire au moins 3 caractères.", "The guess must be at least 3 characters.", "يجب أن يتكون التخمين من 3 أحرف على الأقل.", "La estimación debe tener al menos 3 caracteres."],
   manuelTitre: ["Manuel ELMAAS", "ELMAAS Manual", "دليل إلماس", "Manual ELMAAS"],
-  manuelIntro: [
-    "Bienvenue dans ELMAAS, un jeu où la stratégie rencontre l'art. Chaque photo devient un plateau unique, chaque pièce un choix décisif.",
-    "Welcome to ELMAAS, where strategy meets art. Every photo becomes a unique board, every piece a decisive choice.",
-    "أهلاً بك في إلماس، حيث تلتقي الاستراتيجية بالفن. كل صورة تصبح لوحة فريدة، وكل قطعة خياراً حاسماً.",
-    "Bienvenido a ELMAAS, donde la estrategia se une al arte. Cada foto se convierte en un tablero único, cada pieza en una decisión crucial."
-  ],
+  manuelIntro: ["Bienvenue dans ELMAAS, un jeu où la stratégie rencontre l'art.", "Welcome to ELMAAS, where strategy meets art.", "أهلاً بك في إلماس، حيث تلتقي الاستراتيجية بالفن.", "Bienvenido a ELMAAS, donde la estrategia se une al arte."],
   objectif: ["Objectif", "Objective", "الهدف", "Objetivo"],
-  objectifDesc: [
-    "Complétez le plus de puzzles à votre couleur. Le plateau est découpé en zones — conquérez-les avant votre adversaire.",
-    "Complete the most puzzles in your color. The board is cut into zones — conquer them before your opponent.",
-    "أكمل أكبر عدد من الألغاز بلونك. اللوحة مقسمة إلى مناطق — اغزها قبل خصمك.",
-    "Completa más rompecabezas de tu color. El tablero está dividido en zonas — conquístalas antes que tu rival."
-  ],
+  objectifDesc: ["Complétez le plus de puzzles à votre couleur.", "Complete the most puzzles in your color.", "أكمل أكبر عدد من الألغاز بلونك.", "Completa más rompecabezas de tu color."],
   typesPuzzles: ["Types de puzzles", "Puzzle types", "أنواع الألغاز", "Tipos de rompecabezas"],
-  typesPuzzlesDesc: [
-    "Mono-Rouge (à compléter en rouge), Mono-Noir (à compléter en noir), Mixte (chacun y met sa marque).",
-    "Mono-Red (complete in red), Mono-Black (complete in black), Mixed (both play their colors).",
-    "أحمر فقط (يكمل بالأحمر)، أسود فقط (يكمل بالأسود)، مختلط (كل لاعب يضع لونه).",
-    "Mono-Rojo (completar en rojo), Mono-Negro (completar en negro), Mixto (ambos ponen sus colores)."
-  ],
+  typesPuzzlesDesc: ["Mono-Rouge, Mono-Noir, Mixte.", "Mono-Red, Mono-Black, Mixed.", "أحمر فقط، أسود فقط، مختلط.", "Mono-Rojo, Mono-Negro, Mixto."],
   actionsParTour: ["Actions par tour", "Actions per turn", "الإجراءات لكل دور", "Acciones por turno"],
-  actionPoser: [
-    "Poser : choisissez une pièce, cliquez sur le plateau pour la placer.",
-    "Place: pick a piece, click on the board to place it.",
-    "الوضع: اختر قطعة وانقر على اللوحة لوضعها.",
-    "Colocar: elige una pieza, clic en el tablero para colocarla."
-  ],
-  actionRepiocher: [
-    "Repiocher : remplace toute votre main par de nouvelles pièces (coûte votre tour).",
-    "Redraw: replace your entire hand with new pieces (costs your turn).",
-    "السحب: استبدل يدك بقطع جديدة (يكلفك دورك).",
-    "Volver a robar: reemplaza toda tu mano por nuevas piezas (cuesta tu turno)."
-  ],
-  actionScout: [
-    "Scout : voyez les 3 prochaines pièces de votre pioche (mais 1 ou 2 sont échangées au hasard).",
-    "Scout: see the next 3 pieces of your draw (but 1 or 2 are randomly swapped).",
-    "الاستكشاف: اطلع على القطع الثلاث القادمة (لكن 1 أو 2 قد تتبدل عشوائياً).",
-    "Explorar: mira las 3 próximas piezas (pero 1 o 2 se cambian al azar)."
-  ],
+  actionPoser: ["Poser : choisissez une pièce, cliquez sur le plateau.", "Place: pick a piece, click on the board.", "الوضع: اختر قطعة وانقر على اللوحة.", "Colocar: elige una pieza, clic en el tablero."],
+  actionRepiocher: ["Repiocher : remplace toute votre main.", "Redraw: replace your entire hand.", "السحب: استبدل يدك بقطع جديدة.", "Volver a robar: reemplaza tu mano."],
+  actionScout: ["Scout : voyez les 3 prochaines pièces.", "Scout: see the next 3 pieces.", "الاستكشاف: اطلع على القطع الثلاث القادمة.", "Explorar: mira las 3 próximas piezas."],
   apresPuzzle: ["Après un puzzle complété", "After a completed puzzle", "بعد إكمال لغز", "Después de un rompecabezas completado"],
-  apresPuzzleDesc: [
-    "Choisissez une récompense : Protéger une pièce, Échanger avec l'adversaire, ou Rien faire pour rester discret.",
-    "Choose a reward: Protect a piece, Exchange with opponent, or Do nothing to stay discreet.",
-    "اختر مكافأتك: حماية قطعة، تبادل مع الخصم، أو لا شيء لتبقى هادئاً.",
-    "Elige recompensa: Proteger una pieza, Intercambiar con el rival, o No hacer nada."
-  ],
+  apresPuzzleDesc: ["Choisissez : Protéger, Échanger, ou Rien.", "Choose: Protect, Exchange, or Nothing.", "اختر: حماية، تبادل، أو لا شيء.", "Elige: Proteger, Intercambiar, o Nada."],
   series: ["Séries", "Streaks", "السلاسل", "Rachas"],
-  serie3Desc: [
-    "3 puzzles d'affilée → pouvoir Extraire (retirer 1 ou 2 pièces du plateau).",
-    "3 puzzles in a row → Extract power (remove 1 or 2 pieces from the board).",
-    "3 ألغاز متتالية → قوة الاستخراج (إزالة 1 أو 2 من اللوحة).",
-    "3 rompecabezas seguidos → poder Extraer (retira 1 o 2 piezas)."
-  ],
-  serie5Desc: [
-    "5 puzzles d'affilée → victoire immédiate. La série est sacrée, elle se rompt si tu rates.",
-    "5 puzzles in a row → instant victory. The streak is sacred, it breaks if you miss.",
-    "5 ألغاز متتالية → نصر فوري. السلسلة مقدسة، تنكسر إذا أخطأت.",
-    "5 rompecabezas seguidos → victoria instantánea. La racha es sagrada."
-  ],
+  serie3Desc: ["3 puzzles d'affilée → Extraire.", "3 puzzles in a row → Extract.", "3 ألغاز متتالية → استخراج.", "3 seguidos → Extraer."],
+  serie5Desc: ["5 puzzles d'affilée → victoire immédiate.", "5 puzzles in a row → instant victory.", "5 ألغاز متتالية → نصر فوري.", "5 seguidos → victoria instantánea."],
   finPartie: ["Fin de partie", "End of game", "نهاية اللعبة", "Fin del juego"],
-  finPartieDesc: [
-    "La partie s'achève dans 3 cas : 5 puzzles d'affilée (victoire immédiate), plus aucune pièce disponible, ou fin absolue (résultat mathématiquement certain).",
-    "The game ends in 3 cases: 5 puzzles in a row (instant win), no more pieces available, or absolute end (result mathematically certain).",
-    "تنتهي اللعبة في 3 حالات: 5 ألغاز متتالية (نصر فوري)، لا مزيد من القطع، أو نهاية مطلقة (نتيجة مؤكدة رياضياً).",
-    "El juego termina en 3 casos: 5 rompecabezas seguidos, sin más piezas, o fin absoluto (resultado matemático)."
-  ],
+  finPartieDesc: ["3 cas : 5 d'affilée, plus de pièces, ou fin absolue.", "3 cases: 5 in a row, no pieces, or absolute end.", "3 حالات.", "3 casos."],
   astuceTitre: ["Astuce du maître", "Master's tip", "نصيحة المعلم", "Consejo del maestro"],
-  astuceDesc: [
-    "Parfois, forcer ton adversaire à rejouer vaut mieux que jouer toi-même. Le double tour est une arme à double tranchant.",
-    "Sometimes, forcing your opponent to play again is better than playing yourself. The double turn cuts both ways.",
-    "أحياناً إجبار خصمك على اللعب مجدداً أفضل من اللعب بنفسك. الدور المزدوج سلاح ذو حدين.",
-    "A veces, forzar a tu rival a jugar es mejor que jugar tú. El doble turno es un arma de doble filo."
-  ],
-
-  // ── Fin de partie ──
+  astuceDesc: ["Forcer l'adversaire à rejouer peut valoir plus que jouer soi-même.", "Forcing opponent to replay can be better than playing yourself.", "إجبار الخصم على اللعب قد يكون أفضل من اللعب بنفسك.", "Forzar al rival puede ser mejor que jugar tú."],
   tempsEcoule: ["Temps écoulé", "Time's up", "انتهى الوقت", "Tiempo agotado"],
   rougeNonJoue: ["Le Rouge n'a pas joué à temps.", "Red didn't play in time.", "لم يلعب الأحمر في الوقت.", "Rojo no jugó a tiempo."],
   noirNonJoue: ["Le Noir n'a pas joué à temps.", "Black didn't play in time.", "لم يلعب الأسود في الوقت.", "Negro no jugó a tiempo."],
@@ -243,24 +217,14 @@ export const T = {
   revanche: ["Revanche", "Rematch", "المباراة الثأرية", "Revancha"],
   demanderRevanche: ["Demander revanche", "Request rematch", "طلب مباراة ثأرية", "Pedir revancha"],
   partiePerdue: ["Partie perdue", "Game lost", "فقدت اللعبة", "Partida perdida"],
-  serveurRedemarre: [
-    "Le serveur a redémarré. Recommencez une nouvelle partie.",
-    "The server restarted. Start a new game.",
-    "أعيد تشغيل الخادم. ابدأ لعبة جديدة.",
-    "El servidor se reinició. Empieza una nueva partida."
-  ],
-
-  // ── Manche ──
+  serveurRedemarre: ["Le serveur a redémarré.", "The server restarted.", "أعيد تشغيل الخادم.", "El servidor se reinició."],
   victoire: ["Victoire", "Victory", "النصر", "Victoria"],
   defaite: ["Defaite", "Defeat", "هزيمة", "Derrota"],
   egalite: ["Egalite", "Tie", "تعادل", "Empate"],
   bienJoue: ["Bien joue", "Well played", "أحسنت", "Bien jugado"],
   remporteManche: ["remporte la manche", "wins the round", "يفوز بالجولة", "gana la ronda"],
-  scoreEnCellules: ["Score en cellules de puzzles completes", "Score in cells of completed puzzles", "النتيجة بخلايا الألغاز المكتملة", "Puntuación en celdas completadas"],
   manchesRouge: ["Manches Rouge :", "Red rounds:", "جولات الأحمر:", "Rondas Rojo:"],
   manchesNoir: ["Manches Noir :", "Black rounds:", "جولات الأسود:", "Rondas Negro:"],
-
-  // ── Pause ──
   pauseDemandee: ["Pause demandée", "Pause requested", "تم طلب الإيقاف", "Pausa solicitada"],
   attenteReponseAdverse: ["En attente de la réponse de l'adversaire...", "Waiting for opponent's reply...", "في انتظار رد الخصم...", "Esperando respuesta del rival..."],
   annuler: ["Annuler", "Cancel", "إلغاء", "Cancelar"],
@@ -269,90 +233,42 @@ export const T = {
   refuser: ["Refuser", "Refuse", "رفض", "Rechazar"],
   jeuEnPause: ["Jeu en pause", "Game paused", "اللعبة متوقفة", "Juego en pausa"],
   reprendre: ["Reprendre", "Resume", "استئناف", "Reanudar"],
-
-  // ── Revanche ──
   revancheDemandee: ["Revanche demandée", "Rematch requested", "طلب مباراة ثأرية", "Revancha solicitada"],
   adversaireProposeRevanche: ["propose une revanche.", "proposes a rematch.", "يقترح مباراة ثأرية.", "propone una revancha."],
-
-  // ── Cibles pouvoirs ──
-  cliquerTienne: ["Clique sur une de tes pièces dans le panneau gauche", "Click one of your pieces in the left panel", "انقر على إحدى قطعك في اللوحة اليسرى", "Haz clic en una de tus piezas en el panel izquierdo"],
-  cliquerDonnerPrendre: ["Clique ta pièce à donner puis la pièce adverse à prendre", "Click your piece to give then opponent's piece to take", "انقر القطعة التي تعطيها ثم قطعة الخصم التي تأخذها", "Clic pieza a dar luego pieza rival a tomar"],
-  cliquer1ou2: ["Clique sur 1 ou 2 pièces sur le plateau, puis Confirmer", "Click 1 or 2 pieces on the board, then Confirm", "انقر على 1 أو 2 قطع على اللوحة ثم أكد", "Clic 1 o 2 piezas del tablero, luego Confirmar"],
-  cliquerPieceAdverse: ["Clique sur une pièce adverse pour la recolorier", "Click an opponent piece to recolor it", "انقر على قطعة الخصم لإعادة تلوينها", "Clic en una pieza rival para recolorear"],
+  cliquerTienne: ["Clique sur une de tes pièces", "Click one of your pieces", "انقر على إحدى قطعك", "Haz clic en una de tus piezas"],
+  cliquerDonnerPrendre: ["Clique ta pièce puis celle adverse", "Click your piece then opponent's", "انقر قطعتك ثم قطعة الخصم", "Clic tu pieza luego la del rival"],
+  cliquer1ou2: ["Clique sur 1 ou 2 pièces puis Confirmer", "Click 1 or 2 pieces then Confirm", "انقر 1 أو 2 قطع ثم أكد", "Clic 1 o 2 piezas luego Confirmar"],
+  cliquerPieceAdverse: ["Clique sur une pièce adverse", "Click an opponent piece", "انقر على قطعة الخصم", "Clic en una pieza rival"],
   selectionnee: ["sélectionnée", "selected", "محددة", "seleccionada"],
   selectionnees: ["sélectionnées", "selected", "محددة", "seleccionadas"],
   passer: ["Passer", "Skip", "تخطي", "Saltar"],
-
-  // ── Paramètres ──
   parametres: ["Paramètres", "Settings", "الإعدادات", "Configuración"],
   compte: ["Compte", "Account", "الحساب", "Cuenta"],
   elm: ["ELM :", "ELM:", "ELM:", "ELM:"],
   seDeconnecter: ["Se deconnecter", "Sign out", "تسجيل الخروج", "Cerrar sesión"],
   langue: ["Langue", "Language", "اللغة", "Idioma"],
   theme: ["Thème", "Theme", "السمة", "Tema"],
-
-  // ── PLANS PREMIUM ──
   plans: ["Formules", "Plans", "الباقات", "Planes"],
   planElmaasyon: ["ELMAASYON", "ELMAASYON", "ELMAASYON", "ELMAASYON"],
-  planElmaasyonDesc: [
-    "Uploads de photos illimités + 1 analyse de partie par jour.",
-    "Unlimited photo uploads + 1 game analysis per day.",
-    "تحميلات صور غير محدودة + تحليل مباراة واحد يومياً.",
-    "Subidas ilimitadas + 1 análisis de partida al día."
-  ],
+  planElmaasyonDesc: ["Uploads illimités + 1 analyse/jour.", "Unlimited uploads + 1 analysis/day.", "تحميلات غير محدودة + تحليل واحد يومياً.", "Subidas ilimitadas + 1 análisis/día."],
   planElmaas: ["ELMAAS", "ELMAAS", "ELMAAS", "ELMAAS"],
-  planElmaasDesc: [
-    "Tout ELMAASYON + analyses illimitées + rejouer vos coups + sauvegarde complète.",
-    "All ELMAASYON + unlimited analyses + replay your moves + full save.",
-    "كل ELMAASYON + تحاليل غير محدودة + إعادة لعب الحركات + حفظ كامل.",
-    "Todo ELMAASYON + análisis ilimitados + revivir movimientos + guardado completo."
-  ],
-  welcomeElmaasyon: [
-    "MOIS DE BIENVENUE ELMAASYON — Gratuit",
-    "ELMAASYON WELCOME MONTH — Free",
-    "شهر الترحيب بـ ELMAASYON — مجاني",
-    "MES DE BIENVENIDA ELMAASYON — Gratis"
-  ],
+  planElmaasDesc: ["Tout ELMAASYON + analyses illimitées + rejouer.", "All ELMAASYON + unlimited analyses + replay.", "كل ELMAASYON + تحاليل غير محدودة.", "Todo ELMAASYON + análisis ilimitados."],
+  welcomeElmaasyon: ["MOIS DE BIENVENUE ELMAASYON — Gratuit", "ELMAASYON WELCOME MONTH — Free", "شهر الترحيب بـ ELMAASYON — مجاني", "MES DE BIENVENIDA ELMAASYON — Gratis"],
   passerPremiumBtn: ["Passer Premium", "Go Premium", "اشترك في بريميوم", "Hazte Premium"],
   premiumActif: ["Premium actif", "Premium active", "بريميوم نشط", "Premium activo"],
   planActif: ["Plan actif :", "Active plan:", "الباقة النشطة:", "Plan activo:"],
   parMois: ["/ mois", "/ month", "/ شهر", "/ mes"],
-
-  // ── Classement ──
   classementElm: ["Classement ELM", "ELM ranking", "تصنيف ELM", "Clasificación ELM"],
-  aucunClasse: ["Aucun joueur classé pour l'instant.", "No ranked players yet.", "لا يوجد لاعبون مصنفون حتى الآن.", "Aún no hay jugadores clasificados."],
+  aucunClasse: ["Aucun joueur classé.", "No ranked players yet.", "لا يوجد لاعبون مصنفون.", "Aún no hay jugadores."],
   parties: ["Parties", "Games", "الألعاب", "Partidas"],
   winPct: ["Win%", "Win%", "نسبة الفوز%", "% Victorias"],
-
-  // ── ANALYSE DE PARTIE (coups) ──
-  analyseCoup: ["Qualité du coup", "Move quality", "جودة الحركة", "Calidad del movimiento"],
-  coupElmaas: ["ELMAAS", "ELMAAS", "ELMAAS", "ELMAAS"], // Brilliant
-  coupElmaasyon: ["ELMAASYON", "ELMAASYON", "ELMAASYON", "ELMAASYON"], // Great
-  coupMassy: ["MASSY", "MASSY", "MASSY", "MASSY"], // Best
-  coupNotMessy: ["NOTMESSY", "NOTMESSY", "NOTMESSY", "NOTMESSY"], // Good
-  coupMessy: ["MESSY", "MESSY", "MESSY", "MESSY"], // Bad
-  coupMissed: ["MISSED", "MISSED", "MISSED", "MISSED"], // Very bad
-
-  // ── Bannissement ──
-  banniTitre: ["Accès suspendu", "Access suspended", "الوصول موقوف", "Acceso suspendido"],
-  banniMessage: [
-    "Trop d'abandons. Revenez demain pour jouer.",
-    "Too many abandonments. Come back tomorrow.",
-    "كثير من الانسحابات. عد غداً.",
-    "Demasiados abandonos. Vuelve mañana."
-  ],
 };
 
-// ── Fonction de traduction ──
 export function t(cle, indexLangue = 0) {
   const entree = T[cle];
-  if (!entree) {
-    console.warn(`[traduction] Clé manquante : ${cle}`);
-    return cle;
-  }
+  if (!entree) { console.warn(`[traduction] Clé manquante : ${cle}`); return cle; }
   return entree[indexLangue] || entree[0];
 }
-
 export function getIndexLangue(codeLangue) {
   const idx = LANGUES.findIndex(l => l.code === codeLangue);
   return idx >= 0 ? idx : 0;
