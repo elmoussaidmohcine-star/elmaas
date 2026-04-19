@@ -617,3 +617,48 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   .popup-gagnant { font-size: 22px; padding: 10px 20px; }
   .popup-options-fin { flex-direction: column; }
 }
+/* ── Pseudo dans header ── */
+.pseudo-joueur {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 4px 10px; border-radius: 6px; background: var(--bg3);
+  border: 2px solid transparent; min-width: 80px;
+}
+.pseudo-joueur.rouge { border-color: var(--rouge)44; }
+.pseudo-joueur.noir  { border-color: #44444444; }
+.pseudo-nom  { font-family: var(--brush); font-size: 13px; color: var(--texte); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+.pseudo-score { font-family: var(--brush); font-size: 22px; font-weight: 700; }
+.pseudo-joueur.rouge .pseudo-score { color: var(--rouge-c); }
+.pseudo-joueur.noir .pseudo-score  { color: #cccccc; }
+
+/* ── Score cumulé ── */
+.score-cumule {
+  font-size: 11px; color: var(--muted); text-align: center; margin-top: 4px;
+  font-family: 'Rajdhani', sans-serif; letter-spacing: 0.1em;
+}
+
+/* ── Bulles messages chat ── */
+.bulle-message {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 990;
+  background: var(--bg2); border: 2px solid; border-radius: 20px;
+  padding: 8px 18px; font-family: var(--brush); font-size: 15px;
+  color: var(--texte); box-shadow: 0 4px 20px #00000066;
+  animation: bulle-in 0.3s ease-out, bulle-out 0.3s ease-in 4.7s forwards;
+}
+@keyframes bulle-in  { from { opacity: 0; transform: translateX(-50%) scale(0.8); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@keyframes bulle-out { to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
+
+/* ── Zone chat dans panneau actions ── */
+.chat-zone {
+  display: flex; gap: 4px; margin-top: auto;
+  background: var(--bg3); border: 1px solid var(--bord);
+  border-radius: 6px; padding: 4px;
+}
+.chat-zone input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--texte); font-family: var(--brush); font-size: 13px; padding: 4px 6px;
+}
+.chat-zone button {
+  background: var(--rouge); color: white; border: none;
+  border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;
+}
+.chat-zone button:disabled { opacity: 0.3; cursor: not-allowed; }

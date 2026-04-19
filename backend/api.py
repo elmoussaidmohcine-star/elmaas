@@ -23,6 +23,13 @@ from models import db, Utilisateur, calculer_elo, PartieDB
 import json as _json
 from auth import auth_bp
 from stripe_routes import stripe_bp
+from filter_mots_sacres import contient_mot_sacre, message_blocage
+try:
+        from google_oauth import google_bp, init_google_oauth
+        GOOGLE_OAUTH_DISPO = True
+except ImportError as e:
+        print(f"[api] Google OAuth indisponible : {e}")
+        GOOGLE_OAUTH_DISPO = False
 from ocr_check import verifier_photo
 try:
     from google_oauth import google_bp, init_google_oauth
@@ -31,6 +38,7 @@ except ImportError:
     GOOGLE_OAUTH_DISPO = False
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 db_url = os.environ.get("DATABASE_URL", "sqlite:///elmaas.db")
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -242,7 +250,17 @@ def debug_env():
         "google_secret_debut": (os.environ.get("GOOGLE_CLIENT_SECRET") or "")[:7],
         "toutes_vars": sorted([k for k in os.environ.keys() if not k.startswith("_")])
     })
-
+@socketio.on("message_envoye")
+def on_message(data):
+    partie_id = data.get("partie_id")
+    texte = (data.get("texte") or "")[:30]
+    couleur = data.get("couleur")
+    if not partie_id or not texte:
+        return
+    # Diffuse à l'autre joueur dans la room
+    socketio.emit("message_recu", {
+        "texte": texte, "couleur": couleur
+    }, room=partie_id, include_self=False)
 @app.route("/nouvelle-partie", methods=["POST"])
 def nouvelle_partie():
     try:
@@ -292,6 +310,15 @@ def nouvelle_partie():
         parties[partie_id] = etat
         pixels_par_partie[partie_id] = pixels
         nom_photo = request.form.get("nom_photo", "")[:10].strip()
+        # Filtre mots sacrés sur nom photo
+        if nom_photo:
+            bloque, _ = contient_mot_sacre(nom_photo)
+            if bloque:
+                langue = request.form.get("langue", "fr")
+                return jsonify({
+                    "erreur": message_blocage(langue),
+                    "code": "MOT_SACRE"
+                }), 400
         noms_par_partie[partie_id] = nom_photo
         reconnaissance_tentee[partie_id] = False
         bonus_double_tour[partie_id] = False

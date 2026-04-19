@@ -11,12 +11,12 @@ db = SQLAlchemy()
 class Utilisateur(db.Model):
     __tablename__ = "utilisateurs"
     google_id = db.Column(db.String(100), unique=True, nullable=True)
-    plan = db.Column(db.String(20), default=None, nullable=True)  # 'elmaasyon' ou 'elmaas'
+    plan = db.Column(db.String(20), nullable=True)  # 'elmaasyon' ou 'elmaas'
     date_inscription = db.Column(db.DateTime, default=db.func.now())
     id            = db.Column(db.Integer, primary_key=True)
     email         = db.Column(db.String(120), unique=True, nullable=False)
     mot_de_passe  = db.Column(db.String(200), nullable=False)  # hashé bcrypt
-    pseudo        = db.Column(db.String(50), unique=True, nullable=False)
+    pseudo        = db.Column(db.String(50), unique=True, nullable=True)
     cree_le       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # ELO
@@ -52,6 +52,8 @@ class Utilisateur(db.Model):
             "premium": self.premium,
             "photo_perso_utilisee": self.photo_perso_utilisee,
             "peut_uploader": self.peut_uploader_photo_perso(),
+            "google_id": self.google_id,
+            "plan": self.plan,
         }
 
 
