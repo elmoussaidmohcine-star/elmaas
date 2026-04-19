@@ -49,10 +49,8 @@ def generer_pseudo_unique(base: str) -> str:
 
 @google_bp.route("/auth/google")
 def google_login():
-    """Démarre le flow OAuth Google."""
-    #f not os.environ.get("GOOGLE_CLIENT_ID"):
-       #return jsonify({"erreur": "Google OAuth non configuré"}), 503
-    redirect_uri = url_for("google_oauth.google_callback", _external=True)
+    # URL de callback en dur en HTTPS (Railway termine le SSL au proxy, url_for() renvoie http)
+    redirect_uri = "https://elmaas.up.railway.app/auth/google/callback"
     return oauth.google.authorize_redirect(redirect_uri)
 
 
