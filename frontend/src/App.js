@@ -8,6 +8,7 @@ import { io } from "socket.io-client";
 import Board from "./Board";
 import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, CLASSIFICATION_COUP } from "./translations";
 import "./App.css";
+import EcranAnalyse from "./EcranAnalyse";
 
 const API = "https://elmaas.up.railway.app";
 
@@ -754,6 +755,8 @@ export default function App() {
     : (etat?.pseudo_adversaire || "ADVERSAIRE");
 
   const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });
+  const [showAnalyse, setShowAnalyse] = useState(false);
+  const [dernierCoupClassif, setDernierCoupClassif] = useState(null);
 
   const changerLangue = (idx) => {
     setIndexLangue(idx);
@@ -1281,6 +1284,10 @@ export default function App() {
               <button className="popup-btn" style={{ flex: 1 }} onClick={handleReset}>
                 {t("nouvellePartie", L)}
               </button>
+                  <button className="popup-btn" style={{ flex: 1, borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
+                onClick={() => { setMancheTermineeInfo(null); setShowAnalyse(true); }}>
+                {t("analyseTitre", L)}
+                </button>
             </div>
           </div>
         </div>
@@ -1444,6 +1451,15 @@ export default function App() {
             {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
             {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurActif.serie_actuelle}</span>}
           </div>
+              {dernierCoupClassif && (
+          <span className="badge-classif" style={{
+        background: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur + "22",
+        borderColor: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur,
+        color: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur
+          }}>
+        {dernierCoupClassif}
+         </span>
+          )}
           <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>⚙</button>
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
           <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
