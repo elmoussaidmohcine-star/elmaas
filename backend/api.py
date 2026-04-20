@@ -92,26 +92,21 @@ with app.app_context():
         db.session.commit()
         print("[migration] Colonnes Google ajoutées")
     except Exception as e:
-        print(f"[migration] Erreur (normale si déjà fait) : {e}")
+        print(f"[migration] Erreur colonnes : {e}")
         db.session.rollback()
 
-    # Crée les nouvelles tables (file_attente, etc.)
+    # Force l'import de TOUS les modèles avant create_all
+    from matchmaking import FileAttente
+    
     try:
         db.create_all()
-        print("[migration] Tables créées/vérifiées")
+        # Log quelles tables existent maintenant
+        from sqlalchemy import inspect
+        tables = inspect(db.engine).get_table_names()
+        print(f"[migration] Tables après create_all : {tables}")
     except Exception as e:
         print(f"[migration] Erreur create_all : {e}")
-# ── DROP FILE_ATTENTE (temporaire, à enlever après 1 deploy) ──
-with app.app_context():
-    try:
-        db.session.execute(db.text("DROP TABLE IF EXISTS file_attente CASCADE"))
-        db.session.commit()
-        print("[migration] Table file_attente supprimée")
-    except Exception as e:
-        print(f"[migration] Erreur DROP file_attente : {e}")
-        db.session.rollback()
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
-                    logger=False, engineio_logger=False)
+        import traceback; traceback.print_exc()
 
 # Cache mémoire
 parties: dict[str, EtatJeu] = {}
