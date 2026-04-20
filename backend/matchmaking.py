@@ -192,3 +192,21 @@ def nettoyer_file():
     ).delete()
     db.session.commit()
     return jsonify({"succes": True})
+@matchmaking_bp.route("/matchmaking/debug", methods=["GET"])
+def debug_file():
+    """Route debug temporaire : liste les joueurs en file."""
+    entrees = FileAttente.query.all()
+    return jsonify({
+        "nombre": len(entrees),
+        "joueurs": [
+            {
+                "user_id": e.user_id,
+                "pseudo": e.pseudo,
+                "elm": e.elm,
+                "timer_sec": e.timer_sec,
+                "entree_le": e.entree_le.isoformat() if e.entree_le else None,
+                "partie_id": e.partie_id,
+            }
+            for e in entrees
+        ]
+    })
