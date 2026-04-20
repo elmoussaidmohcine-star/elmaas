@@ -774,7 +774,10 @@ export default function App() {
     const authError = params.get("auth_error");
 
     if (authError) {
-      console.error("OAuth:", authError);
+      const detail = params.get("detail");
+      console.error("OAuth ERREUR:", authError);
+      console.error("DETAIL:", detail ? decodeURIComponent(detail) : "(pas de détail)");
+      alert("OAuth erreur : " + (detail ? decodeURIComponent(detail) : authError));
       window.history.replaceState({}, "", "/");
       return;
     }

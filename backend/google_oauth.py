@@ -68,12 +68,11 @@ def google_callback():
         return redirect(f"{FRONTEND_URL}?google_token={token_jwt}")
     except Exception as e:
             import traceback
-            tb = traceback.format_exc()
-            print(f"[google_oauth] ERREUR : {e}")
-            print(tb)
-            # Expose l'erreur dans l'URL pour debug
             from urllib.parse import quote
-            err_msg = quote(str(e)[:200])
+            tb = traceback.format_exc()
+            print(f"[google_oauth] ERREUR CALLBACK : {e}")
+            print(tb)
+            err_msg = quote(str(e)[:300])
             return redirect(f"{FRONTEND_URL}?auth_error=oauth_failed&detail={err_msg}")
 
 
