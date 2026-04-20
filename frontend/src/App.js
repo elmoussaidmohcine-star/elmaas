@@ -10,7 +10,7 @@ import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, CLASSIFICATION_C
 import "./App.css";
 import EcranAnalyse from "./EcranAnalyse";
 
-const API = "https://elmaas.up.railway.app";
+const API = "https://elmaas-backend.onrender.com";
 
 function getToken() { return localStorage.getItem("elmaas_token"); }
 function getUser()  {
