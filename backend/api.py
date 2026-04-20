@@ -1,13 +1,15 @@
+# ============================================================
+#  ELMAAS — api.py
+# ============================================================
 import os
-# ============================================================
-#  ELMAAS — api.py (fix revanche + timestamp IA)
-# ============================================================
-
 import json
 import uuid
 import base64
 import io
 import time
+import json as _json
+from datetime import datetime, timedelta, timezone
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, join_room, emit
@@ -20,43 +22,53 @@ from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, c
 from ai_player import jouer_ia
 from config import DEBUG
 from models import db, Utilisateur, calculer_elo, PartieDB
-import json as _json
 from auth import auth_bp
 from stripe_routes import stripe_bp
 from filter_mots_sacres import contient_mot_sacre, message_blocage
-try:
-        from google_oauth import google_bp, init_google_oauth
-        GOOGLE_OAUTH_DISPO = True
-except ImportError as e:
-        print(f"[api] Google OAuth indisponible : {e}")
-        GOOGLE_OAUTH_DISPO = False
 from ocr_check import verifier_photo
+from analyse_partie import analyser_partie_complete
 
+# Google OAuth (optionnel)
 try:
     from google_oauth import google_bp, init_google_oauth
     GOOGLE_OAUTH_DISPO = True
-except ImportError:
+except ImportError as e:
+    print(f"[api] Google OAuth indisponible : {e}")
     GOOGLE_OAUTH_DISPO = False
-from analyse_partie import analyser_partie_complete
-from datetime import datetime, timedelta, timezone
 
+
+# ─────────────────────────────────────────────────────────
+# Flask app
+# ─────────────────────────────────────────────────────────
 app = Flask(__name__)
-import os
 
-# Configuration session pour OAuth
-app.secret_key = os.environ.get("SECRET_KEY", "elmaas_secret_key_2026")
+# Session / sécurité
+SECRET_KEY = os.environ.get("SECRET_KEY", "elmaas_secret_key_2026")
+app.secret_key = SECRET_KEY
+app.config["SECRET_KEY"] = SECRET_KEY
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
+
+# Upload max 10 MB
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+
+# Base de données
 db_url = os.environ.get("DATABASE_URL", "sqlite:///elmaas.db")
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "elmaas_secret_dev")
-CORS(app, origins="*")
+
+# CORS — supports_credentials pour que les cookies de session passent
+CORS(app,
+     resources={r"/*": {"origins": ["https://www.elmaas.fun", "https://elmaas.fun", "https://elmaas.vercel.app"]}},
+     supports_credentials=True)
+
+# Extensions
 db.init_app(app)
+
+# Blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(stripe_bp)
 if GOOGLE_OAUTH_DISPO:
