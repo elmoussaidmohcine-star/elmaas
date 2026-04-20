@@ -65,7 +65,11 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 CORS(app,
      resources={r"/*": {"origins": ["https://www.elmaas.fun", "https://elmaas.fun", "https://elmaas.vercel.app"]}},
      supports_credentials=True)
-
+# SocketIO
+socketio = SocketIO(app,
+    cors_allowed_origins="*",
+    async_mode="threading",
+    transports=["polling", "websocket"])
 # Extensions
 db.init_app(app)
 
