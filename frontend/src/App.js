@@ -955,13 +955,29 @@ export default function App() {
     setEtape("photo");
   };
 
-  const handlePlayOnline = (timer) => {
-    setTimerChoisi(timer);
-    setMatchmakingActif(true);
-    // Envoyer requête matchmaking au backend
-    // Backend se chargera du matching + émettra "match_trouve" via socket
-    // (pour simplifier ici je laisse le popup informatif côté frontend)
-  };
+const handlePlayOnline = async (timer) => {
+  setTimerChoisi(timer);
+  setMatchmakingActif(true);
+
+  const token = getToken();
+  if (!token) {
+    alert("Connexion requise pour jouer en ligne");
+    setMatchmakingActif(false);
+    return;
+  }
+
+  try {
+    await axios.post(`${API}/matchmaking/rejoindre`,
+      { timer_sec: timer },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    console.log("[matchmaking] Rejoint la file avec timer:", timer);
+  } catch (e) {
+    console.error("Erreur rejoindre file:", e);
+    setMatchmakingActif(false);
+    alert("Erreur de connexion au matchmaking : " + (e.response?.data?.erreur || e.message));
+  }
+};
 
   const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, scoresManchesInit) => {
     setPartieId(id); setEtat(etatInit); setPixelsPhoto(pixels); setTaille(tt || 16);
