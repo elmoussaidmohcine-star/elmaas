@@ -27,6 +27,7 @@ from stripe_routes import stripe_bp
 from filter_mots_sacres import contient_mot_sacre, message_blocage
 from ocr_check import verifier_photo
 from analyse_partie import analyser_partie_complete
+from matchmaking import matchmaking_bp, FileAttente
 
 # Google OAuth (optionnel)
 try:
@@ -75,6 +76,8 @@ if GOOGLE_OAUTH_DISPO:
     app.register_blueprint(google_bp)
     init_google_oauth(app)
 
+app.register_blueprint(matchmaking_bp)
+
 with app.app_context():
     db.create_all()
 # ── Migration ponctuelle Google OAuth ──
@@ -86,6 +89,8 @@ with app.app_context():
         db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN mot_de_passe DROP NOT NULL"))
         db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN pseudo DROP NOT NULL"))
         db.session.commit()
+        with app.app_context():
+            db.create_all()  # Crée la table file_attente si absente
         print("[migration] Colonnes Google ajoutées")
     except Exception as e:
         print(f"[migration] Erreur (normale si déjà fait) : {e}")
