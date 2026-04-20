@@ -81,6 +81,7 @@ app.register_blueprint(matchmaking_bp)
 with app.app_context():
     db.create_all()
 # ── Migration ponctuelle Google OAuth ──
+# ── Migration ponctuelle ──
 with app.app_context():
     try:
         db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS google_id VARCHAR(100) UNIQUE"))
@@ -89,12 +90,17 @@ with app.app_context():
         db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN mot_de_passe DROP NOT NULL"))
         db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN pseudo DROP NOT NULL"))
         db.session.commit()
-        with app.app_context():
-            db.create_all()  # Crée la table file_attente si absente
         print("[migration] Colonnes Google ajoutées")
     except Exception as e:
         print(f"[migration] Erreur (normale si déjà fait) : {e}")
         db.session.rollback()
+
+    # Crée les nouvelles tables (file_attente, etc.)
+    try:
+        db.create_all()
+        print("[migration] Tables créées/vérifiées")
+    except Exception as e:
+        print(f"[migration] Erreur create_all : {e}")
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
                     logger=False, engineio_logger=False)
