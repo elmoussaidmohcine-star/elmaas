@@ -308,26 +308,59 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
 }
 
 // ── Popup Matchmaking ──
-function PopupMatchmaking({ onAnnuler, timerSec, L, utilisateur }) {
+function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }) {
   const [tempsEcoule, setTempsEcoule] = useState(0);
-  const [citation, setCitation] = useState(getCitationAttente(LANGUES.findIndex(l => l.code === "fr")));
+  const [citation, setCitation] = useState(getCitationAttente(0));
   const [echec, setEchec] = useState(false);
-
+  const [tolerance, setTolerance] = useState(100);
+ 
   useEffect(() => {
     const i = setInterval(() => setTempsEcoule(t => t + 1), 1000);
     const c = setInterval(() => setCitation(getCitationAttente(0)), 8000);
     return () => { clearInterval(i); clearInterval(c); };
   }, []);
-
+ 
+  // Polling toutes les 3s
   useEffect(() => {
-    if (tempsEcoule >= 300) setEchec(true);
-  }, [tempsEcoule]);
-
-  const tolerance = tempsEcoule < 60 ? 100
-    : tempsEcoule < 120 ? 200
-    : tempsEcoule < 180 ? 300
-    : tempsEcoule < 240 ? 400 : 500;
-
+    let actif = true;
+    const token = localStorage.getItem("elmaas_token");
+ 
+    const verifier = async () => {
+      if (!actif) return;
+      try {
+        const r = await axios.get(`${API}/matchmaking/verifier`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!actif) return;
+ 
+        if (r.data.status === "match") {
+          onMatchTrouve(r.data);
+          return;
+        }
+        if (r.data.status === "timeout") {
+          setEchec(true);
+          return;
+        }
+        if (r.data.tolerance) setTolerance(r.data.tolerance);
+      } catch (e) {
+        console.error("Poll match:", e);
+      }
+    };
+ 
+    verifier();
+    const poll = setInterval(verifier, 3000);
+    return () => { actif = false; clearInterval(poll); };
+  }, [onMatchTrouve]);
+ 
+  const handleAnnuler = async () => {
+    const token = localStorage.getItem("elmaas_token");
+    try {
+      await axios.post(`${API}/matchmaking/quitter`, {},
+        { headers: { Authorization: `Bearer ${token}` } });
+    } catch {}
+    onAnnuler();
+  };
+ 
   return (
     <div className="popup-overlay">
       <div className="popup-pouvoir" style={{ minWidth: 400, gap: 16 }}>
@@ -335,7 +368,7 @@ function PopupMatchmaking({ onAnnuler, timerSec, L, utilisateur }) {
           <>
             <div className="popup-titre">⚠</div>
             <div className="popup-sous-titre">{t("matchmakingEchec", L)}</div>
-            <button className="popup-btn" onClick={onAnnuler}>{t("fermer", L)}</button>
+            <button className="popup-btn" onClick={handleAnnuler}>{t("fermer", L)}</button>
           </>
         ) : (
           <>
@@ -350,14 +383,13 @@ function PopupMatchmaking({ onAnnuler, timerSec, L, utilisateur }) {
             <div style={{ fontSize: 13, fontStyle: "italic", color: "var(--texte)", textAlign: "center", maxWidth: 340, opacity: 0.8 }}>
               "{citation}"
             </div>
-            <button className="popup-btn" onClick={onAnnuler}>{t("annulerRecherche", L)}</button>
+            <button className="popup-btn" onClick={handleAnnuler}>{t("annulerRecherche", L)}</button>
           </>
         )}
       </div>
     </div>
   );
 }
-
 // ── Écran Photo ──
 function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCreee, onPopup, L }) {
   const [photosFixees, setPhotosFixees] = useState([]);
@@ -1206,7 +1238,29 @@ export default function App() {
       {boutonParamsFlottant}{popupParams}
       {matchmakingActif && (
         <PopupMatchmaking L={L} timerSec={timerChoisi} utilisateur={utilisateur}
-          onAnnuler={() => setMatchmakingActif(false)} />
+          onAnnuler={() => setMatchmakingActif(false)}
+          onMatchTrouve={(data) => {
+            setMatchmakingActif(false);
+            // Stocke les infos du match
+            setPartieId(data.partie_id);
+            setMonRole(data.ma_couleur === "rouge" ? "joueur1" : "joueur2");
+            setModeMultijoueur(true);
+ 
+            // Si Rouge → je choisis la photo, passe à "photo"
+            // Si Noir → j'attends la création par Rouge, passe à "lobby"
+            if (data.rouge_choisit_photo) {
+              setEtape("photo");
+            } else {
+              setEtape("lobby");
+              // Le joueur Noir attend que le Rouge crée la partie
+              // Puis se connecte automatiquement via son socket
+              socketRef.current.emit("rejoindre_partie", {
+                partie_id: data.partie_id,
+                joueur: "joueur2"
+              });
+            }
+          }}
+        />
       )}
       <EcranTaille onValider={handleTailleValidee} onPlayOnline={handlePlayOnline} L={L} utilisateur={utilisateur} />
     </div>
