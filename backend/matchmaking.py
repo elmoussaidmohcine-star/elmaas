@@ -18,7 +18,7 @@ matchmaking_bp = Blueprint("matchmaking", __name__)
 class FileAttente(db.Model):
     __tablename__ = "file_attente"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("utilisateurs.id"), unique=True)
+    user_id = db.Column(db.Integer, unique=True, nullable=False, index=True)
     pseudo = db.Column(db.String(50))
     elm = db.Column(db.Integer, default=500)
     timer_sec = db.Column(db.Integer, default=30)
@@ -88,26 +88,40 @@ def rejoindre_file():
     """L'utilisateur entre dans la file d'attente."""
     user = get_user_from_request()
     if not user:
+        print("[matchmaking] Rejoindre : non authentifié")
         return jsonify({"erreur": "Non authentifié"}), 401
 
     data = request.get_json() or {}
     timer_sec = int(data.get("timer_sec", 30))
 
-    # Supprime ancienne entrée si existante
-    FileAttente.query.filter_by(user_id=user.id).delete()
-    db.session.commit()
+    try:
+        # Supprime ancienne entrée
+        FileAttente.query.filter_by(user_id=user.id).delete()
+        db.session.commit()
 
-    # Crée nouvelle entrée
-    entree = FileAttente(
-        user_id=user.id,
-        pseudo=user.pseudo or f"Joueur{user.id}",
-        elm=user.elo or 500,
-        timer_sec=timer_sec,
-    )
-    db.session.add(entree)
-    db.session.commit()
+        # Crée nouvelle entrée
+        entree = FileAttente(
+            user_id=user.id,
+            pseudo=user.pseudo or f"Joueur{user.id}",
+            elm=user.elo if user.elo is not None else 500,
+            timer_sec=timer_sec,
+        )
+        db.session.add(entree)
+        db.session.commit()
 
-    return jsonify({"succes": True, "en_file": True})
+        print(f"[matchmaking] Rejoint : user_id={user.id} pseudo={entree.pseudo} elm={entree.elm} timer={timer_sec}")
+
+        # Vérif en DB
+        verif = FileAttente.query.filter_by(user_id=user.id).first()
+        print(f"[matchmaking] Vérif DB : {verif is not None}")
+
+        return jsonify({"succes": True, "en_file": True})
+
+    except Exception as e:
+        db.session.rollback()
+        import traceback; traceback.print_exc()
+        print(f"[matchmaking] ERREUR REJOINDRE : {e}")
+        return jsonify({"erreur": str(e)}), 500
 
 
 @matchmaking_bp.route("/matchmaking/verifier", methods=["GET"])

@@ -101,7 +101,15 @@ with app.app_context():
         print("[migration] Tables créées/vérifiées")
     except Exception as e:
         print(f"[migration] Erreur create_all : {e}")
-
+# ── DROP FILE_ATTENTE (temporaire, à enlever après 1 deploy) ──
+with app.app_context():
+    try:
+        db.session.execute(db.text("DROP TABLE IF EXISTS file_attente CASCADE"))
+        db.session.commit()
+        print("[migration] Table file_attente supprimée")
+    except Exception as e:
+        print(f"[migration] Erreur DROP file_attente : {e}")
+        db.session.rollback()
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
                     logger=False, engineio_logger=False)
 
