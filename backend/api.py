@@ -58,6 +58,19 @@ if GOOGLE_OAUTH_DISPO:
 
 with app.app_context():
     db.create_all()
+# ── Migration ponctuelle Google OAuth ──
+with app.app_context():
+    try:
+        db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS google_id VARCHAR(100) UNIQUE"))
+        db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS plan VARCHAR(20)"))
+        db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS date_inscription TIMESTAMP DEFAULT NOW()"))
+        db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN mot_de_passe DROP NOT NULL"))
+        db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN pseudo DROP NOT NULL"))
+        db.session.commit()
+        print("[migration] Colonnes Google ajoutées")
+    except Exception as e:
+        print(f"[migration] Erreur (normale si déjà fait) : {e}")
+        db.session.rollback()
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading",
                     logger=False, engineio_logger=False)

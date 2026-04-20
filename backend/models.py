@@ -10,30 +10,27 @@ db = SQLAlchemy()
 
 class Utilisateur(db.Model):
     __tablename__ = "utilisateurs"
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    mot_de_passe = db.Column(db.String(200), nullable=True)  # nullable pour Google
+    pseudo = db.Column(db.String(50), unique=True, nullable=True)
     google_id = db.Column(db.String(100), unique=True, nullable=True)
-    plan = db.Column(db.String(20), nullable=True)  # 'elmaasyon' ou 'elmaas'
+    plan = db.Column(db.String(20), nullable=True)
     date_inscription = db.Column(db.DateTime, default=db.func.now())
-    id            = db.Column(db.Integer, primary_key=True)
-    email         = db.Column(db.String(120), unique=True, nullable=False)
-    mot_de_passe  = db.Column(db.String(200), nullable=False)  # hashé bcrypt
-    pseudo        = db.Column(db.String(50), unique=True, nullable=True)
-    cree_le       = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-
+    cree_le = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     # ELO
-    elo           = db.Column(db.Integer, default=1000)
+    elo = db.Column(db.Integer, default=500)
     parties_jouees = db.Column(db.Integer, default=0)
-    victoires     = db.Column(db.Integer, default=0)
-    defaites      = db.Column(db.Integer, default=0)
-
+    victoires = db.Column(db.Integer, default=0)
+    defaites = db.Column(db.Integer, default=0)
     # Quota photos
-    premium       = db.Column(db.Boolean, default=False)
+    premium = db.Column(db.Boolean, default=False)
     photo_perso_utilisee = db.Column(db.Boolean, default=False)
-    stripe_customer_id = db.Column(db.String(100), default="")  # 1 photo perso gratuite
-    nb_photos_mois = db.Column(db.Integer, default=0)  # reset chaque mois (premium)
-    mois_quota    = db.Column(db.String(7), default="")  # ex: "2026-04"
+    stripe_customer_id = db.Column(db.String(100), default="")
+    nb_photos_mois = db.Column(db.Integer, default=0)
+    mois_quota = db.Column(db.String(7), default="")
 
     def peut_uploader_photo_perso(self):
-        """Gratuit : 1 photo perso. Premium : illimité."""
         if self.premium:
             return True
         return not self.photo_perso_utilisee
@@ -42,8 +39,6 @@ class Utilisateur(db.Model):
         return {
             "id": self.id,
             "pseudo": self.pseudo,
-            "plan": self.plan,
-            "date_inscription": self.date_inscription.isoformat() if self.date_inscription else None,
             "email": self.email,
             "elo": self.elo,
             "parties_jouees": self.parties_jouees,
