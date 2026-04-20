@@ -520,8 +520,28 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, onPartieCree
   );
 }
 
-function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellement, L }) {
+function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellement, L, dejaMatche }) {
   const [codeSaisi, setCodeSaisi] = useState("");
+
+  // Cas 1 : Joueur 2 qui vient du matchmaking → attend la création de la partie par Rouge
+  if (dejaMatche) {
+    return (
+      <div className="ecran-lobby">
+        <h1 className="titre-jeu">ELMAAS</h1>
+        <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
+        <div className="lobby-card">
+          <div className="lobby-titre">Match trouvé !</div>
+          <div className="lobby-sous">Adversaire choisit la photo...</div>
+          <div className="spinner" style={{ margin: "20px auto" }} />
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
+            Code de partie : {partieId}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Cas 2 : Joueur 1 qui a créé une partie et attend un ami par code
   if (monRole === "joueur1") {
     return (
       <div className="ecran-lobby">
@@ -531,7 +551,9 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
           <div className="lobby-titre">{t("partieCreee", L)}</div>
           <div className="lobby-sous">{t("donnezCodeJ2", L)}</div>
           <div className="lobby-code">{partieId}</div>
-          <button className="lobby-copier" onClick={() => navigator.clipboard.writeText(partieId)}>{t("copierCode", L)}</button>
+          <button className="lobby-copier" onClick={() => navigator.clipboard.writeText(partieId)}>
+            {t("copierCode", L)}
+          </button>
           <div className={`lobby-statut ${statutConnexion}`}>
             {statutConnexion === "attente" && t("attenteJ2", L)}
             {statutConnexion === "connecte" && t("j2Connecte", L)}
@@ -540,6 +562,8 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
       </div>
     );
   }
+
+  // Cas 3 : Joueur 2 qui doit saisir un code (invité par ami)
   return (
     <div className="ecran-lobby">
       <h1 className="titre-jeu">ELMAAS</h1>
@@ -549,15 +573,18 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
         <div className="lobby-sous">{t("entrerCode", L)}</div>
         <input className="lobby-input" placeholder={t("codePartie", L)}
           value={codeSaisi} onChange={e => setCodeSaisi(e.target.value)} />
-        <button className="btn-valider" onClick={() => onRejoindreManuellement(codeSaisi.trim())} disabled={!codeSaisi.trim()}>
+        <button className="btn-valider"
+          onClick={() => onRejoindreManuellement(codeSaisi.trim())}
+          disabled={!codeSaisi.trim()}>
           {t("rejoindre", L)}
         </button>
-        {statutConnexion === "erreur" && <div className="lobby-statut erreur">{t("partieIntrouvable", L)}</div>}
+        {statutConnexion === "erreur" && (
+          <div className="lobby-statut erreur">{t("partieIntrouvable", L)}</div>
+        )}
       </div>
     </div>
   );
 }
-
 function TimerBloc({ secondes, couleur, actif, L }) {
   const m = Math.floor(secondes / 60), s = secondes % 60;
   const danger = secondes <= 10;
@@ -1257,23 +1284,46 @@ const handlePlayOnline = async (timer) => {
           onAnnuler={() => setMatchmakingActif(false)}
           onMatchTrouve={(data) => {
             setMatchmakingActif(false);
-            // Stocke les infos du match
             setPartieId(data.partie_id);
-            setMonRole(data.ma_couleur === "rouge" ? "joueur1" : "joueur2");
             setModeMultijoueur(true);
- 
-            // Si Rouge → je choisis la photo, passe à "photo"
-            // Si Noir → j'attends la création par Rouge, passe à "lobby"
-            if (data.rouge_choisit_photo) {
+            
+            // Le Rouge (qui choisit la photo) est le joueur1
+            // Le Noir (qui attend) est le joueur2
+            if (data.ma_couleur === "rouge") {
+              setMonRole("joueur1");
               setEtape("photo");
+              // Ne PAS rejoindre le socket maintenant, on le fera après création de la partie
             } else {
+              setMonRole("joueur2");
               setEtape("lobby");
-              // Le joueur Noir attend que le Rouge crée la partie
-              // Puis se connecte automatiquement via son socket
-              socketRef.current.emit("rejoindre_partie", {
-                partie_id: data.partie_id,
-                joueur: "joueur2"
-              });
+              // On ne peut PAS encore rejoindre via socket car la partie n'existe pas en mémoire serveur
+              // Il faut attendre que le Rouge crée la partie. Donc on poll jusqu'à ce qu'elle existe.
+              
+              const pollerPartie = async () => {
+                try {
+                  const res = await axios.get(`${API}/pixels/${data.partie_id}`);
+                  if (res.data && res.data.pixels_photo) {
+                    // Partie créée ! On rejoint via socket
+                    setPixelsPhoto(res.data.pixels_photo);
+                    setTaille(res.data.taille);
+                    if (res.data.etat) setEtat(res.data.etat);
+                    if (res.data.timer_sec) {
+                      setTimerChoisi(res.data.timer_sec);
+                      setTimerRouge(res.data.timer_sec);
+                      setTimerNoir(res.data.timer_sec);
+                    }
+                    socketRef.current.emit("rejoindre_partie", {
+                      partie_id: data.partie_id,
+                      joueur: "joueur2"
+                    });
+                    return; // arrête le polling
+                  }
+                } catch (e) {
+                  // Pas encore créée, réessayer
+                }
+                setTimeout(pollerPartie, 2000);
+              };
+              pollerPartie();
             }
           }}
         />
@@ -1302,7 +1352,8 @@ const handlePlayOnline = async (timer) => {
     <div className="app">
       {boutonParamsFlottant}{popupParams}
       <EcranLobby partieId={partieId} monRole={monRole} statutConnexion={statutConnexion}
-        onRejoindreManuellement={handleRejoindreManuellement} L={L} />
+        onRejoindreManuellement={handleRejoindreManuellement} L={L}
+        dejaMatche={modeMultijoueur && monRole === "joueur2" && !!partieId && !etat} />
     </div>
   );
 
