@@ -20,8 +20,8 @@ def init_google_oauth(app):
     oauth.init_app(app)
     oauth.register(
         name="google",
-        client_id="68474294787-lj8ntgrgf7b3igheug7ln6aqpta7hfuq.apps.googleusercontent.com",
-        client_secret="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",
+        client_id=os.environ.get("GOOGLE_CLIENT_ID"),
+        client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
         server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
         client_kwargs={"scope": "openid email profile"},
     )
@@ -66,11 +66,15 @@ def google_callback():
         if not user.pseudo:
             return redirect(f"{FRONTEND_URL}?google_token={token_jwt}&besoin_pseudo=1")
         return redirect(f"{FRONTEND_URL}?google_token={token_jwt}")
-
     except Exception as e:
-        print(f"[google_oauth] Erreur callback : {e}")
-        import traceback; traceback.print_exc()
-        return redirect(f"{FRONTEND_URL}?auth_error=oauth_failed")
+            import traceback
+            tb = traceback.format_exc()
+            print(f"[google_oauth] ERREUR : {e}")
+            print(tb)
+            # Expose l'erreur dans l'URL pour debug
+            from urllib.parse import quote
+            err_msg = quote(str(e)[:200])
+            return redirect(f"{FRONTEND_URL}?auth_error=oauth_failed&detail={err_msg}")
 
 
 # ── Validation + changement de pseudo ──
