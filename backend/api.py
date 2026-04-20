@@ -267,6 +267,7 @@ def debug_env():
         "google_secret_defini": bool(os.environ.get("GOOGLE_CLIENT_SECRET")),
         "google_secret_longueur": len(os.environ.get("GOOGLE_CLIENT_SECRET") or ""),
         "google_secret_debut": (os.environ.get("GOOGLE_CLIENT_SECRET") or "")[:7],
+        "frontend_url": os.environ.get("FRONTEND_URL", "NON_DEFINI"),
         "toutes_vars": sorted([k for k in os.environ.keys() if not k.startswith("_")])
     })
 @socketio.on("message_envoye")

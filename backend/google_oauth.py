@@ -12,7 +12,7 @@ from auth import generer_token, get_user_from_request
 google_bp = Blueprint("google_oauth", __name__)
 oauth = OAuth()
 
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://www.elmaas.fun")
+FRONTEND_URL = "https://www.elmaas.fun"
 BACKEND_URL = "https://elmaas.up.railway.app"  # En dur pour Railway (SSL termination)
 
 
