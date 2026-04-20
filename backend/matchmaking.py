@@ -210,3 +210,12 @@ def debug_file():
             for e in entrees
         ]
     })
+@matchmaking_bp.route("/matchmaking/debug-tables", methods=["GET"])
+def debug_tables():
+    from sqlalchemy import inspect
+    inspector = inspect(db.engine)
+    tables = inspector.get_table_names()
+    return jsonify({
+        "tables_existantes": tables,
+        "file_attente_existe": "file_attente" in tables,
+    })
