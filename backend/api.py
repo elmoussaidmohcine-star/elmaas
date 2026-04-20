@@ -41,6 +41,13 @@ from analyse_partie import analyser_partie_complete
 from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
+import os
+
+# Configuration session pour OAuth
+app.secret_key = os.environ.get("SECRET_KEY", "elmaas_secret_key_2026")
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 db_url = os.environ.get("DATABASE_URL", "sqlite:///elmaas.db")
 if db_url.startswith("postgres://"):
