@@ -17,7 +17,7 @@ const COULEURS_CLASSE = {
   CHESS:     "#ff4422",
 };
 
-export default function EcranAnalyse({ partieId, couleurJoueur, pixelsPhoto, taille, onFermer, L }) {
+export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhoto, taille, onFermer, L }) {
   const [analyse, setAnalyse] = useState(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
@@ -32,7 +32,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, pixelsPhoto, tai
         const token = localStorage.getItem("elmaas_token");
         const res = await axios.post(
           `${API}/analyse/${partieId}`,
-          { couleur: couleurJoueur },
+          { couleur: couleurJoueur, mode: mode || "rapide" },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setAnalyse(res.data.analyse);
