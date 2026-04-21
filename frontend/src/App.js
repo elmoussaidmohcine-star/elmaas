@@ -1334,7 +1334,7 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
       {boutonParamsFlottant}{popupParams}
       <EcranLobby partieId={partieId} monRole={monRole} statutConnexion={statutConnexion}
         onRejoindreManuellement={handleRejoindreManuellement} L={L}
-        dejaMatche={modeMultijoueur && monRole === "joueur2" && !!partieId && !etat} />
+       dejaMatche={!!partieIdMatch && monRole === "joueur2"}/>
     </div>
   );
 
