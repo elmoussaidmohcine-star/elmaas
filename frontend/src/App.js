@@ -1445,26 +1445,7 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
         </div>
       )}
 
-      {demandeRevancheRecue && !revancheDemandeeParMoi && (
-        <div className="popup-overlay">
-          <div className="popup-pouvoir" style={{ gap: 16 }}>
-            <div className="popup-titre">{t("revancheDemandee", L)}</div>
-            <div style={{ color: "var(--muted)", fontSize: 14, textAlign: "center" }}>
-              {t("adversaire", L)} ({trCouleur(demandeRevancheRecue)}) {t("adversaireProposeRevanche", L)}
-            </div>
-            <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
-              <button className="popup-btn" style={{ flex: 1 }}
-                onClick={async () => { await axios.post(`${API}/revanche/accepter/${partieId}`); setDemandeRevancheRecue(null); }}>
-                {t("accepter", L)}
-              </button>
-              <button className="popup-btn" style={{ flex: 1 }}
-                onClick={async () => { await axios.post(`${API}/revanche/refuser/${partieId}`); setDemandeRevancheRecue(null); }}>
-                {t("refuser", L)}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} L={L} />}
       {popup?.type === "scout" && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
