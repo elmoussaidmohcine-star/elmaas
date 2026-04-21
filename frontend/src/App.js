@@ -1,4 +1,4 @@
-// ELMAAS App.js — VERSION FINALE
+// ELMAAS App.js — VERSION CORRIGÉE (Matchmaking fix)
 // Features : Google OAuth only + choix pseudo + score cumulé + matchmaking
 //            + pause IA + messages chat + popup 5min cheesy + analyse + filtres
 
@@ -156,7 +156,7 @@ function EcranAuth({ onConnecte, L }) {
 // ── Écran Choix Pseudo ──
 function EcranPseudo({ onPseudoDefini, L }) {
   const [pseudo, setPseudo] = useState("");
-  const [statut, setStatut] = useState(null); // {dispo:bool, raison:str}
+  const [statut, setStatut] = useState(null);
   const [chargement, setChargement] = useState(false);
   const timer = useRef(null);
 
@@ -232,7 +232,7 @@ function PopupCheesy({ onChoisir, onFermer, L }) {
   );
 }
 
-// ── Écran Taille (avec modes IA / Online / Ami) ──
+// ── Écran Taille ──
 const TIMER_OPTIONS = [
   { label: "10 s", val: 10 }, { label: "20 s", val: 20 }, { label: "30 s", val: 30 },
   { label: "1 min", val: 60 }, { label: "2 min", val: 120 }, { label: "5 min", val: 300 },
@@ -329,7 +329,6 @@ function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }
     return () => { clearInterval(i); clearInterval(c); };
   }, []);
  
-  // Polling toutes les 3s
   useEffect(() => {
     let actif = true;
     const token = localStorage.getItem("elmaas_token");
@@ -399,6 +398,7 @@ function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }
     </div>
   );
 }
+
 // ── Écran Photo ──
 function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatch, onPartieCreee, L }) {
   const [photosFixees, setPhotosFixees] = useState([]);
@@ -458,7 +458,6 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
   };
 
   const filtreNomSacre = (val) => {
-    // Validation côté client (pour UX) — la vraie validation est serveur
     setNomPhoto(val);
   };
 
@@ -530,8 +529,15 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
   );
 }
 
-function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellement, L, dejaMatche }) {
+function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellement, L, dejaMatche, onPartiePrete }) {
   const [codeSaisi, setCodeSaisi] = useState("");
+
+  // Transition automatique quand statutConnexion devient "connecte"
+  useEffect(() => {
+    if (statutConnexion === "connecte" && onPartiePrete) {
+      onPartiePrete();
+    }
+  }, [statutConnexion, onPartiePrete]);
 
   // Cas 1 : Joueur 2 qui vient du matchmaking → attend la création de la partie par Rouge
   if (dejaMatche) {
@@ -595,6 +601,7 @@ function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellemen
     </div>
   );
 }
+
 function TimerBloc({ secondes, couleur, actif, L }) {
   const m = Math.floor(secondes / 60), s = secondes % 60;
   const danger = secondes <= 10;
@@ -812,34 +819,33 @@ export default function App() {
   const [pieceADonner, setPieceADonner] = useState(null);
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
   const [scoutEchanges, setScoutEchanges] = useState([]);
-  // Matchmaking
   const [matchmakingActif, setMatchmakingActif] = useState(false);
   const [modeAnalyse, setModeAnalyse] = useState("rapide");
-  // Chat
   const [messageChat, setMessageChat] = useState("");
-  const [bullesActives, setBullesActives] = useState([]);  // [{id, texte, couleur, position}]
+  const [bullesActives, setBullesActives] = useState([]);
   const lastMsgTime = useRef(0);
-  // Pseudo adversaire (pour scores cumulés)
+  
   const pseudoAdverse = modeIA !== "aucune"
     ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS")
     : (etat?.pseudo_adversaire || "ADVERSAIRE");
 
   const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });
+  
   useEffect(() => {
-  if (!mancheTermineeInfo) return;
-  const g = mancheTermineeInfo.gagnant;
-  if (g && g !== "egalite" && pseudoAdverse) {
-    const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
-    const jaiGagne = g === maCouleur;
-    const nouveauScore = {
-      moi: scoresCumules.moi + (jaiGagne ? 1 : 0),
-      lui: scoresCumules.lui + (jaiGagne ? 0 : 1)
-    };
-    setScoresCumulesState(nouveauScore);
-    setScoresCumules(pseudoAdverse, nouveauScore);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [mancheTermineeInfo]);
+    if (!mancheTermineeInfo) return;
+    const g = mancheTermineeInfo.gagnant;
+    if (g && g !== "egalite" && pseudoAdverse) {
+      const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+      const jaiGagne = g === maCouleur;
+      const nouveauScore = {
+        moi: scoresCumules.moi + (jaiGagne ? 1 : 0),
+        lui: scoresCumules.lui + (jaiGagne ? 0 : 1)
+      };
+      setScoresCumulesState(nouveauScore);
+      setScoresCumules(pseudoAdverse, nouveauScore);
+    }
+  }, [mancheTermineeInfo]);
+  
   const [showAnalyse, setShowAnalyse] = useState(false);
   const [dernierCoupClassif, setDernierCoupClassif] = useState(null);
 
@@ -905,11 +911,11 @@ export default function App() {
   useEffect(() => { popupRef.current = popup; }, [popup]);
   const trCouleur = (c) => c === "rouge" ? t("rouge", L) : c === "noir" ? t("noir", L) : c;
 
-  // Timer — CONTINUE de tourner pendant choix de pouvoir
+  // Timer
   useEffect(() => {
     clearInterval(timerRef.current);
     if (etape !== "jeu" || !etat || etat.manche_terminee) return;
-    if (pauseIAActive) return;  // Pause IA arrête le timer
+    if (pauseIAActive) return;
     if (modeMultijoueur && statutConnexion !== "connecte") return;
     if (estTourIA || iaEnCours) return;
 
@@ -937,7 +943,6 @@ export default function App() {
       }
     }, 200);
     return () => clearInterval(timerRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, modeMultijoueur, statutConnexion, timerChoisi, estTourIA, iaEnCours, L, pauseIAActive]);
 
   // WebSocket
@@ -946,7 +951,8 @@ export default function App() {
     socketRef.current = socket;
     socket.on("rejoint", (data) => { setEtat(data.etat); });
     socket.on("partie_prete", (data) => {
-      setStatutConnexion("connecte"); setEtat(data.etat);
+      setStatutConnexion("connecte"); 
+      setEtat(data.etat);
       setTimeout(() => setEtape("jeu"), 800);
     });
     socket.on("etat_mis_a_jour", (data) => {
@@ -961,7 +967,6 @@ export default function App() {
     socket.on("pause_active", () => { setPauseActive(true); setDemandePauseRecue(null); });
     socket.on("pause_terminee", (data) => { setPauseActive(false); if (data?.etat) setEtat(data.etat); });
     socket.on("pause_refusee", () => { setDemandePauseRecue(null); });
-    // Chat
     socket.on("message_recu", (data) => {
       const id = Date.now() + Math.random();
       setBullesActives(b => [...b, {
@@ -971,7 +976,6 @@ export default function App() {
       }]);
     });
     return () => socket.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const calculer_scores_locaux = (etatLocal) => {
@@ -996,60 +1000,83 @@ export default function App() {
     setEtape("photo");
   };
 
-const handlePlayOnline = async (timer) => {
-  setTimerChoisi(timer);
-  setMatchmakingActif(true);
+  const handlePlayOnline = async (timer) => {
+    setTimerChoisi(timer);
+    setMatchmakingActif(true);
 
-  const token = getToken();
-  if (!token) {
-    alert("Connexion requise pour jouer en ligne");
-    setMatchmakingActif(false);
-    return;
-  }
-
-  try {
-    await axios.post(`${API}/matchmaking/rejoindre`,
-      { timer_sec: timer },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    console.log("[matchmaking] Rejoint la file avec timer:", timer);
-  } catch (e) {
-    console.error("Erreur rejoindre file:", e);
-    setMatchmakingActif(false);
-    alert("Erreur de connexion au matchmaking : " + (e.response?.data?.erreur || e.message));
-  }
-};
-
-const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, scoresManchesInit) => {
-  setPartieId(id); setEtat(etatInit); setPixelsPhoto(pixels); setTaille(tt || 16);
-  if (timerSec) { setTimerChoisi(timerSec); setTimerRouge(timerSec); setTimerNoir(timerSec); }
-  if (scoresManchesInit) setScoresManches(scoresManchesInit);
-  if (modeIA !== "aucune") {
-    setMonRole("joueur1"); setModeMultijoueur(false); setEtape("jeu");
-  } else {
-    setMonRole("joueur1"); setModeMultijoueur(true);
-    // Si matchmaking : va direct en jeu (pas de lobby !)
-    if (partieIdMatch) {
-      setEtape("jeu");
-      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1" });
-    } else {
-      setEtape("lobby");
-      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1" });
+    const token = getToken();
+    if (!token) {
+      alert("Connexion requise pour jouer en ligne");
+      setMatchmakingActif(false);
+      return;
     }
-  }
-}, [modeIA, partieIdMatch]);
+
+    try {
+      await axios.post(`${API}/matchmaking/rejoindre`,
+        { timer_sec: timer },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log("[matchmaking] Rejoint la file avec timer:", timer);
+    } catch (e) {
+      console.error("Erreur rejoindre file:", e);
+      setMatchmakingActif(false);
+      alert("Erreur de connexion au matchmaking : " + (e.response?.data?.erreur || e.message));
+    }
+  };
+
+  const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, scoresManchesInit) => {
+    setPartieId(id); 
+    setEtat(etatInit); 
+    setPixelsPhoto(pixels); 
+    setTaille(tt || 16);
+    if (timerSec) { setTimerChoisi(timerSec); setTimerRouge(timerSec); setTimerNoir(timerSec); }
+    if (scoresManchesInit) setScoresManches(scoresManchesInit);
+    
+    if (modeIA !== "aucune") {
+      setMonRole("joueur1"); 
+      setModeMultijoueur(false); 
+      setEtape("jeu");
+    } else {
+      setMonRole("joueur1"); 
+      setModeMultijoueur(true);
+      
+      // 🔥 CRITIQUE: rejoindre la room WebSocket immédiatement
+      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1" });
+      
+      if (partieIdMatch) {
+        setEtape("jeu");
+      } else {
+        setEtape("lobby");
+      }
+    }
+  }, [modeIA, partieIdMatch]);
 
   const handleRejoindreManuellement = useCallback(async (id) => {
     if (!id) return;
-    setPartieId(id); setMonRole("joueur2"); setModeMultijoueur(true); setEtape("lobby");
+    setPartieId(id); 
+    setMonRole("joueur2"); 
+    setModeMultijoueur(true); 
+    setEtape("lobby");
+    
+    // 🔥 CRITIQUE: rejoindre la room WebSocket immédiatement
+    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
+    
     try {
       const res = await axios.get(`${API}/pixels/${id}`);
-      setPixelsPhoto(res.data.pixels_photo); setTaille(res.data.taille);
-      if (res.data.etat) setEtat(res.data.etat);
-      if (res.data.indice) setIndiceReconnaissance(res.data.indice);
-      if (res.data.timer_sec) { setTimerChoisi(res.data.timer_sec); setTimerRouge(res.data.timer_sec); setTimerNoir(res.data.timer_sec); }
-    } catch (err) { console.error("Pixels introuvables:", err); }
-    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
+      if (res.data && res.data.pixels_photo) {
+        setPixelsPhoto(res.data.pixels_photo); 
+        setTaille(res.data.taille);
+        if (res.data.etat) setEtat(res.data.etat);
+        if (res.data.indice) setIndiceReconnaissance(res.data.indice);
+        if (res.data.timer_sec) { 
+          setTimerChoisi(res.data.timer_sec); 
+          setTimerRouge(res.data.timer_sec); 
+          setTimerNoir(res.data.timer_sec); 
+        }
+      }
+    } catch (err) { 
+      console.error("Pixels introuvables:", err); 
+    }
   }, []);
 
   const gererErreur404 = useCallback((err) => {
@@ -1079,13 +1106,14 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
       const tourIA = modeIA === "j1" ? 0 : 1;
       if (etat.tour_actuel === tourIA && !etat.manche_terminee) declencherIA(etat, partieId, modeIA, niveauIA);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir, pauseIAActive]);
 
   const envoyerPouvoir = useCallback(async (body) => {
     try {
       const res = await axios.post(`${API}/jouer/${partieId}`, { action: "pouvoir", ...body });
-      setEtat(res.data.etat); setAttenteChoixPouvoir(false); setPopup(null);
+      setEtat(res.data.etat); 
+      setAttenteChoixPouvoir(false); 
+      setPopup(null);
       if ((res.data.recoloriages_possibles ?? 0) > 0) {
         setPopup({ type: "attente_recoloriage", message: t("cliquerPieceAdverse", L) });
         return;
@@ -1099,7 +1127,8 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
     try {
       const res = await axios.post(`${API}/jouer/${partieId}`, {
         action: "poser", piece_index: idx, origine, pouvoir: "rien" });
-      setEtat(res.data.etat); setPieceIdx(null);
+      setEtat(res.data.etat); 
+      setPieceIdx(null);
       if (res.data.double_tour_consomme) setBonusDoubleActif(false);
       if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
       if (res.data.manche_terminee || res.data.victoire_immediate) {
@@ -1113,7 +1142,8 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
         const tourJoueur = res.data.etat?.tour_actuel ?? 0;
         const joueurQuiJoue = tourJoueur === 0 ? res.data.etat?.joueur1 : res.data.etat?.joueur2;
         const serie = joueurQuiJoue?.serie_actuelle ?? 0;
-        setAttenteChoixPouvoir(true); setPopup({ type: "pouvoir", serie });
+        setAttenteChoixPouvoir(true); 
+        setPopup({ type: "pouvoir", serie });
       } else {
         await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
       }
@@ -1150,7 +1180,8 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
       return;
     }
     if (p.type === "attente_cible") {
-      const pouvoir = p.pouvoir; setPopup(null);
+      const pouvoir = p.pouvoir; 
+      setPopup(null);
       await envoyerPouvoir({ pouvoir, cible_pouvoir: position });
     }
   }, [partieId, modeIA, niveauIA, declencherIA, envoyerPouvoir, gererErreur404]);
@@ -1193,11 +1224,8 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
     setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null);
     setMancheTermineeInfo(null); setPauseActive(false); setPauseIAActive(false); setDemandePauseRecue(null);
     setIaEnCours(false);
-    // FIX : si connecté, retour à taille; sinon retour à auth (au lieu de se bloquer)
     setEtape(utilisateur?.pseudo ? "taille" : (utilisateur ? "pseudo" : "auth"));
   };
-
-
 
   const handlePaiement = async (plan) => {
     try {
@@ -1217,27 +1245,21 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
     setUtilisateur(null); setShowParametres(false); handleReset();
   };
 
-  // Envoyer message chat
   const envoyerMessage = () => {
     if (!messageChat.trim()) return;
     if (messageChat.length > 30) return;
     const maintenant = Date.now();
-    if (maintenant - lastMsgTime.current < 3000) return;  // anti-spam 3s
+    if (maintenant - lastMsgTime.current < 3000) return;
     lastMsgTime.current = maintenant;
     const couleurMoi = monRole === "joueur1" ? "rouge" : "noir";
     socketRef.current?.emit("message_envoye", {
       partie_id: partieId, texte: messageChat.slice(0, 30), couleur: couleurMoi
     });
-    // Affiche aussi chez moi
     const id = Date.now() + Math.random();
     setBullesActives(b => [...b, { id, texte: messageChat.slice(0, 30),
       couleur: couleurMoi, position: "bottom" }]);
     setMessageChat("");
   };
-
-  // ────────────────────────────────────────────
-  // RENDU
-  // ────────────────────────────────────────────
 
   const boutonParamsFlottant = etape !== "jeu" && (
     <BtnParamsFlottant L={L} onClick={() => setShowParametres(true)} />
@@ -1269,43 +1291,48 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
         <PopupMatchmaking L={L} timerSec={timerChoisi} utilisateur={utilisateur}
           onAnnuler={() => setMatchmakingActif(false)}
           onMatchTrouve={(data) => {
-  setMatchmakingActif(false);
-  setPartieIdMatch(data.partie_id);
-  setPseudoAdversaireMatch(data.adversaire_pseudo);
-  setModeMultijoueur(true);
-  if (data.ma_couleur === "rouge") {
-    setMonRole("joueur1");
-    setEtape("photo");
-  } else {
-    setMonRole("joueur2");
-    setPartieId(data.partie_id);
-    setEtape("lobby");
-    const pollerPartie = async () => {
-      try {
-        const res = await axios.get(`${API}/pixels/${data.partie_id}`);
-        if (res.data && res.data.pixels_photo) {
-          setPixelsPhoto(res.data.pixels_photo);
-          setTaille(res.data.taille);
-          if (res.data.etat) setEtat(res.data.etat);
-          if (res.data.indice) setIndiceReconnaissance(res.data.indice);
-          if (res.data.timer_sec) {
-            setTimerChoisi(res.data.timer_sec);
-            setTimerRouge(res.data.timer_sec);
-            setTimerNoir(res.data.timer_sec);
-          }
-          socketRef.current.emit("rejoindre_partie", {
-            partie_id: data.partie_id,
-            joueur: "joueur2"
-          });
-          return;
-        }
-      } catch (e) {}
-      setTimeout(pollerPartie, 2000);
-    };
-    pollerPartie();
-  }
-}}
-          
+            setMatchmakingActif(false);
+            setPartieIdMatch(data.partie_id);
+            setPseudoAdversaireMatch(data.adversaire_pseudo);
+            setModeMultijoueur(true);
+            
+            if (data.ma_couleur === "rouge") {
+              setMonRole("joueur1");
+              setEtape("photo");
+            } else {
+              // 🔥 JOUEUR 2 : rejoindre IMMÉDIATEMENT la room WebSocket
+              setMonRole("joueur2");
+              setPartieId(data.partie_id);
+              setEtape("lobby");
+              
+              // CRITIQUE : rejoindre tout de suite
+              socketRef.current.emit("rejoindre_partie", {
+                partie_id: data.partie_id,
+                joueur: "joueur2"
+              });
+              
+              // Récupérer les pixels en arrière-plan
+              const pollerPartie = async () => {
+                try {
+                  const res = await axios.get(`${API}/pixels/${data.partie_id}`);
+                  if (res.data && res.data.pixels_photo) {
+                    setPixelsPhoto(res.data.pixels_photo);
+                    setTaille(res.data.taille);
+                    if (res.data.etat) setEtat(res.data.etat);
+                    if (res.data.indice) setIndiceReconnaissance(res.data.indice);
+                    if (res.data.timer_sec) {
+                      setTimerChoisi(res.data.timer_sec);
+                      setTimerRouge(res.data.timer_sec);
+                      setTimerNoir(res.data.timer_sec);
+                    }
+                    return;
+                  }
+                } catch (e) {}
+                setTimeout(pollerPartie, 2000);
+              };
+              pollerPartie();
+            }
+          }}
         />
       )}
       <EcranTaille onValider={handleTailleValidee} onPlayOnline={handlePlayOnline} L={L} utilisateur={utilisateur} />
@@ -1332,9 +1359,15 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
   if (etape === "lobby") return (
     <div className="app">
       {boutonParamsFlottant}{popupParams}
-      <EcranLobby partieId={partieId} monRole={monRole} statutConnexion={statutConnexion}
-        onRejoindreManuellement={handleRejoindreManuellement} L={L}
-       dejaMatche={!!partieIdMatch && monRole === "joueur2"}/>
+      <EcranLobby 
+        partieId={partieId} 
+        monRole={monRole} 
+        statutConnexion={statutConnexion}
+        onRejoindreManuellement={handleRejoindreManuellement} 
+        L={L}
+        dejaMatche={modeMultijoueur && monRole === "joueur2" && !!partieId && !etat}
+        onPartiePrete={() => setEtape("jeu")}
+      />
     </div>
   );
 
@@ -1343,64 +1376,63 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
     <div className="app jeu">
       {popupParams}
 
-      {/* Bulles messages */}
       {bullesActives.map(b => (
         <BulleMessage key={b.id} texte={b.texte} couleur={b.couleur} position={b.position}
           onFermer={() => setBullesActives(bb => bb.filter(x => x.id !== b.id))} />
       ))}
 
-{mancheTermineeInfo && (
-  <div className="popup-overlay">
-    <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
-      {(() => {
-        const g = mancheTermineeInfo.gagnant;
-        const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
-        const jaiGagne = g === maCouleur;
-        const egalite = g === "egalite";
-        return (
-          <>
-            <div className="popup-titre" style={{
-              color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
-              fontSize: 32,
-            }}>
-              {egalite ? t("egalite", L) : jaiGagne ? t("victoire", L) : t("defaite", L)}
+      {mancheTermineeInfo && (
+        <div className="popup-overlay">
+          <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
+            {(() => {
+              const g = mancheTermineeInfo.gagnant;
+              const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+              const jaiGagne = g === maCouleur;
+              const egalite = g === "egalite";
+              return (
+                <>
+                  <div className="popup-titre" style={{
+                    color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
+                    fontSize: 32,
+                  }}>
+                    {egalite ? t("egalite", L) : jaiGagne ? t("victoire", L) : t("defaite", L)}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                    {egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
+                  </div>
+                </>
+              );
+            })()}
+            <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 32, fontFamily: "var(--brush)" }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ color: "var(--rouge-c)", fontWeight: 700 }}>{mancheTermineeInfo.scores?.rouge ?? 0}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("rouge", L)}</div>
+              </div>
+              <span style={{ color: "var(--muted)", fontSize: 20 }}>vs</span>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ color: "#aaaaaa", fontWeight: 700 }}>{mancheTermineeInfo.scores?.noir ?? 0}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("noir", L)}</div>
+              </div>
             </div>
-            <div style={{ fontSize: 13, color: "var(--muted)" }}>
-              {egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
+            <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
+              Score cumulé vs {pseudoAdverse} : {scoresCumules.moi}-{scoresCumules.lui}
             </div>
-          </>
-        );
-      })()}
-      <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 32, fontFamily: "var(--brush)" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ color: "var(--rouge-c)", fontWeight: 700 }}>{mancheTermineeInfo.scores?.rouge ?? 0}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("rouge", L)}</div>
+            <div className="popup-options" style={{ flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="popup-btn" style={{ flex: 1, borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
+                  onClick={() => { setModeAnalyse("rapide"); setMancheTermineeInfo(null); setShowAnalyse(true); }}>
+                  Analyse rapide
+                </button>
+                <button className="popup-btn" style={{ flex: 1, borderColor: "#ffaa44", color: "#ffaa44" }}
+                  onClick={() => { setModeAnalyse("profonde"); setMancheTermineeInfo(null); setShowAnalyse(true); }}>
+                  Analyse profonde
+                </button>
+              </div>
+              <button className="popup-btn" onClick={handleReset}>{t("nouvellePartie", L)}</button>
+            </div>
+          </div>
         </div>
-        <span style={{ color: "var(--muted)", fontSize: 20 }}>vs</span>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ color: "#aaaaaa", fontWeight: 700 }}>{mancheTermineeInfo.scores?.noir ?? 0}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("noir", L)}</div>
-        </div>
-      </div>
-      <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
-        Score cumulé vs {pseudoAdverse} : {scoresCumules.moi}-{scoresCumules.lui}
-      </div>
-      <div className="popup-options" style={{ flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="popup-btn" style={{ flex: 1, borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
-            onClick={() => { setModeAnalyse("rapide"); setMancheTermineeInfo(null); setShowAnalyse(true); }}>
-            Analyse rapide
-          </button>
-          <button className="popup-btn" style={{ flex: 1, borderColor: "#ffaa44", color: "#ffaa44" }}
-            onClick={() => { setModeAnalyse("profonde"); setMancheTermineeInfo(null); setShowAnalyse(true); }}>
-            Analyse profonde
-          </button>
-        </div>
-        <button className="popup-btn" onClick={handleReset}>{t("nouvellePartie", L)}</button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {pauseIAActive && modeIA !== "aucune" && (
         <div className="popup-overlay">
@@ -1444,8 +1476,6 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
           </div>
         </div>
       )}
-
-
 
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} L={L} />}
       {popup?.type === "scout" && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
@@ -1499,7 +1529,6 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
         </div>
       )}
 
-      {/* Header avec pseudos de part et d'autre */}
       <header className="app-header">
         <div className="header-gauche">
           <h1 className="titre-jeu-petit">ELMAAS</h1>
@@ -1514,7 +1543,6 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
             {modeIA !== "j1" && <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !popup && !pauseIAActive} L={L} />}
             {modeIA !== "j2" && <TimerBloc secondes={timerNoir} couleur="noir" actif={etat?.tour_actuel === 1 && !popup && !pauseIAActive} L={L} />}
           </div>
-          {/* Score cumulé */}
           {pseudoAdverse && (scoresCumules.moi > 0 || scoresCumules.lui > 0) && (
             <div className="score-cumule">
               {t("scoreContre", L)} {pseudoAdverse}: {scoresCumules.moi}-{scoresCumules.lui}
@@ -1538,14 +1566,14 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
             {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
             {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurActif.serie_actuelle}</span>}
           </div>
-              {dernierCoupClassif && (
-          <span className="badge-classif" style={{
-        background: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur + "22",
-        borderColor: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur,
-        color: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur
-          }}>
-        {dernierCoupClassif}
-         </span>
+          {dernierCoupClassif && (
+            <span className="badge-classif" style={{
+              background: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur + "22",
+              borderColor: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur,
+              color: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur
+            }}>
+              {dernierCoupClassif}
+            </span>
           )}
           <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>⚙</button>
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
@@ -1643,7 +1671,6 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
             </button>
           )}
 
-          {/* PAUSE — disponible en mode IA et mode 2 joueurs */}
           {modeIA !== "aucune" && (
             <button className="btn-action" onClick={() => setPauseIAActive(true)}>{t("pause", L)}</button>
           )}
@@ -1655,7 +1682,6 @@ const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, score
             }}>{t("pause", L)}</button>
           )}
 
-          {/* Chat — mode 2 joueurs seulement */}
           {modeMultijoueur && (
             <div className="chat-zone">
               <input type="text" maxLength={30} placeholder={t("envoyerMessage", L)}
