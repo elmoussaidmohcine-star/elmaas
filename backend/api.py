@@ -123,7 +123,6 @@ demandes_pause: dict[str, str] = {}
 pause_active: dict[str, bool] = {}
 scores_manches: dict[str, dict] = {}
 timer_par_partie: dict[str, int] = {}
-demandes_revanche: dict[str, str] = {}
 historique_coups: dict[str, list] = {}    # partie_id -> liste de coups
 etats_initiaux: dict[str, dict] = {}      # partie_id -> etat sérialisé initial
 analyses_quotidiennes: dict[int, dict] = {}  # user_id -> {"date": date, "count": int
@@ -363,7 +362,11 @@ def nouvelle_partie():
         img_redim = Image.open(chemin_temp).convert("RGB").resize((taille, taille), Image.LANCZOS)
         pixels = np.array(img_redim).tolist()
 
-        partie_id = str(uuid.uuid4())
+        partie_id_match = request.form.get("partie_id_match", "").strip()
+        if partie_id_match:
+            partie_id = partie_id_match
+        else:
+            partie_id = str(uuid.uuid4())
         parties[partie_id] = etat
         pixels_par_partie[partie_id] = pixels
         historique_coups[partie_id] = []
@@ -465,6 +468,8 @@ def lancer_analyse(partie_id: str):
     # Déterminer couleur du joueur (par défaut rouge = J1)
     data = request.get_json() or {}
     couleur_joueur = data.get("couleur", "rouge")
+    mode = data.get("mode", "rapide")
+    profondeur = 1 if mode == "rapide" else 3
  
     # Reconstruire EtatJeu depuis le dict initial
     # (C'est un raccourci : on réutilise l'état initial simulé
@@ -480,9 +485,9 @@ def lancer_analyse(partie_id: str):
  
         resultat = analyser_partie_complete(
             coups_historique=historique,
-            etat_initial=etat_pour_analyse,  # point de départ approximatif
+            etat_initial=parties.get(partie_id),
             couleur_joueur=couleur_joueur,
-            profondeur=3
+            profondeur=profondeur
         )
  
         quota_user["count"] += 1
@@ -833,79 +838,6 @@ def refuser_pause(partie_id: str):
     return jsonify({"succes": True})
 
 
-# ── Revanche ──
-@app.route("/revanche/demander/<partie_id>", methods=["POST"])
-def demander_revanche(partie_id: str):
-    if partie_id not in parties:
-        return jsonify({"erreur": "Partie introuvable"}), 404
-    data = request.get_json() or {}
-    couleur = data.get("couleur")
-    if couleur not in ("rouge", "noir"):
-        return jsonify({"erreur": "Couleur invalide"}), 400
-
-    demande_existante = demandes_revanche.get(partie_id)
-    if demande_existante and demande_existante != couleur:
-        demandes_revanche[partie_id] = None
-        return _lancer_revanche(partie_id)
-
-    demandes_revanche[partie_id] = couleur
-    socketio.emit("revanche_demandee", {"couleur": couleur}, room=partie_id)
-    return jsonify({"succes": True, "en_attente": True})
-
-
-@app.route("/revanche/accepter/<partie_id>", methods=["POST"])
-def accepter_revanche(partie_id: str):
-    if partie_id not in parties:
-        return jsonify({"erreur": "Partie introuvable"}), 404
-    demandes_revanche[partie_id] = None
-    return _lancer_revanche(partie_id)
-
-
-@app.route("/revanche/refuser/<partie_id>", methods=["POST"])
-def refuser_revanche(partie_id: str):
-    demandes_revanche[partie_id] = None
-    socketio.emit("revanche_refusee", {}, room=partie_id)
-    return jsonify({"succes": True})
-
-
-def _lancer_revanche(partie_id: str):
-    ancienne_partie = parties[partie_id]
-    ancien_plateau = ancienne_partie.plateau
-
-    gagnant = ancienne_partie.gagnant
-    if gagnant in ("rouge", "noir"):
-        scores_manches[partie_id][gagnant] = scores_manches[partie_id].get(gagnant, 0) + 1
-
-    plateau_propre = reinitialiser_plateau(ancien_plateau)
-    nouveau_etat = initialiser_jeu(plateau_propre)
-    nouveau_etat.tour_actuel = 1  # Noir commence
-    # FIX CRUCIAL : timestamp à MAINTENANT (sinon timer = 0 au démarrage)
-    nouveau_etat.timestamp_debut_tour = time.time()
-
-    parties[partie_id] = nouveau_etat
-    pause_active[partie_id] = False
-    demandes_pause[partie_id] = None
-    bonus_double_tour[partie_id] = False
-    reconnaissance_tentee[partie_id] = False
-    demandes_revanche[partie_id] = None  # FIX : nettoyer
-
-    etat_serialise = serialiser_etat(nouveau_etat)
-    socketio.emit("revanche_lancee", {
-        "etat": etat_serialise,
-        "scores_manches": scores_manches[partie_id],
-    }, room=partie_id)
-
-    return jsonify({
-        "succes": True,
-        "etat": etat_serialise,
-        "scores_manches": scores_manches[partie_id],
-    })
-
-@app.route("/revanche/<partie_id>", methods=["POST"])
-def revanche(partie_id: str):
-    if partie_id not in parties:
-        return jsonify({"erreur": "Partie introuvable"}), 404
-    return _lancer_revanche(partie_id)
 
 
 @app.route("/scores_manches/<partie_id>", methods=["GET"])
