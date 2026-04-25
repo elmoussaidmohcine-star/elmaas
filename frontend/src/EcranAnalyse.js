@@ -7,7 +7,7 @@ import axios from "axios";
 import Board from "./Board";
 import { t, CLASSIFICATION_COUP } from "./translations";
 
-const API = "https://elmaas.up.railway.app";
+const API = "https://elmaas-backend.onrender.com";
 const COULEURS_CLASSE = {
   ELMAAS:    "#ffd700",
   ELMAASYON: "#88ff88",
