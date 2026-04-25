@@ -24,6 +24,7 @@ class FileAttente(db.Model):
     timer_sec = db.Column(db.Integer, default=30)
     entree_le = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     partie_id = db.Column(db.String(100), nullable=True)  # rempli quand matché
+    ma_couleur = db.Column(db.String(10), nullable=True)  # "rouge" ou "noir", défini au match
 
 
 def tolerance_elm(secondes_attente: float) -> int:
@@ -70,11 +71,19 @@ def chercher_match(user):
         tol_c = tolerance_elm(attente_c)
         ecart = abs(ma_ligne.elm - c.elm)
         if ecart <= tol_moi and ecart <= tol_c:
-            # Match trouvé : créer partie_id + update les 2 lignes
+            # Match trouvé : créer partie_id + assigner les couleurs
             partie_id = uuid.uuid4().hex[:8].upper()
             ma_ligne.partie_id = partie_id
             c.partie_id = partie_id
+            # Tirage déterministe et stocké : le user.id le plus bas joue rouge
+            if ma_ligne.user_id < c.user_id:
+                ma_ligne.ma_couleur = "rouge"
+                c.ma_couleur = "noir"
+            else:
+                ma_ligne.ma_couleur = "noir"
+                c.ma_couleur = "rouge"
             db.session.commit()
+            print(f"[matchmaking] MATCH : {ma_ligne.pseudo}({ma_ligne.ma_couleur}) vs {c.pseudo}({c.ma_couleur}) partie={partie_id}")
             return c, partie_id
 
     return None, None
@@ -144,14 +153,20 @@ def verifier_match():
             FileAttente.partie_id == ma_ligne.partie_id,
             FileAttente.user_id != user.id
         ).first()
+        # La couleur est lue depuis la DB (assignée au moment du match).
+        # Si pour une raison historique elle n'est pas définie, on la recalcule.
+        ma_couleur = ma_ligne.ma_couleur
+        if not ma_couleur and autre:
+            ma_couleur = "rouge" if user.id < autre.user_id else "noir"
+        elif not ma_couleur:
+            ma_couleur = "rouge"  # fallback ultime
         return jsonify({
             "status": "match",
             "partie_id": ma_ligne.partie_id,
             "adversaire_pseudo": autre.pseudo if autre else "Adversaire",
             "adversaire_elm": autre.elm if autre else 500,
-            # Tirage aléatoire Rouge/Noir (stable : basé sur l'id le plus bas)
-            "ma_couleur": "rouge" if user.id < (autre.user_id if autre else 0) else "noir",
-            "rouge_choisit_photo": (user.id < (autre.user_id if autre else 0)),
+            "ma_couleur": ma_couleur,
+            "rouge_choisit_photo": ma_couleur == "rouge",
         })
 
     # Chercher un match
@@ -166,15 +181,17 @@ def verifier_match():
 
     autre, partie_id = chercher_match(user)
     if autre and partie_id:
-        # Tirage au sort Rouge/Noir basé sur user_id (déterministe entre les 2 appels)
-        ma_couleur = "rouge" if user.id < autre.user_id else "noir"
+        # Après chercher_match, ma_ligne.ma_couleur a été défini en DB.
+        # Mais l'objet ma_ligne local peut ne pas refléter ça : on recharge.
+        db.session.refresh(ma_ligne)
+        ma_couleur = ma_ligne.ma_couleur or ("rouge" if user.id < autre.user_id else "noir")
         return jsonify({
             "status": "match",
             "partie_id": partie_id,
             "adversaire_pseudo": autre.pseudo,
             "adversaire_elm": autre.elm,
             "ma_couleur": ma_couleur,
-            "rouge_choisit_photo": (user.id < autre.user_id),
+            "rouge_choisit_photo": ma_couleur == "rouge",
         })
 
     return jsonify({
