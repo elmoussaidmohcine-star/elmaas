@@ -322,31 +322,41 @@ function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }
   const [citation, setCitation] = useState(getCitationAttente(0));
   const [echec, setEchec] = useState(false);
   const [tolerance, setTolerance] = useState(100);
- 
+
+  // Garde le callback à jour sans relancer le polling à chaque render parent
+  const onMatchTrouveRef = useRef(onMatchTrouve);
+  useEffect(() => { onMatchTrouveRef.current = onMatchTrouve; }, [onMatchTrouve]);
+
   useEffect(() => {
     const i = setInterval(() => setTempsEcoule(t => t + 1), 1000);
     const c = setInterval(() => setCitation(getCitationAttente(0)), 8000);
     return () => { clearInterval(i); clearInterval(c); };
   }, []);
- 
+
   useEffect(() => {
     let actif = true;
+    let pollId = null;
+    let dejaTraite = false;  // CRITIQUE : empêche les doubles dispatches
     const token = localStorage.getItem("elmaas_token");
- 
+
     const verifier = async () => {
-      if (!actif) return;
+      if (!actif || dejaTraite) return;
       try {
         const r = await axios.get(`${API}/matchmaking/verifier`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (!actif) return;
- 
+        if (!actif || dejaTraite) return;
+
         if (r.data.status === "match") {
-          onMatchTrouve(r.data);
+          dejaTraite = true;
+          if (pollId) { clearInterval(pollId); pollId = null; }
+          actif = false;
+          onMatchTrouveRef.current(r.data);
           return;
         }
         if (r.data.status === "timeout") {
           setEchec(true);
+          if (pollId) { clearInterval(pollId); pollId = null; }
           return;
         }
         if (r.data.tolerance) setTolerance(r.data.tolerance);
@@ -354,12 +364,15 @@ function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }
         console.error("Poll match:", e);
       }
     };
- 
+
     verifier();
-    const poll = setInterval(verifier, 3000);
-    return () => { actif = false; clearInterval(poll); };
-  }, [onMatchTrouve]);
- 
+    pollId = setInterval(verifier, 3000);
+    return () => {
+      actif = false;
+      if (pollId) clearInterval(pollId);
+    };
+  }, []);  // PAS de dépendance sur onMatchTrouve : on utilise la ref
+
   const handleAnnuler = async () => {
     const token = localStorage.getItem("elmaas_token");
     try {
@@ -1301,15 +1314,23 @@ export default function App() {
         <PopupMatchmaking L={L} timerSec={timerChoisi} utilisateur={utilisateur}
           onAnnuler={() => setMatchmakingActif(false)}
           onMatchTrouve={(data) => {
+            console.log("[matchmaking] onMatchTrouve reçu:", data);
+            // Garde-fou : si déjà traité (race condition), on ignore
+            if (!matchmakingActif) {
+              console.log("[matchmaking] Déjà traité, ignoré");
+              return;
+            }
             setMatchmakingActif(false);
             setPartieIdMatch(data.partie_id);
             setPseudoAdversaireMatch(data.adversaire_pseudo);
             setModeMultijoueur(true);
 
             if (data.ma_couleur === "rouge") {
+              console.log("[matchmaking] Je suis ROUGE, vais à l'écran photo");
               setMonRole("joueur1");
               setEtape("photo");
             } else {
+              console.log("[matchmaking] Je suis NOIR, vais au lobby et j'attends");
               // J2 : on va au lobby et on attend que Rouge crée la partie côté backend.
               // On NE peut PAS émettre rejoindre_partie tant que la partie n'existe pas
               // dans parties[partie_id] côté serveur (sinon emit "erreur" silencieux).
