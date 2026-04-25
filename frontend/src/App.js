@@ -409,7 +409,10 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
   const [apercu, setApercu] = useState(null);
 
   const peutUploader = !utilisateur ? false : utilisateur.premium || !utilisateur.photo_perso_utilisee;
-  const nomValide = modeIA !== "aucune" || nomPhoto.trim().length >= 3;
+  // Le nom de photo n'est utile qu'en mode "ami par code" (reconnaissance par J2).
+  // En mode IA et en matchmaking, on ne demande pas de nom.
+  const modeAmiCode = modeIA === "aucune" && !partieIdMatch;
+  const nomValide = !modeAmiCode || nomPhoto.trim().length >= 3;
 
   useEffect(() => {
     axios.get(`${API}/photos_fixes`).then(res => setPhotosFixees(res.data.photos));
@@ -1302,39 +1305,50 @@ export default function App() {
             setPartieIdMatch(data.partie_id);
             setPseudoAdversaireMatch(data.adversaire_pseudo);
             setModeMultijoueur(true);
-            
+
             if (data.ma_couleur === "rouge") {
               setMonRole("joueur1");
               setEtape("photo");
             } else {
-              // 🔥 JOUEUR 2 : rejoindre IMMÉDIATEMENT la room WebSocket
+              // J2 : on va au lobby et on attend que Rouge crée la partie côté backend.
+              // On NE peut PAS émettre rejoindre_partie tant que la partie n'existe pas
+              // dans parties[partie_id] côté serveur (sinon emit "erreur" silencieux).
               setMonRole("joueur2");
               setPartieId(data.partie_id);
               setEtape("lobby");
-              
-              // CRITIQUE : rejoindre tout de suite
-              socketRef.current.emit("rejoindre_partie", {
-                partie_id: data.partie_id,
-                joueur: "joueur2"
-              });
-              
-              // Récupérer les pixels en arrière-plan
+
+              let aRejoint = false;
               const pollerPartie = async () => {
                 try {
                   const res = await axios.get(`${API}/pixels/${data.partie_id}`);
-                  if (res.data && res.data.pixels_photo) {
+                  if (res.data && res.data.pixels_photo && res.data.etat) {
+                    // La partie existe enfin côté serveur
                     setPixelsPhoto(res.data.pixels_photo);
                     setTaille(res.data.taille);
-                    if (res.data.etat) setEtat(res.data.etat);
+                    setEtat(res.data.etat);
                     if (res.data.indice) setIndiceReconnaissance(res.data.indice);
                     if (res.data.timer_sec) {
                       setTimerChoisi(res.data.timer_sec);
                       setTimerRouge(res.data.timer_sec);
                       setTimerNoir(res.data.timer_sec);
                     }
+                    // MAINTENANT seulement on rejoint la room
+                    if (!aRejoint && socketRef.current?.connected) {
+                      aRejoint = true;
+                      socketRef.current.emit("rejoindre_partie", {
+                        partie_id: data.partie_id,
+                        joueur: "joueur2"
+                      });
+                      // Le passage à "jeu" se fera via partie_prete
+                    } else if (!aRejoint) {
+                      // Socket pas encore connecté : on retentera
+                      setTimeout(pollerPartie, 1000);
+                    }
                     return;
                   }
-                } catch (e) {}
+                } catch (e) {
+                  // 404 attendu tant que Rouge n'a pas créé la partie
+                }
                 setTimeout(pollerPartie, 2000);
               };
               pollerPartie();
