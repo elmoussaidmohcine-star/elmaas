@@ -106,18 +106,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhot
 
   const classification = coupActuel?.evaluation?.classification;
   const couleurClasse = COULEURS_CLASSE[classification] || "var(--muted)";
-  if (showAnalyse) {
-      return (
-        <EcranAnalyse
-          partieId={partieId}
-          couleurJoueur={monRole === "joueur2" ? "noir" : "rouge"}
-          pixelsPhoto={pixelsPhoto}
-          taille={taille}
-          L={L}
-          onFermer={() => setShowAnalyse(false)}
-        />
-      );
-    }
+
   return (
     <div className="ecran-analyse-overlay">
       <div className="ecran-analyse">

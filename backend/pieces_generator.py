@@ -63,7 +63,7 @@ def toutes_rotations(forme: list) -> list:
 
 # ── Génération d'une pièce ───────────────────────────────────
 
-def generer_piece(nom_forme: str = None) -> dict:
+def generer_piece(nom_forme: str = None, est_enlevement: bool = False) -> dict:
     """
     Génère une pièce aléatoire (ou d'une forme donnée).
     Retourne un dict :
@@ -71,6 +71,7 @@ def generer_piece(nom_forme: str = None) -> dict:
         "forme": str,           nom de la forme
         "cellules": [(r,c)...], coordonnées relatives
         "rotation": int,        0-3
+        "enlevement": bool,     True si pièce diamant qui efface
       }
     """
     if nom_forme is None:
@@ -86,7 +87,43 @@ def generer_piece(nom_forme: str = None) -> dict:
         "forme": nom_forme,
         "cellules": cellules,
         "rotation": rotation_choisie,
+        "enlevement": est_enlevement,
     }
+
+
+# ── Génération de pièces d'enlèvement (Diamond/ELMAAS) ────────
+# Une pièce d'enlèvement a une taille (1, 2 ou 3 cellules).
+# On les génère par PAIRES partagées entre les 2 joueurs : la somme
+# des tailles des 2 pièces du même slot vaut 2, 4 ou 6.
+
+PAIRES_TAILLES_ENLEVEMENT = [
+    (1, 1),  # somme = 2
+    (1, 3),  # somme = 4
+    (2, 2),  # somme = 4
+    (3, 3),  # somme = 6
+    (2, 4),  # somme = 6 (rare, pièce de taille 4)
+]
+
+FORMES_PAR_TAILLE = {
+    1: ["1"],
+    2: ["I2"],
+    3: ["I3"],
+    4: ["I4", "L", "J", "T", "S", "Z", "O"],
+}
+
+
+def generer_paire_enlevement() -> tuple:
+    """
+    Génère une paire (piece_pour_J1, piece_pour_J2) de pièces d'enlèvement
+    dont la somme des tailles vaut 2, 4 ou 6.
+    Les deux joueurs reçoivent la MÊME paire (même tailles, même slot).
+    """
+    t1, t2 = random.choice(PAIRES_TAILLES_ENLEVEMENT)
+    forme1 = random.choice(FORMES_PAR_TAILLE[t1])
+    forme2 = random.choice(FORMES_PAR_TAILLE[t2])
+    p1 = generer_piece(forme1, est_enlevement=True)
+    p2 = generer_piece(forme2, est_enlevement=True)
+    return p1, p2
 
 def tourner_piece(piece: dict) -> dict:
     """Tourne une pièce de 90° supplémentaires."""
@@ -113,17 +150,31 @@ def placement_valide(piece: dict, origine: tuple,
     """
     Vérifie si une pièce peut être placée à l'origine donnée.
     Retourne (valide: bool, raison: str).
+    
+    Pièce normale : toutes les cases doivent être vides et dans la grille.
+    Pièce d'enlèvement : peut être placée sur cases vides OU occupées
+      (rouge/noir). La seule restriction est qu'elle ne peut pas écraser
+      une autre pièce d'enlèvement (diamant) déjà posée.
     """
     absolues = cellules_absolues(piece, origine)
+    est_enlevement = piece.get("enlevement", False)
 
     for r, c in absolues:
         # Hors grille
         if not (0 <= r < taille and 0 <= c < taille):
             return False, f"Hors grille : ({r},{c})"
-        # Case déjà occupée
         cle = f"{r},{c}"
-        if pieces_posees.get(cle) is not None:
-            return False, f"Case occupée : ({r},{c})"
+        contenu = pieces_posees.get(cle)
+
+        if est_enlevement:
+            # Pièce d'enlèvement : peut aller sur cases vides ou occupées,
+            # MAIS pas sur une case déjà diamant (sinon ça n'enlève rien).
+            if contenu == "diamant":
+                return False, f"Case déjà diamant : ({r},{c})"
+        else:
+            # Pièce normale : il FAUT que la case soit vide
+            if contenu is not None:
+                return False, f"Case occupée : ({r},{c})"
 
     return True, "ok"
 
@@ -165,6 +216,7 @@ def serialiser_piece(piece: dict) -> dict:
         "forme": piece["forme"],
         "cellules": piece["cellules"],
         "rotation": piece["rotation"],
+        "enlevement": piece.get("enlevement", False),
     }
 
 # ── Test rapide ──────────────────────────────────────────────

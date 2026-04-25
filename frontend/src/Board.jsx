@@ -41,11 +41,18 @@ function cellulesDansGrille(cellules, origine) {
   return cellules.map(([dr, dc]) => [r0 + dr, c0 + dc]);
 }
 
-function positionValide(cellules, origine, pieces, taille) {
+function positionValide(cellules, origine, pieces, taille, estEnlevement = false) {
   for (const [dr, dc] of cellules) {
     const r = origine[0] + dr, c = origine[1] + dc;
     if (r < 0 || r >= taille || c < 0 || c >= taille) return false;
-    if (pieces[`${r},${c}`] !== undefined && pieces[`${r},${c}`] !== null) return false;
+    const contenu = pieces[`${r},${c}`];
+    if (estEnlevement) {
+      // Pièce enlèvement : interdit uniquement si diamant déjà posé
+      if (contenu === "diamant") return false;
+    } else {
+      // Pièce normale : interdit si occupé
+      if (contenu !== undefined && contenu !== null) return false;
+    }
   }
   return true;
 }
@@ -137,7 +144,7 @@ export default function Board({
     }
 
     if (pieceSelectionnee && survol && pieceIdx !== null) {
-      const valide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille);
+      const valide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille, pieceSelectionnee.enlevement === true);
       if (valide && onPoserPiece) {
         onPoserPiece(pieceIdx, survol);
         setSurvol(null);
@@ -166,7 +173,7 @@ export default function Board({
   let fantomeValide = false;
   if (pieceSelectionnee && survol) {
     const absolues = cellulesDansGrille(pieceSelectionnee.cellules, survol);
-    fantomeValide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille);
+    fantomeValide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille, pieceSelectionnee.enlevement === true);
     absolues.forEach(([r, c]) => {
       if (r >= 0 && r < taille && c >= 0 && c < taille)
         cellulesFantomes.add(`${r},${c}`);
@@ -281,8 +288,15 @@ export default function Board({
               )}
 
               {/* Pièce posée */}
-              {couleurPiece && (
+              {couleurPiece && couleurPiece !== "diamant" && (
                 <div className={`piece-v3 ${couleurPiece}`} />
+              )}
+              {couleurPiece === "diamant" && (
+                <div className="piece-v3 diamant" style={{
+                  background: "linear-gradient(135deg, #ffd700 0%, #ffee88 50%, #ffaa00 100%)",
+                  boxShadow: "inset 0 0 6px #fff8aa, 0 0 8px #ffd70066",
+                  border: "1px solid #ffaa00"
+                }} />
               )}
 
               {/* Tag type puzzle */}

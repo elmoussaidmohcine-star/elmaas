@@ -637,18 +637,31 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   const maxR = Math.max(0, ...cells.map(([r]) => r));
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
   const S = 10;
-  const coul = couleur === "rouge" ? "#cc2200" : "#444444";
-  const coulClair = couleur === "rouge" ? "#ff4422" : "#888888";
+  const estEnlevement = piece.enlevement === true;
+  // Pièce d'enlèvement : couleur or/diamant brillante
+  const coul = estEnlevement
+    ? "#ffd700"
+    : (couleur === "rouge" ? "#cc2200" : "#444444");
+  const coulClair = estEnlevement
+    ? "#ffee88"
+    : (couleur === "rouge" ? "#ff4422" : "#888888");
+  const fondSel = estEnlevement ? "#ffd70022" : `${coul}33`;
+  const fondNormal = estEnlevement ? "#332200" : "#111122";
   return (
-    <div onClick={onClick} className={`mini-piece ${estSelectionnee ? "sel" : ""}`}
+    <div onClick={onClick} className={`mini-piece ${estSelectionnee ? "sel" : ""} ${estEnlevement ? "enlevement" : ""}`}
       style={{ position: "relative", width: (maxC+1)*S+10, height: (maxR+1)*S+10, padding: 5,
         borderRadius: 6, cursor: "pointer", flexShrink: 0,
-        border: `2px solid ${estSelectionnee ? coulClair : "#2a2a4a"}`,
-        background: estSelectionnee ? `${coul}33` : "#111122", transition: "all 0.15s" }}
-      title={piece.forme}>
+        border: `2px solid ${estSelectionnee ? coulClair : (estEnlevement ? "#ffd70066" : "#2a2a4a")}`,
+        background: estSelectionnee ? fondSel : fondNormal,
+        boxShadow: estEnlevement ? "0 0 8px #ffd70044" : "none",
+        transition: "all 0.15s" }}
+      title={estEnlevement ? `${piece.forme} (Diamant)` : piece.forme}>
       {cells.map(([r, c], i) => (
         <div key={i} style={{ position: "absolute", top: r*S+5, left: c*S+5,
-          width: S-2, height: S-2, borderRadius: 2, background: coul, boxShadow: `0 0 4px ${coul}88` }} />
+          width: S-2, height: S-2,
+          borderRadius: estEnlevement ? "50%" : 2,
+          background: coul,
+          boxShadow: `0 0 ${estEnlevement ? 6 : 4}px ${coul}cc` }} />
       ))}
     </div>
   );

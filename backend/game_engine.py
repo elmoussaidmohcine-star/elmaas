@@ -135,7 +135,7 @@ def reinitialiser_plateau(plateau: Plateau) -> Plateau:
     
     return plateau
 def initialiser_jeu(plateau: Plateau) -> EtatJeu:
-    from pieces_generator import generer_piece
+    from pieces_generator import generer_piece, PAIRES_TAILLES_ENLEVEMENT, FORMES_PAR_TAILLE
 
     reserve_j1_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_1)
     reserve_j2_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_2)
@@ -143,6 +143,17 @@ def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     piece_initiale = reserve_j1_liste.pop(0) if reserve_j1_liste else generer_piece()
     reserve_j1 = reserve_j1_liste
     reserve_j2 = reserve_j2_liste
+
+    # Ajouter 2 pièces d'enlèvement initiales pour chaque joueur, avec
+    # tailles synchronisées (paires somme 2, 4 ou 6).
+    paires_init = [random.choice(PAIRES_TAILLES_ENLEVEMENT) for _ in range(2)]
+    for (t1, t2) in paires_init:
+        forme1 = random.choice(FORMES_PAR_TAILLE[t1])
+        forme2 = random.choice(FORMES_PAR_TAILLE[t2])
+        reserve_j1.append(generer_piece(forme1, est_enlevement=True))
+        reserve_j2.append(generer_piece(forme2, est_enlevement=True))
+    random.shuffle(reserve_j1)
+    random.shuffle(reserve_j2)
 
     centre = (TAILLE_TAB // 2, TAILLE_TAB // 2)
     couleur_initiale = random.choice([COULEUR_JOUEUR_1, COULEUR_JOUEUR_2])
@@ -183,7 +194,7 @@ def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     )
 
     if DEBUG:
-        print(f"[game_engine] ✅ Jeu initialisé avec tetrominos")
+        print(f"[game_engine] ✅ Jeu initialisé avec tetrominos + pièces d'enlèvement")
         print(f"  Pièce initiale : {piece_initiale['forme']} en {centre} ({couleur_initiale})")
         print(f"  J1 main={[p['forme'] for p in joueur1.main_active]}, réserve={len(joueur1.reserve)}")
         print(f"  J2 main={[p['forme'] for p in joueur2.main_active]}, réserve={len(joueur2.reserve)}")
@@ -202,6 +213,7 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
         return resultat
 
     piece = joueur.main_active[piece_index]
+    est_enlevement = piece.get("enlevement", False)
 
     valide, raison = placement_valide(piece, origine, etat.plateau.pieces, TAILLE_TAB)
     if not valide:
@@ -209,27 +221,75 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
         return resultat
 
     absolues = cellules_absolues(piece, origine)
-    positions_posees = []
-    for pos in absolues:
-        r, c = pos
-        cle = f"{r},{c}"
-        etat.plateau.pieces[cle] = joueur.couleur
-        etat.plateau.cellules_actives.add((r, c))
-        positions_posees.append((r, c))
+    positions_modifiees = []
+
+    if est_enlevement:
+        # Pièce d'enlèvement : VIDE les cases occupées sous l'empreinte,
+        # puis OCCUPE les cases avec une couleur neutre "diamant".
+        # Les cases vides sont juste occupées par diamant (rien à vider).
+        for pos in absolues:
+            r, c = pos
+            cle = f"{r},{c}"
+            etat.plateau.pieces[cle] = "diamant"
+            etat.plateau.cellules_actives.add((r, c))
+            positions_modifiees.append((r, c))
+        resultat["est_enlevement"] = True
+        if DEBUG:
+            print(f"[game_engine] {joueur.couleur} pose ENLÈVEMENT en {origine} → diamant {positions_modifiees}")
+    else:
+        # Pièce normale : place la couleur du joueur
+        for pos in absolues:
+            r, c = pos
+            cle = f"{r},{c}"
+            etat.plateau.pieces[cle] = joueur.couleur
+            etat.plateau.cellules_actives.add((r, c))
+            positions_modifiees.append((r, c))
+        if DEBUG:
+            print(f"[game_engine] {joueur.couleur} pose {piece['forme']} en {origine} → {positions_modifiees}")
 
     joueur.retirer_piece(piece_index)
     joueur.nb_pieces_posees_depuis_regen += 1
     joueur.pieces_protegees.clear()
 
-    if DEBUG:
-        print(f"[game_engine] {joueur.couleur} pose {piece['forme']} en {origine} → {positions_posees}")
-
+    # Vérification des puzzles affectés. On parcourt TOUS les puzzles
+    # qui touchent une des positions modifiées (que ce soit pose normale
+    # ou enlèvement). verifier_completion_puzzles gère les 3 cas :
+    # complétion vierge, transfert d'attribution, et débrisure.
     puzzles_completes = []
-    for pos in positions_posees:
+    for pos in positions_modifiees:
         nouveaux = verifier_completion_puzzles(etat, pos)
         for p in nouveaux:
             if p not in puzzles_completes:
                 puzzles_completes.append(p)
+
+    # Cas spécial enlèvement : un puzzle déjà complété (par exemple par
+    # l'adversaire) qui touche une case devenue diamant peut perdre sa
+    # cohérence (diamant casse la mono-couleur). On le réévalue.
+    if est_enlevement:
+        for pid, puzzle in etat.plateau.puzzles.items():
+            if puzzle.complete_par is None:
+                continue
+            if not any(pos in puzzle.cellules for pos in positions_modifiees):
+                continue
+            # Le puzzle touche une case modifiée. Recalcule.
+            if not toutes_posees(etat, puzzle):
+                puzzle.complete_par = None
+                puzzle.brise = False
+                if DEBUG:
+                    print(f"[game_engine] Puzzle {pid} dé-complété (cases vidées par enlèvement)")
+            else:
+                nouveau = determiner_gagnant_puzzle(etat, puzzle)
+                if nouveau is None:
+                    # Le diamant a cassé la cohérence : le puzzle redevient en cours
+                    # (mais brisé car incohérent et toutes cases posées)
+                    puzzle.complete_par = None
+                    puzzle.brise = True
+                    if DEBUG:
+                        print(f"[game_engine] Puzzle {pid} BRISÉ par diamant (était à {puzzle.complete_par})")
+                elif nouveau != puzzle.complete_par:
+                    if DEBUG:
+                        print(f"[game_engine] Puzzle {pid} TRANSFÉRÉ {puzzle.complete_par} → {nouveau} (diamant)")
+                    puzzle.complete_par = nouveau
 
     resultat["puzzles_completes"] = puzzles_completes
 
@@ -269,23 +329,55 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
             resultat["succes"] = True
             return resultat
         else:
-            from pieces_generator import generer_piece
-            nouvelles = [generer_piece() for _ in range(5)]
-            joueur.reserve = nouvelles
+            # Régénération : 5 pièces dont 2 d'enlèvement.
+            # Pour que les deux joueurs aient les MÊMES tailles d'enlèvement
+            # à chaque vague, on utilise un compteur de vagues + un seed
+            # partagé. La n-ième régen utilise un RNG seed = vague_id, ce qui
+            # garantit que J1 et J2 obtiennent les mêmes paires de tailles.
+            from pieces_generator import generer_piece, PAIRES_TAILLES_ENLEVEMENT, FORMES_PAR_TAILLE
+            
+            # Compteur global de vagues de régen
+            etat.nb_regen_vagues = getattr(etat, "nb_regen_vagues", 0) + 1 if joueur.couleur == COULEUR_JOUEUR_1 else getattr(etat, "nb_regen_vagues", 1)
+            # Pour chaque joueur on tire son propre numéro de vague :
+            joueur.nb_regen = getattr(joueur, "nb_regen", 0) + 1
+            
+            # Seed partagé entre les 2 joueurs basé sur leur numéro de vague
+            # (chacun à sa propre vague mais la même graine pour les tailles)
+            seed_partage = hash((etat.piece_initiale_pos, joueur.nb_regen)) & 0xFFFFFFFF
+            rng_partage = random.Random(seed_partage)
+            
+            # On tire les 2 paires (taille_J1, taille_J2) pour cette vague
+            paires_tailles = [rng_partage.choice(PAIRES_TAILLES_ENLEVEMENT) for _ in range(2)]
+            # La taille pour le joueur courant est la première du tuple si J1, sinon la seconde
+            idx_dans_paire = 0 if joueur.couleur == COULEUR_JOUEUR_1 else 1
+            mes_tailles = [pt[idx_dans_paire] for pt in paires_tailles]
+            
+            # Génération des pièces (formes aléatoires NON synchronisées entre joueurs)
+            normales = [generer_piece() for _ in range(3)]
+            enlevements = []
+            for taille in mes_tailles:
+                forme = random.choice(FORMES_PAR_TAILLE[taille])
+                enlevements.append(generer_piece(forme, est_enlevement=True))
+            
+            joueur.reserve = normales + enlevements
+            random.shuffle(joueur.reserve)
             joueur.piocher()
             joueur.nb_pieces_posees_depuis_regen = 0
             joueur.puzzles_completes_depuis_regen = 0
-            joueur.seuil_regen_actuel = len(nouvelles)
-            resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5}
+            joueur.seuil_regen_actuel = 5
+            
+            resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5, "nb_enlevement": 2}
+            if DEBUG:
+                print(f"[game_engine] Régénération {joueur.couleur} (vague {joueur.nb_regen}) : 3 normales + enlèvement tailles {mes_tailles}")
 
     resultat["succes"] = True
     etat.historique_actions.append({
         "tour": etat.numero_tour,
         "joueur": joueur.couleur,
-        "action": "poser",
+        "action": "enlever" if est_enlevement else "poser",
         "piece": piece["forme"],
         "origine": list(origine),
-        "positions": [list(p) for p in positions_posees],
+        "positions": [list(p) for p in positions_modifiees],
         "puzzles_completes": [p.id for p in puzzles_completes],
     })
 
@@ -471,50 +563,98 @@ def recolorier_piece(etat: EtatJeu, position: tuple) -> dict:
 # ── Détection de complétion et brisure ──────────────────────
 
 def verifier_completion_puzzles(etat: EtatJeu, position_posee: tuple) -> list[Puzzle]:
-    completes = []
+    """
+    Vérifie tous les puzzles touchés par la position posée.
+    Réévalue aussi les puzzles déjà complétés ou brisés : si l'état des
+    cases a changé (extraction/recoloriage adverse, puis re-pose), on doit
+    pouvoir REPRENDRE un puzzle au camp adverse OU DÉBRISER un puzzle.
+    """
+    completes = []  # nouveaux puzzles que JE viens de compléter en mon nom
 
     for pid, puzzle in etat.plateau.puzzles.items():
-        if puzzle.complete_par is not None:
-            continue
-        if puzzle.brise:
-            continue
         if position_posee not in puzzle.cellules:
             continue
+
+        # Vérifie d'abord si toutes les cases sont posées
         if not toutes_posees(etat, puzzle):
+            # Pas assez rempli : si le puzzle était complété ou brisé,
+            # on ne touche à rien (l'état ne peut s'améliorer ainsi)
             continue
 
         gagnant = determiner_gagnant_puzzle(etat, puzzle)
         if gagnant is None:
+            # Toutes cases posées mais aucun gagnant valide selon le type :
+            # ne change rien (le puzzle reste dans son état précédent)
             continue
 
-        puzzle.complete_par = gagnant
-        completes.append(puzzle)
+        ancien_gagnant = puzzle.complete_par
+        ancien_brise = puzzle.brise
 
-        if DEBUG:
-            print(f"[game_engine] Puzzle {pid} complété par {gagnant} (type={puzzle.type_couleur})")
+        # Si le puzzle était brisé mais maintenant la config est cohérente,
+        # on le débrise et on attribue
+        if ancien_brise:
+            puzzle.brise = False
+            puzzle.complete_par = gagnant
+            if gagnant == etat.joueur_actif().couleur and ancien_gagnant != gagnant:
+                completes.append(puzzle)
+            if DEBUG:
+                print(f"[game_engine] Puzzle {pid} DÉBRISÉ et attribué à {gagnant}")
+        elif ancien_gagnant is None:
+            # Puzzle vierge : complétion normale
+            puzzle.complete_par = gagnant
+            if gagnant == etat.joueur_actif().couleur:
+                completes.append(puzzle)
+            if DEBUG:
+                print(f"[game_engine] Puzzle {pid} complété par {gagnant} (type={puzzle.type_couleur})")
+        elif ancien_gagnant != gagnant:
+            # Puzzle déjà attribué à l'adversaire mais l'état a changé :
+            # on transfère au nouveau gagnant
+            puzzle.complete_par = gagnant
+            if gagnant == etat.joueur_actif().couleur:
+                completes.append(puzzle)
+            if DEBUG:
+                print(f"[game_engine] Puzzle {pid} TRANSFÉRÉ de {ancien_gagnant} à {gagnant}")
+        # else : ancien_gagnant == gagnant, rien à faire
 
-        for autre_pid, autre_puzzle in etat.plateau.puzzles.items():
-            if autre_pid == pid:
-                continue
-            if autre_puzzle.complete_par is not None or autre_puzzle.brise:
-                continue
-            verifier_brisure_depuis_completion(etat, puzzle, autre_puzzle)
+        # Vérification de brisure des autres puzzles si on vient de compléter
+        if puzzle.complete_par == etat.joueur_actif().couleur:
+            for autre_pid, autre_puzzle in etat.plateau.puzzles.items():
+                if autre_pid == pid:
+                    continue
+                if autre_puzzle.complete_par is not None or autre_puzzle.brise:
+                    continue
+                verifier_brisure_depuis_completion(etat, puzzle, autre_puzzle)
 
     return completes
 
 
 def toutes_posees(etat: EtatJeu, puzzle: Puzzle) -> bool:
+    """
+    Toutes les cases sont posées (rouge, noir ou diamant).
+    Une case avec diamant compte comme "posée" (occupée) pour cette vérif.
+    """
     return all(etat.plateau.pieces.get(f"{r},{c}") is not None for r, c in puzzle.cellules)
 
 
 def determiner_gagnant_puzzle(etat: EtatJeu, puzzle: Puzzle):
+    """
+    Détermine le gagnant d'un puzzle qui a toutes ses cases posées.
+    
+    Le 'diamant' (pièce d'enlèvement neutre) bloque la complétion mono :
+    un puzzle ne peut être attribué en mono que s'il est composé UNIQUEMENT
+    d'une seule couleur joueur (rouge ou noir), sans diamant.
+    Un puzzle mixte est attribué au joueur actif si rouge ET noir sont
+    présents (le diamant peut coexister sans empêcher l'attribution).
+    """
     couleurs = {
         etat.plateau.pieces[f"{r},{c}"]
         for r, c in puzzle.cellules
         if etat.plateau.pieces.get(f"{r},{c}") is not None
     }
-    tout_rouge = couleurs == {COULEUR_JOUEUR_1}
-    tout_noir  = couleurs == {COULEUR_JOUEUR_2}
+    a_diamant = "diamant" in couleurs
+    couleurs_joueurs = couleurs - {"diamant"}
+    tout_rouge = couleurs_joueurs == {COULEUR_JOUEUR_1} and not a_diamant
+    tout_noir  = couleurs_joueurs == {COULEUR_JOUEUR_2} and not a_diamant
 
     if puzzle.type_couleur == "mono_rouge":
         if tout_rouge: return COULEUR_JOUEUR_1
@@ -527,6 +667,8 @@ def determiner_gagnant_puzzle(etat: EtatJeu, puzzle: Puzzle):
         return None
 
     elif puzzle.type_couleur == "mixte":
+        # Pour un mixte, il faut au moins une rouge ET une noire.
+        # Le diamant ne gêne pas.
         if COULEUR_JOUEUR_1 in couleurs and COULEUR_JOUEUR_2 in couleurs:
             return etat.joueur_actif().couleur
         return None
