@@ -803,3 +803,47 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   .analyse-panneau { width: 100%; min-width: unset; }
   .analyse-precision { font-size: 20px; }
 }
+/* ── Animation pièces ELMAAS / Diamant ── */
+@keyframes diamant-shimmer {
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+/* ── Score des manches dans le header ── */
+.score-manches-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+.score-manches-val {
+  font-family: var(--brush);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+.score-manches-val.rouge { color: var(--rouge-c); }
+.score-manches-val.noir  { color: #aaaaaa; }
+.score-manches-sep {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+/* Score manches centré entre les timers */
+.score-manches-centre {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--brush);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+.score-manches-rouge { color: var(--rouge-c); }
+.score-manches-tiret { color: var(--muted); font-size: 16px; }
+.score-manches-noir  { color: #aaaaaa; }

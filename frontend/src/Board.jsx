@@ -47,11 +47,11 @@ function positionValide(cellules, origine, pieces, taille, estEnlevement = false
     if (r < 0 || r >= taille || c < 0 || c >= taille) return false;
     const contenu = pieces[`${r},${c}`];
     if (estEnlevement) {
-      // Pièce enlèvement : interdit uniquement si diamant déjà posé
+      // ELMAAS : interdit sur diamant existant
       if (contenu === "diamant") return false;
     } else {
-      // Pièce normale : interdit si occupé
-      if (contenu !== undefined && contenu !== null) return false;
+      // Normale : interdit sur rouge ou noir, OK sur vide ou diamant
+      if (contenu !== undefined && contenu !== null && contenu !== "diamant") return false;
     }
   }
   return true;
@@ -289,14 +289,10 @@ export default function Board({
 
               {/* Pièce posée */}
               {couleurPiece && couleurPiece !== "diamant" && (
-                <div className={`piece-v3 ${couleurPiece}`} />
+                <div className={`piece-posee-v2 ${couleurPiece}`} />
               )}
               {couleurPiece === "diamant" && (
-                <div className="piece-v3 diamant" style={{
-                  background: "linear-gradient(135deg, #ffd700 0%, #ffee88 50%, #ffaa00 100%)",
-                  boxShadow: "inset 0 0 6px #fff8aa, 0 0 8px #ffd70066",
-                  border: "1px solid #ffaa00"
-                }} />
+                <div className="piece-posee-v2 diamant" />
               )}
 
               {/* Tag type puzzle */}

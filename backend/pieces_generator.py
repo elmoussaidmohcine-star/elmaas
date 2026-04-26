@@ -148,33 +148,25 @@ def cellules_absolues(piece: dict, origine: tuple) -> list:
 def placement_valide(piece: dict, origine: tuple,
                      pieces_posees: dict, taille: int) -> tuple:
     """
-    Vérifie si une pièce peut être placée à l'origine donnée.
-    Retourne (valide: bool, raison: str).
-    
-    Pièce normale : toutes les cases doivent être vides et dans la grille.
-    Pièce d'enlèvement : peut être placée sur cases vides OU occupées
-      (rouge/noir). La seule restriction est qu'elle ne peut pas écraser
-      une autre pièce d'enlèvement (diamant) déjà posée.
+    Pièce normale  : vide OU diamant OK (on peut recouvrir). Rouge/noir bloqué.
+    Pièce ELMAAS   : partout sauf là où il y a déjà un diamant.
     """
     absolues = cellules_absolues(piece, origine)
     est_enlevement = piece.get("enlevement", False)
 
     for r, c in absolues:
-        # Hors grille
         if not (0 <= r < taille and 0 <= c < taille):
             return False, f"Hors grille : ({r},{c})"
         cle = f"{r},{c}"
         contenu = pieces_posees.get(cle)
 
         if est_enlevement:
-            # Pièce d'enlèvement : peut aller sur cases vides ou occupées,
-            # MAIS pas sur une case déjà diamant (sinon ça n'enlève rien).
             if contenu == "diamant":
                 return False, f"Case déjà diamant : ({r},{c})"
         else:
-            # Pièce normale : il FAUT que la case soit vide
-            if contenu is not None:
-                return False, f"Case occupée : ({r},{c})"
+            # Pièce normale : bloquée uniquement par rouge ou noir
+            if contenu is not None and contenu != "diamant":
+                return False, f"Case occupée ({contenu}) : ({r},{c})"
 
     return True, "ok"
 

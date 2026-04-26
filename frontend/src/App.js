@@ -638,15 +638,27 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
   const S = 10;
   const estEnlevement = piece.enlevement === true;
-  // Pièce d'enlèvement : couleur or/diamant brillante
-  const coul = estEnlevement
-    ? "#ffd700"
-    : (couleur === "rouge" ? "#cc2200" : "#444444");
-  const coulClair = estEnlevement
-    ? "#ffee88"
-    : (couleur === "rouge" ? "#ff4422" : "#888888");
-  const fondSel = estEnlevement ? "#ffd70022" : `${coul}33`;
-  const fondNormal = estEnlevement ? "#332200" : "#111122";
+  const coul = estEnlevement ? null : (couleur === "rouge" ? "#cc2200" : "#444455");
+  const coulClair = estEnlevement ? "#c084fc" : (couleur === "rouge" ? "#ff4422" : "#888888");
+  const fondSel = estEnlevement ? "#c084fc22" : `${coul}33`;
+  const fondNormal = estEnlevement ? "#0a0a1a" : "#111122";
+
+  const celluleStyle = estEnlevement
+    ? {
+        position: "absolute",
+        borderRadius: 2,
+        background: "linear-gradient(135deg,#a0f0ff,#c084fc,#60a5fa,#f472b6,#a0f0ff)",
+        backgroundSize: "200% 200%",
+        animation: "diamant-shimmer 2.4s ease-in-out infinite",
+        boxShadow: "0 0 6px #c084fcaa, inset 0 0 3px #ffffff66",
+        border: "1px solid #e0f0ff55",
+      }
+    : {
+        position: "absolute",
+        borderRadius: 2,
+        background: coul,
+        boxShadow: `0 0 4px ${coul}88`,
+      };
   return (
     <div onClick={onClick} className={`mini-piece ${estSelectionnee ? "sel" : ""} ${estEnlevement ? "enlevement" : ""}`}
       style={{ position: "relative", width: (maxC+1)*S+10, height: (maxR+1)*S+10, padding: 5,
@@ -655,13 +667,9 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
         background: estSelectionnee ? fondSel : fondNormal,
         boxShadow: estEnlevement ? "0 0 8px #ffd70044" : "none",
         transition: "all 0.15s" }}
-      title={estEnlevement ? `${piece.forme} (Diamant)` : piece.forme}>
+      title={estEnlevement ? `${piece.forme} (ELMAAS)` : piece.forme}>
       {cells.map(([r, c], i) => (
-        <div key={i} style={{ position: "absolute", top: r*S+5, left: c*S+5,
-          width: S-2, height: S-2,
-          borderRadius: estEnlevement ? "50%" : 2,
-          background: coul,
-          boxShadow: `0 0 ${estEnlevement ? 6 : 4}px ${coul}cc` }} />
+        <div key={i} style={{ ...celluleStyle, top: r*S+5, left: c*S+5, width: S-2, height: S-2 }} />
       ))}
     </div>
   );
@@ -1610,12 +1618,22 @@ export default function App() {
             <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS") : (utilisateur?.pseudo || "Joueur 1")}</span>
             <span className="pseudo-score">{etat?.scores?.rouge ?? 0}</span>
           </div>
+          <div className="score-manches-label">
+            <span className="score-manches-val rouge">{scoresManches.rouge ?? 0}</span>
+            <span className="score-manches-sep">manche{(scoresManches.rouge ?? 0) > 1 ? "s" : ""}</span>
+          </div>
         </div>
 
         <div className="header-centre">
           <div className="timers">
             {modeIA !== "j1" && <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !popup && !pauseIAActive} L={L} />}
             {modeIA !== "j2" && <TimerBloc secondes={timerNoir} couleur="noir" actif={etat?.tour_actuel === 1 && !popup && !pauseIAActive} L={L} />}
+          </div>
+          {/* Score manches centré */}
+          <div className="score-manches-centre">
+            <span className="score-manches-rouge">{scoresManches.rouge ?? 0}</span>
+            <span className="score-manches-tiret"> — </span>
+            <span className="score-manches-noir">{scoresManches.noir ?? 0}</span>
           </div>
           {pseudoAdverse && (scoresCumules.moi > 0 || scoresCumules.lui > 0) && (
             <div className="score-cumule">
@@ -1628,6 +1646,10 @@ export default function App() {
           <div className="pseudo-joueur noir">
             <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}</span>
             <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
+          </div>
+          <div className="score-manches-label" style={{ alignItems: "flex-end" }}>
+            <span className="score-manches-val noir">{scoresManches.noir ?? 0}</span>
+            <span className="score-manches-sep">manche{(scoresManches.noir ?? 0) > 1 ? "s" : ""}</span>
           </div>
           <div className="tour-info">
             {t("tour", L)} {etat?.numero_tour}

@@ -135,7 +135,7 @@ def reinitialiser_plateau(plateau: Plateau) -> Plateau:
     
     return plateau
 def initialiser_jeu(plateau: Plateau) -> EtatJeu:
-    from pieces_generator import generer_piece, PAIRES_TAILLES_ENLEVEMENT, FORMES_PAR_TAILLE
+    from pieces_generator import generer_piece
 
     reserve_j1_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_1)
     reserve_j2_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_2)
@@ -144,14 +144,7 @@ def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     reserve_j1 = reserve_j1_liste
     reserve_j2 = reserve_j2_liste
 
-    # Ajouter 2 pièces d'enlèvement initiales pour chaque joueur, avec
-    # tailles synchronisées (paires somme 2, 4 ou 6).
-    paires_init = [random.choice(PAIRES_TAILLES_ENLEVEMENT) for _ in range(2)]
-    for (t1, t2) in paires_init:
-        forme1 = random.choice(FORMES_PAR_TAILLE[t1])
-        forme2 = random.choice(FORMES_PAR_TAILLE[t2])
-        reserve_j1.append(generer_piece(forme1, est_enlevement=True))
-        reserve_j2.append(generer_piece(forme2, est_enlevement=True))
+    # PAS de pièces d'enlèvement au départ : elles n'apparaissent qu'à la régénération.
     random.shuffle(reserve_j1)
     random.shuffle(reserve_j2)
 
