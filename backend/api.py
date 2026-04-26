@@ -555,9 +555,15 @@ def jouer(partie_id: str):
             "couleur": etat.joueur_actif().couleur,
         }
         if action == "poser":
-            coup_enregistre["piece_index"] = int(data.get("piece_index", 0))
+            piece_idx = int(data.get("piece_index", 0))
+            coup_enregistre["piece_index"] = piece_idx
             coup_enregistre["origine"] = list(data.get("origine", [0, 0]))
             coup_enregistre["pouvoir"] = data.get("pouvoir", "rien")
+            # Stocker la pièce entière pour un rejeu fidèle
+            joueur = etat.joueur_actif()
+            if 0 <= piece_idx < len(joueur.main_active):
+                from pieces_generator import serialiser_piece
+                coup_enregistre["piece_data"] = serialiser_piece(joueur.main_active[piece_idx])
         if partie_id not in historique_coups:
             historique_coups[partie_id] = []
         historique_coups[partie_id].append(coup_enregistre)
@@ -726,6 +732,8 @@ def coup_ia(partie_id: str):
     # Enregistrer le coup IA dans l'historique (nécessaire pour l'analyse)
     if partie_id not in historique_coups:
         historique_coups[partie_id] = []
+    from pieces_generator import serialiser_piece
+    piece_data = serialiser_piece(joueur.main_active[piece_index]) if 0 <= piece_index < len(joueur.main_active) else None
     historique_coups[partie_id].append({
         "type": "poser",
         "numero_tour": etat.numero_tour,
@@ -733,6 +741,7 @@ def coup_ia(partie_id: str):
         "piece_index": int(piece_index),
         "origine": list(origine),
         "pouvoir": "rien",
+        "piece_data": piece_data,
     })
 
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
@@ -911,7 +920,7 @@ def supprimer_partie(partie_id: str):
         bonus_double_tour.pop(partie_id, None)
         reconnaissance_tentee.pop(partie_id, None)
         joueurs_connectes.pop(partie_id, None)
-        #demandes_revanche.pop(partie_id, None)
+        demandes_revanche.pop(partie_id, None)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
 

@@ -400,8 +400,9 @@ def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
                              couleur_joueur: str, profondeur: int = 2) -> dict:
     """
     Analyse chaque coup joué par `couleur_joueur` dans l'historique.
-    profondeur=1 → rapide, profondeur=2 → profonde (4s max par coup).
-    Timeout global 90s. Chaque coup inclut un snapshot du plateau.
+    - Utilise la couleur stockée dans le coup (pas l'état simulé) pour filtrer.
+    - Continue même si un coup échoue au rejeu (ne break pas).
+    - Timeout global 90s + timeout par coup 4s.
     """
     import time
     deadline_global = time.time() + 90
@@ -410,38 +411,82 @@ def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
     coups_analyses = []
     compteur = {CLASSE_ELMAAS: 0, CLASSE_ELMAASYON: 0, CLASSE_MASSY: 0,
                 CLASSE_NOTMESSY: 0, CLASSE_MISSED: 0, CLASSE_CHESS: 0}
+    erreurs_consecutives = 0
 
-    for coup in coups_historique:
+    for i, coup in enumerate(coups_historique):
         if time.time() > deadline_global:
-            print(f"[analyse] Timeout global — {len(coups_analyses)} coups analysés")
+            print(f"[analyse] Timeout global — {len(coups_analyses)} coups analysés sur {len(coups_historique)}")
             break
 
-        couleur_trait = etat.joueur_actif().couleur
+        # Filtrage : on utilise la couleur stockée dans le coup lui-même,
+        # pas couleur_trait déduit de l'état (qui peut être décalé si rejeu a planté).
+        couleur_coup = coup.get("couleur", "")
 
-        if coup["type"] == "poser" and couleur_trait == couleur_joueur:
-            eval_result = evaluer_coup(
-                etat, coup["piece_index"], tuple(coup["origine"]), profondeur
-            )
-            coups_analyses.append({
-                **coup,
-                "evaluation": eval_result,
-                "plateau_avant": snapshot_pieces(etat),
-            })
-            compteur[eval_result["classification"]] += 1
+        if coup["type"] == "poser" and couleur_coup == couleur_joueur:
+            try:
+                eval_result = evaluer_coup(
+                    etat, coup["piece_index"], tuple(coup["origine"]), profondeur
+                )
+                coups_analyses.append({
+                    **coup,
+                    "evaluation": eval_result,
+                    "plateau_avant": snapshot_pieces(etat),
+                    "index_historique": i,
+                })
+                compteur[eval_result["classification"]] += 1
+                erreurs_consecutives = 0
+            except Exception as e_eval:
+                print(f"[analyse] Erreur évaluation coup {i}: {e_eval}")
+                # On enregistre quand même le coup comme NOTMESSY
+                coups_analyses.append({
+                    **coup,
+                    "evaluation": {"classification": CLASSE_NOTMESSY, "meilleur_coup": None,
+                                   "score_joue": 0, "score_optimal": 0, "gain": 0, "rang": 1, "total_coups": 1},
+                    "plateau_avant": snapshot_pieces(etat),
+                    "index_historique": i,
+                })
+                compteur[CLASSE_NOTMESSY] += 1
 
+        # Rejouer le coup pour avancer l'état simulé
         try:
             if coup["type"] == "poser":
-                jouer_tour(etat, "poser",
-                           piece_index=coup["piece_index"],
-                           origine=tuple(coup["origine"]),
-                           pouvoir=coup.get("pouvoir", "rien"))
+                # Si piece_data est disponible, injecter la pièce directement
+                # pour un rejeu fidèle (évite les problèmes d'index décalés)
+                piece_data = coup.get("piece_data")
+                if piece_data and etat.joueur_actif().main_active is not None:
+                    # Trouver la pièce correspondante dans la main ou l'insérer temporairement
+                    joueur_replay = etat.joueur_actif()
+                    piece_trouvee = False
+                    for j, p in enumerate(joueur_replay.main_active):
+                        if p.get("forme") == piece_data.get("forme") and p.get("enlevement") == piece_data.get("enlevement"):
+                            jouer_tour(etat, "poser",
+                                       piece_index=j,
+                                       origine=tuple(coup["origine"]),
+                                       pouvoir=coup.get("pouvoir", "rien"))
+                            piece_trouvee = True
+                            break
+                    if not piece_trouvee:
+                        # Fallback sur piece_index
+                        jouer_tour(etat, "poser",
+                                   piece_index=min(coup["piece_index"], len(joueur_replay.main_active) - 1),
+                                   origine=tuple(coup["origine"]),
+                                   pouvoir=coup.get("pouvoir", "rien"))
+                else:
+                    jouer_tour(etat, "poser",
+                               piece_index=coup["piece_index"],
+                               origine=tuple(coup["origine"]),
+                               pouvoir=coup.get("pouvoir", "rien"))
             elif coup["type"] == "repiocher":
                 jouer_tour(etat, "repiocher")
             elif coup["type"] == "scout":
                 jouer_tour(etat, "scout")
+            erreurs_consecutives = 0
         except Exception as e:
-            print(f"[analyse] Erreur rejouant coup : {e}")
-            break
+            print(f"[analyse] Erreur rejouant coup {i} ({coup.get('type')}): {e}")
+            erreurs_consecutives += 1
+            if erreurs_consecutives >= 5:
+                print(f"[analyse] Trop d'erreurs consécutives, arrêt.")
+                break
 
     total_analyses = sum(compteur.values())
     if total_analyses > 0:
@@ -452,6 +497,8 @@ def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
         precision = sum(ponderation[k] * v for k, v in compteur.items()) / total_analyses
     else:
         precision = 0
+
+    print(f"[analyse] Terminé : {total_analyses} coups analysés sur {len(coups_historique)} dans l'historique")
 
     return {
         "coups": coups_analyses,
