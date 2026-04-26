@@ -475,30 +475,33 @@ def lancer_analyse(partie_id: str):
     # (C'est un raccourci : on réutilise l'état initial simulé
     # en repartant du plateau généré à la création)
     try:
-        # Pour simplifier : on repart de l'état courant et on analyse
-        # les coups du joueur dans l'historique
-        etat_pour_analyse = parties.get(partie_id)
- 
-        # Note : en production, il faudrait reconstruire etat_initial
-        # exact. Ici on analyse avec l'état tel que fini.
-        # La classification est correcte car on compare au minimax local.
- 
+        import copy as _copy
+        # Utiliser le snapshot initial pris à la création de la partie
+        # (pas l'état final, sinon l'analyse rejoue les coups dans le mauvais sens)
+        etat_initial = parties.get(partie_id)  # fallback
+        if etat_init_dict:
+            try:
+                from game_engine import deserialiser_etat
+                etat_initial = deserialiser_etat(etat_init_dict)
+            except Exception as e_deser:
+                print(f"[analyse] Impossible de désérialiser etat_initial : {e_deser}")
+
         resultat = analyser_partie_complete(
             coups_historique=historique,
-            etat_initial=parties.get(partie_id),
+            etat_initial=etat_initial,
             couleur_joueur=couleur_joueur,
             profondeur=profondeur
         )
- 
+
         quota_user["count"] += 1
- 
+
         return jsonify({
             "succes": True,
             "analyse": resultat,
             "quota_restant": (limite - quota_user["count"]) if limite != float("inf") else -1,
             "plan": plan or "gratuit",
         })
- 
+
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({"erreur": f"Erreur analyse : {str(e)}"}), 500
@@ -688,6 +691,19 @@ def coup_ia(partie_id: str):
         return jsonify({"succes": True, "action": "repiocher", "etat": etat_serialise})
 
     piece_index, origine = coup
+
+    # Enregistrer le coup IA dans l'historique (nécessaire pour l'analyse)
+    if partie_id not in historique_coups:
+        historique_coups[partie_id] = []
+    historique_coups[partie_id].append({
+        "type": "poser",
+        "numero_tour": etat.numero_tour,
+        "couleur": joueur.couleur,
+        "piece_index": int(piece_index),
+        "origine": list(origine),
+        "pouvoir": "rien",
+    })
+
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
 
     # Si l'IA a complété des puzzles → appliquer pouvoir automatiquement

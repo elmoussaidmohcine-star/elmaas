@@ -17,14 +17,14 @@ const COULEURS_CLASSE = {
   CHESS:     "#ff4422",
 };
 
-// Descriptions des catégories de coups
+// Descriptions des catégories de coups — sans emojis
 const DESCRIPTIONS_CLASSE = {
-  ELMAAS:    { emoji: "💎", titre: "ELMAAS",    desc: "Coup brillant — le meilleur possible avec un gain massif (≥6 cellules ou série 3+)" },
-  ELMAASYON: { emoji: "✨", titre: "ELMAASYON", desc: "Excellent coup — dans le top 3 avec un beau gain (≥4 cellules)" },
-  MASSY:     { emoji: "⭐", titre: "MASSY",     desc: "Meilleur coup objectif — optimal mais sans gain spectaculaire" },
-  NOTMESSY:  { emoji: "👍", titre: "NOTMESSY",  desc: "Bon coup — dans le top 5, écart minimal avec l'optimal" },
-  MISSED:    { emoji: "⚠️",  titre: "MISSED",    desc: "Occasion ratée — un meilleur coup était disponible" },
-  CHESS:     { emoji: "❌", titre: "CHESS",     desc: "Erreur grave — perte nette significative ou avantage offert à l'adversaire" },
+  ELMAAS:    { symbole: "◆", titre: "ELMAAS",    desc: "Coup brillant — le meilleur possible avec un gain massif (6+ cellules ou serie 3+)" },
+  ELMAASYON: { symbole: "★", titre: "ELMAASYON", desc: "Excellent coup — dans le top 3 avec un beau gain (4+ cellules)" },
+  MASSY:     { symbole: "●", titre: "MASSY",     desc: "Meilleur coup objectif — optimal mais sans gain spectaculaire" },
+  NOTMESSY:  { symbole: "○", titre: "NOTMESSY",  desc: "Bon coup — dans le top 5, ecart minimal avec l'optimal" },
+  MISSED:    { symbole: "△", titre: "MISSED",    desc: "Occasion ratee — un meilleur coup etait disponible" },
+  CHESS:     { symbole: "✕", titre: "CHESS",     desc: "Erreur grave — perte nette significative ou avantage offert a l'adversaire" },
 };
 
 function BarreLegende({ L }) {
@@ -42,12 +42,12 @@ function BarreLegende({ L }) {
           background: COULEURS_CLASSE[cls] + "18",
           cursor: "help", flexShrink: 0
         }}>
-          <span style={{ fontSize: 13 }}>{info.emoji}</span>
+          <span style={{ fontSize: 11, fontWeight: 900, color: COULEURS_CLASSE[cls] }}>{info.symbole}</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: COULEURS_CLASSE[cls] }}>{cls}</span>
         </div>
       ))}
       <div style={{ fontSize: 10, color: "var(--muted)", alignSelf: "center", marginLeft: 4 }}>
-        ← Survolez pour voir la définition
+        Survolez pour la definition
       </div>
     </div>
   );
@@ -158,7 +158,6 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         {/* Légende des catégories */}
         <BarreLegende L={L} />
 
-        {/* Stats récapitulatives */}
         <div className="analyse-stats">
           {Object.entries(analyse.stats).map(([cls, nb]) => nb > 0 && (
             <div key={cls} className="stat-badge"
@@ -174,7 +173,15 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         <div className="analyse-corps">
           <div className="analyse-plateau">
             <Board
-              etat={{ plateau: { pieces: {}, puzzles: {}, cellules_libres: [], cellules_actives: [], grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0)) } }}
+              etat={{
+                plateau: {
+                  pieces: coupActuel?.plateau_avant || {},
+                  puzzles: {},
+                  cellules_libres: [],
+                  cellules_actives: Object.keys(coupActuel?.plateau_avant || {}).map(k => k.split(",").map(Number)),
+                  grille_bicolore: Array(taille).fill(null).map(() => Array(taille).fill(0))
+                }
+              }}
               taille={taille}
               pixelsPhoto={pixelsPhoto}
               onPoserPiece={null}
@@ -184,16 +191,16 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           <div className="analyse-panneau">
             <div className="analyse-coup-info">
               <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                {t("coupSur", L)} {indexCoup + 1} / {analyse.coups.length}
+                Coup {indexCoup + 1} / {analyse.coups.length}
               </div>
 
-              {/* Badge classification avec description */}
               <div className="analyse-badge-classe" style={{
                 background: couleurClasse + "22",
                 borderColor: couleurClasse,
                 color: couleurClasse,
+                display: "flex", alignItems: "center", gap: 8
               }}>
-                <span style={{ fontSize: 20 }}>{DESCRIPTIONS_CLASSE[classification]?.emoji}</span>
+                <span style={{ fontSize: 16, fontWeight: 900 }}>{DESCRIPTIONS_CLASSE[classification]?.symbole}</span>
                 <span style={{ fontWeight: 700 }}>{classification}</span>
               </div>
               <div style={{
@@ -213,17 +220,17 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
               )}
               {coupActuel?.evaluation?.gain > 0 && (
                 <div style={{ fontSize: 11, color: "#88ff88" }}>
-                  +{coupActuel.evaluation.gain} cellule{coupActuel.evaluation.gain > 1 ? "s" : ""} gagnée{coupActuel.evaluation.gain > 1 ? "s" : ""}
+                  +{coupActuel.evaluation.gain} cellule{coupActuel.evaluation.gain > 1 ? "s" : ""} gagnee{coupActuel.evaluation.gain > 1 ? "s" : ""}
                 </div>
               )}
               {coupActuel?.evaluation?.meilleur_coup && classification !== "ELMAAS" && classification !== "MASSY" && (
                 <div style={{ fontSize: 11, color: "#ffaa44" }}>
-                  💡 Meilleur : pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1} en ({coupActuel.evaluation.meilleur_coup.origine.join(",")})
+                  Meilleur : piece #{coupActuel.evaluation.meilleur_coup.piece_index + 1} en ({coupActuel.evaluation.meilleur_coup.origine.join(",")})
                 </div>
               )}
               {coupActuel?.evaluation?.score_optimal != null && coupActuel?.evaluation?.score_joue != null && (
                 <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                  Score joué : {coupActuel.evaluation.score_joue.toFixed(1)} / optimal : {coupActuel.evaluation.score_optimal.toFixed(1)}
+                  Score joue : {coupActuel.evaluation.score_joue.toFixed(1)} / optimal : {coupActuel.evaluation.score_optimal.toFixed(1)}
                 </div>
               )}
             </div>

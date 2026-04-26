@@ -391,15 +391,20 @@ def evaluer_coup(etat_avant: EtatJeu, piece_index: int, origine: tuple,
     }
 
 
+def snapshot_pieces(etat: EtatJeu) -> dict:
+    """Copie légère des pièces posées (pour affichage Board dans EcranAnalyse)."""
+    return dict(etat.plateau.pieces)
+
+
 def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
                              couleur_joueur: str, profondeur: int = 2) -> dict:
     """
     Analyse chaque coup joué par `couleur_joueur` dans l'historique.
-    profondeur=1 → rapide (≈1s/coup), profondeur=2 → profonde (≈4s/coup max).
-    Un timeout global de 90s est imposé pour ne jamais bloquer le serveur.
+    profondeur=1 → rapide, profondeur=2 → profonde (4s max par coup).
+    Timeout global 90s. Chaque coup inclut un snapshot du plateau.
     """
     import time
-    deadline_global = time.time() + 90  # 90s max pour toute l'analyse
+    deadline_global = time.time() + 90
 
     etat = copy.deepcopy(etat_initial)
     coups_analyses = []
@@ -407,9 +412,8 @@ def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
                 CLASSE_NOTMESSY: 0, CLASSE_MISSED: 0, CLASSE_CHESS: 0}
 
     for coup in coups_historique:
-        # Timeout global : on arrête l'analyse si on dépasse 90s
         if time.time() > deadline_global:
-            print(f"[analyse] Timeout global atteint après {len(coups_analyses)} coups analysés")
+            print(f"[analyse] Timeout global — {len(coups_analyses)} coups analysés")
             break
 
         couleur_trait = etat.joueur_actif().couleur
@@ -418,7 +422,11 @@ def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
             eval_result = evaluer_coup(
                 etat, coup["piece_index"], tuple(coup["origine"]), profondeur
             )
-            coups_analyses.append({**coup, "evaluation": eval_result})
+            coups_analyses.append({
+                **coup,
+                "evaluation": eval_result,
+                "plateau_avant": snapshot_pieces(etat),
+            })
             compteur[eval_result["classification"]] += 1
 
         try:
