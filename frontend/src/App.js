@@ -647,11 +647,11 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
     ? {
         position: "absolute",
         borderRadius: 2,
-        background: "linear-gradient(135deg,#a0f0ff,#c084fc,#60a5fa,#f472b6,#a0f0ff)",
-        backgroundSize: "200% 200%",
-        animation: "diamant-shimmer 2.4s ease-in-out infinite",
-        boxShadow: "0 0 6px #c084fcaa, inset 0 0 3px #ffffff66",
-        border: "1px solid #e0f0ff55",
+        background: "linear-gradient(135deg,#ffffff,#b8eeff,#4fc3f7,#0288d1,#b8eeff,#ffffff)",
+        backgroundSize: "300% 300%",
+        animation: "diamant-shimmer 3s ease-in-out infinite",
+        boxShadow: "inset 0 0 4px #ffffffcc, 0 0 8px #4fc3f766",
+        border: "1px solid #b8eeffaa",
       }
     : {
         position: "absolute",
@@ -936,6 +936,16 @@ export default function App() {
   // Dérivés
   const joueurActif = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
   const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
+
+  // En mode IA, le panneau gauche doit TOUJOURS afficher le joueur humain,
+  // même quand c'est le tour de l'IA (sinon on voit les pièces de l'IA à gauche).
+  const couleurHumain = modeIA === "j2" ? "rouge" : modeIA === "j1" ? "noir" : null;
+  const joueurAffiche = modeIA !== "aucune" && etat
+    ? (couleurHumain === "rouge" ? etat.joueur1 : etat.joueur2)
+    : joueurActif;
+  const joueurAdverseAffiche = modeIA !== "aucune" && etat
+    ? (couleurHumain === "rouge" ? etat.joueur2 : etat.joueur1)
+    : joueurAdverse;
   const estTourIA = etat && modeIA !== "aucune" &&
     ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
   const estMonTour = modeIA !== "aucune"
@@ -1697,26 +1707,26 @@ export default function App() {
 
       <div className="zone-adverse">
         <div className="adverse-label">
-          {t("adversaire", L)} ({trCouleur(joueurAdverse?.couleur)}) — {(joueurAdverse?.nb_pieces_reserve || 0) + (joueurAdverse?.main_active?.length || 0)} {t("pieces", L)}
+          {t("adversaire", L)} ({trCouleur(joueurAdverseAffiche?.couleur)}) — {(joueurAdverseAffiche?.nb_pieces_reserve || 0) + (joueurAdverseAffiche?.main_active?.length || 0)} {t("pieces", L)}
         </div>
         <div className="adverse-pieces">
-          {(joueurAdverse?.main_active || []).map((_, i) => (
-            <div key={i} className={"piece-cachee " + joueurAdverse?.couleur} />
+          {(joueurAdverseAffiche?.main_active || []).map((_, i) => (
+            <div key={i} className={"piece-cachee " + joueurAdverseAffiche?.couleur} />
           ))}
         </div>
       </div>
 
       <div className="zone-jeu">
         <div className="panneau-main">
-          <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurActif?.couleur)})</div>
+          <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurAffiche?.couleur)})</div>
           <div className="main-pieces-list">
-            {(joueurActif?.main_active || []).map((piece, i) => {
+            {(joueurAffiche?.main_active || []).map((piece, i) => {
               const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
               const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
               const estSelectPourDonner = clickEchanger && pieceADonner === i;
               return (
                 <div key={i} style={{ position: "relative" }}>
-                  <MiniPiece piece={piece} couleur={joueurActif?.couleur}
+                  <MiniPiece piece={piece} couleur={joueurAffiche?.couleur}
                     estSelectionnee={pieceIdx === i || estSelectPourDonner}
                     onClick={() => {
                       if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
@@ -1727,23 +1737,23 @@ export default function App() {
               );
             })}
           </div>
-          {(joueurActif?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
-          <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurActif?.nb_pieces_reserve}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurActif?.nb_pieces_posees_depuis_regen ?? 0} / {joueurActif?.seuil_regen_actuel ?? 5}</div>
-          <div className="serie-info">{t("serieLabel", L)} {joueurActif?.serie_actuelle}</div>
+          {(joueurAffiche?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
+          <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0} / {joueurAffiche?.seuil_regen_actuel ?? 5}</div>
+          <div className="serie-info">{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</div>
 
           {(() => {
             const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
-            const mainAdverse = joueurAdverse?.main_active || [];
+            const mainAdverse = joueurAdverseAffiche?.main_active || [];
             return (
               <>
                 <div className="panneau-titre" style={{ marginTop: 14 }}>
-                  {t("adversaire", L)} ({trCouleur(joueurAdverse?.couleur)})
+                  {t("adversaire", L)} ({trCouleur(joueurAdverseAffiche?.couleur)})
                 </div>
                 <div className="main-pieces-list">
                   {mainAdverse.map((piece, i) => (
                     <div key={i} style={{ position: "relative", opacity: clickEchanger ? 1 : 0.4 }}>
-                      <MiniPiece piece={piece} couleur={joueurAdverse?.couleur}
+                      <MiniPiece piece={piece} couleur={joueurAdverseAffiche?.couleur}
                         onClick={() => {
                           if (clickEchanger) {
                             if (pieceADonner === null) return;
@@ -1760,8 +1770,8 @@ export default function App() {
         </div>
 
         <div className="plateau-central">
-          <Board etat={etat} taille={taille} couleurJoueur={joueurActif?.couleur}
-            pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurActif?.main_active[pieceIdx] : null}
+          <Board etat={etat} taille={taille} couleurJoueur={joueurAffiche?.couleur}
+            pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurAffiche?.main_active[pieceIdx] : null}
             pieceIdx={pieceIdx} pixelsPhoto={pixelsPhoto}
             onPoserPiece={!enModeCible && !attenteChoixPouvoir ? handlePoserPiece : null}
             modeCible={enModeCible} extractionsEnCours={extractionsEnCours}

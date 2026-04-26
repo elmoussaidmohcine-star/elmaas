@@ -17,8 +17,197 @@ CLASSE_NOTMESSY = "NOTMESSY"    # Good : parmi top 5, perte légère
 CLASSE_MISSED = "MISSED"        # Bad : rate un puzzle complétable
 CLASSE_CHESS = "CHESS"          # Worst : perte nette, offre plateau à l'adversaire
 
+# Paramètres de performance
+MAX_COUPS_PAR_NIVEAU = 8   # était 15 → explosion exponentielle
+MAX_SECONDES_PAR_COUP = 4  # timeout dur par coup analysé
+
 
 def evaluer_etat(etat: EtatJeu, couleur_perspective: str) -> float:
+    """Évaluation numérique d'un état pour un joueur."""
+    scores = calculer_scores(etat)
+    diff_cellules = scores.get(couleur_perspective, 0) - scores.get(
+        "noir" if couleur_perspective == "rouge" else "rouge", 0
+    )
+    j = etat.joueur1 if etat.joueur1.couleur == couleur_perspective else etat.joueur2
+    bonus_serie = j.serie_actuelle * 2
+    return diff_cellules + bonus_serie
+
+
+def lister_coups_possibles(etat: EtatJeu, joueur) -> list:
+    """Retourne tous les (piece_index, origine) légaux pour ce joueur."""
+    coups = []
+    taille = etat.plateau.grille_bicolore.shape[0]
+    for idx, piece in enumerate(joueur.main_active):
+        for r in range(taille):
+            for c in range(taille):
+                valide, _ = placement_valide(piece, (r, c), etat.plateau.pieces, taille)
+                if valide:
+                    coups.append((idx, (r, c)))
+    return coups
+
+
+def minimax(etat: EtatJeu, profondeur: int, alpha: float, beta: float,
+            maximisant: bool, couleur_perspective: str,
+            deadline: float = None) -> float:
+    """Minimax avec élagage alpha-beta et timeout."""
+    import time
+    if deadline and time.time() > deadline:
+        return evaluer_etat(etat, couleur_perspective)
+
+    if profondeur == 0 or etat.manche_terminee:
+        return evaluer_etat(etat, couleur_perspective)
+
+    joueur = etat.joueur_actif()
+    coups = lister_coups_possibles(etat, joueur)
+    if not coups:
+        return evaluer_etat(etat, couleur_perspective)
+
+    # Limite dure pour éviter l'explosion exponentielle
+    if len(coups) > MAX_COUPS_PAR_NIVEAU:
+        coups = coups[:MAX_COUPS_PAR_NIVEAU]
+
+    if maximisant:
+        val = float("-inf")
+        for piece_idx, origine in coups:
+            if deadline and time.time() > deadline:
+                break
+            etat_copie = copy.deepcopy(etat)
+            try:
+                jouer_tour(etat_copie, "poser",
+                           piece_index=piece_idx, origine=origine, pouvoir="rien")
+                score = minimax(etat_copie, profondeur - 1, alpha, beta,
+                                False, couleur_perspective, deadline)
+                val = max(val, score)
+                alpha = max(alpha, val)
+                if beta <= alpha:
+                    break
+            except Exception:
+                continue
+        return val
+    else:
+        val = float("inf")
+        for piece_idx, origine in coups:
+            if deadline and time.time() > deadline:
+                break
+            etat_copie = copy.deepcopy(etat)
+            try:
+                jouer_tour(etat_copie, "poser",
+                           piece_index=piece_idx, origine=origine, pouvoir="rien")
+                score = minimax(etat_copie, profondeur - 1, alpha, beta,
+                                True, couleur_perspective, deadline)
+                val = min(val, score)
+                beta = min(beta, val)
+                if beta <= alpha:
+                    break
+            except Exception:
+                continue
+        return val
+
+
+def evaluer_coup(etat_avant: EtatJeu, piece_index: int, origine: tuple,
+                 profondeur: int = 2) -> dict:
+    """
+    Évalue un coup avec timeout dur par coup.
+    profondeur=1 → rapide, profondeur=2 → profonde (était 3, trop lent).
+    """
+    import time
+    deadline = time.time() + MAX_SECONDES_PAR_COUP
+
+    joueur = etat_avant.joueur_actif()
+    couleur = joueur.couleur
+    coups_possibles = lister_coups_possibles(etat_avant, joueur)
+
+    if not coups_possibles:
+        return {
+            "classification": CLASSE_NOTMESSY,
+            "meilleur_coup": None,
+            "score_joue": 0, "score_optimal": 0, "gain": 0,
+        }
+
+    # Limite les coups évalués
+    coups_a_evaluer = coups_possibles[:MAX_COUPS_PAR_NIVEAU * 2]
+
+    scores_coups = []
+    for idx, org in coups_a_evaluer:
+        if time.time() > deadline:
+            break
+        etat_test = copy.deepcopy(etat_avant)
+        try:
+            jouer_tour(etat_test, "poser",
+                       piece_index=idx, origine=org, pouvoir="rien")
+            score = minimax(etat_test, profondeur - 1,
+                            float("-inf"), float("inf"),
+                            False, couleur, deadline)
+            scores_coups.append(((idx, org), score))
+        except Exception:
+            continue
+
+    if not scores_coups:
+        return {
+            "classification": CLASSE_NOTMESSY,
+            "meilleur_coup": None,
+            "score_joue": 0, "score_optimal": 0, "gain": 0,
+        }
+
+    scores_coups.sort(key=lambda x: x[1], reverse=True)
+    score_optimal = scores_coups[0][1]
+    meilleur_coup = scores_coups[0][0]
+
+    score_joue = None
+    rang_joue = -1
+    for i, ((idx, org), s) in enumerate(scores_coups):
+        if idx == piece_index and tuple(org) == tuple(origine):
+            score_joue = s
+            rang_joue = i
+            break
+
+    if score_joue is None:
+        score_joue = score_optimal
+        rang_joue = 0
+
+    etat_apres = copy.deepcopy(etat_avant)
+    try:
+        resultat_coup = jouer_tour(etat_apres, "poser",
+                                   piece_index=piece_index, origine=origine,
+                                   pouvoir="rien")
+        puzzles_completes = resultat_coup.get("puzzles_completes", [])
+        gain_cellules = sum(len(p.cellules) for p in puzzles_completes) if puzzles_completes else 0
+        nouvelle_serie = etat_apres.joueur_actif().serie_actuelle if resultat_coup.get("tour_change") is False else joueur.serie_actuelle
+    except Exception:
+        gain_cellules = 0
+        nouvelle_serie = joueur.serie_actuelle
+
+    ecart = score_optimal - score_joue
+    total_coups = len(scores_coups)
+    rang_joue_reel = rang_joue if rang_joue >= 0 else total_coups
+
+    est_meilleur = rang_joue_reel == 0
+    est_top_3 = rang_joue_reel < min(3, total_coups)
+    est_top_5 = rang_joue_reel < min(5, total_coups)
+
+    if est_meilleur and (gain_cellules >= 6 or nouvelle_serie >= 3):
+        classification = CLASSE_ELMAAS
+    elif est_top_3 and gain_cellules >= 4:
+        classification = CLASSE_ELMAASYON
+    elif est_meilleur:
+        classification = CLASSE_MASSY
+    elif est_top_5 and ecart <= 3:
+        classification = CLASSE_NOTMESSY
+    elif ecart >= 6:
+        classification = CLASSE_CHESS
+    else:
+        classification = CLASSE_MISSED
+
+    return {
+        "classification": classification,
+        "meilleur_coup": {"piece_index": meilleur_coup[0],
+                          "origine": list(meilleur_coup[1])} if meilleur_coup else None,
+        "score_joue": float(score_joue),
+        "score_optimal": float(score_optimal),
+        "gain": int(gain_cellules),
+        "rang": rang_joue_reel + 1,
+        "total_coups": total_coups,
+    }
     """Évaluation numérique d'un état pour un joueur."""
     scores = calculer_scores(etat)
     diff_cellules = scores.get(couleur_perspective, 0) - scores.get(
@@ -203,30 +392,26 @@ def evaluer_coup(etat_avant: EtatJeu, piece_index: int, origine: tuple,
 
 
 def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
-                             couleur_joueur: str, profondeur: int = 3) -> dict:
+                             couleur_joueur: str, profondeur: int = 2) -> dict:
     """
     Analyse chaque coup joué par `couleur_joueur` dans l'historique.
-
-    coups_historique : liste de {
-        "type": "poser" | "pouvoir" | "repiocher" | "scout",
-        "piece_index": int,
-        "origine": [r, c],
-        "couleur": str,
-        "numero_tour": int,
-    }
-
-    Retourne {
-        "coups": [{...coup original + classification}],
-        "stats": {"ELMAAS": n, "ELMAASYON": n, ...},
-        "precision_pct": float (0-100),
-    }
+    profondeur=1 → rapide (≈1s/coup), profondeur=2 → profonde (≈4s/coup max).
+    Un timeout global de 90s est imposé pour ne jamais bloquer le serveur.
     """
+    import time
+    deadline_global = time.time() + 90  # 90s max pour toute l'analyse
+
     etat = copy.deepcopy(etat_initial)
     coups_analyses = []
     compteur = {CLASSE_ELMAAS: 0, CLASSE_ELMAASYON: 0, CLASSE_MASSY: 0,
                 CLASSE_NOTMESSY: 0, CLASSE_MISSED: 0, CLASSE_CHESS: 0}
 
     for coup in coups_historique:
+        # Timeout global : on arrête l'analyse si on dépasse 90s
+        if time.time() > deadline_global:
+            print(f"[analyse] Timeout global atteint après {len(coups_analyses)} coups analysés")
+            break
+
         couleur_trait = etat.joueur_actif().couleur
 
         if coup["type"] == "poser" and couleur_trait == couleur_joueur:
@@ -236,7 +421,6 @@ def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
             coups_analyses.append({**coup, "evaluation": eval_result})
             compteur[eval_result["classification"]] += 1
 
-        # Applique le coup à l'état pour continuer la simulation
         try:
             if coup["type"] == "poser":
                 jouer_tour(etat, "poser",
@@ -247,15 +431,12 @@ def analyser_partie_complete(coups_historique: list, etat_initial: EtatJeu,
                 jouer_tour(etat, "repiocher")
             elif coup["type"] == "scout":
                 jouer_tour(etat, "scout")
-            # Pouvoirs après puzzle : gérés par game_engine
         except Exception as e:
             print(f"[analyse] Erreur rejouant coup : {e}")
             break
 
     total_analyses = sum(compteur.values())
     if total_analyses > 0:
-        # Score pondéré sur 100 :
-        # ELMAAS=100, ELMAASYON=90, MASSY=85, NOTMESSY=70, MISSED=40, CHESS=15
         ponderation = {
             CLASSE_ELMAAS: 100, CLASSE_ELMAASYON: 90, CLASSE_MASSY: 85,
             CLASSE_NOTMESSY: 70, CLASSE_MISSED: 40, CLASSE_CHESS: 15,

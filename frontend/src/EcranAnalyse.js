@@ -17,7 +17,43 @@ const COULEURS_CLASSE = {
   CHESS:     "#ff4422",
 };
 
-export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhoto, taille, onFermer, L }) {
+// Descriptions des catégories de coups
+const DESCRIPTIONS_CLASSE = {
+  ELMAAS:    { emoji: "💎", titre: "ELMAAS",    desc: "Coup brillant — le meilleur possible avec un gain massif (≥6 cellules ou série 3+)" },
+  ELMAASYON: { emoji: "✨", titre: "ELMAASYON", desc: "Excellent coup — dans le top 3 avec un beau gain (≥4 cellules)" },
+  MASSY:     { emoji: "⭐", titre: "MASSY",     desc: "Meilleur coup objectif — optimal mais sans gain spectaculaire" },
+  NOTMESSY:  { emoji: "👍", titre: "NOTMESSY",  desc: "Bon coup — dans le top 5, écart minimal avec l'optimal" },
+  MISSED:    { emoji: "⚠️",  titre: "MISSED",    desc: "Occasion ratée — un meilleur coup était disponible" },
+  CHESS:     { emoji: "❌", titre: "CHESS",     desc: "Erreur grave — perte nette significative ou avantage offert à l'adversaire" },
+};
+
+function BarreLegende({ L }) {
+  return (
+    <div style={{
+      display: "flex", flexWrap: "wrap", gap: 8, padding: "10px 16px",
+      background: "var(--bg2)", borderRadius: 10, margin: "0 0 12px 0",
+      border: "1px solid var(--bord)"
+    }}>
+      {Object.entries(DESCRIPTIONS_CLASSE).map(([cls, info]) => (
+        <div key={cls} title={info.desc} style={{
+          display: "flex", alignItems: "center", gap: 5,
+          padding: "4px 10px", borderRadius: 20,
+          border: `1.5px solid ${COULEURS_CLASSE[cls]}`,
+          background: COULEURS_CLASSE[cls] + "18",
+          cursor: "help", flexShrink: 0
+        }}>
+          <span style={{ fontSize: 13 }}>{info.emoji}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: COULEURS_CLASSE[cls] }}>{cls}</span>
+        </div>
+      ))}
+      <div style={{ fontSize: 10, color: "var(--muted)", alignSelf: "center", marginLeft: 4 }}>
+        ← Survolez pour voir la définition
+      </div>
+    </div>
+  );
+}
+
+export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhoto, taille, onFermer, L }) {
   const [analyse, setAnalyse] = useState(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
@@ -119,10 +155,15 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhot
           <button className="btn-reset" onClick={onFermer}>{t("fermer", L)}</button>
         </div>
 
+        {/* Légende des catégories */}
+        <BarreLegende L={L} />
+
         {/* Stats récapitulatives */}
         <div className="analyse-stats">
           {Object.entries(analyse.stats).map(([cls, nb]) => nb > 0 && (
-            <div key={cls} className="stat-badge" style={{ borderColor: COULEURS_CLASSE[cls], color: COULEURS_CLASSE[cls] }}>
+            <div key={cls} className="stat-badge"
+              title={DESCRIPTIONS_CLASSE[cls]?.desc}
+              style={{ borderColor: COULEURS_CLASSE[cls], color: COULEURS_CLASSE[cls] }}>
               <span className="stat-nb">{nb}</span>
               <span className="stat-label">{cls}</span>
             </div>
@@ -145,14 +186,24 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhot
               <div style={{ fontSize: 13, color: "var(--muted)" }}>
                 {t("coupSur", L)} {indexCoup + 1} / {analyse.coups.length}
               </div>
+
+              {/* Badge classification avec description */}
               <div className="analyse-badge-classe" style={{
                 background: couleurClasse + "22",
                 borderColor: couleurClasse,
-                color: couleurClasse
+                color: couleurClasse,
               }}>
-                {classification}
+                <span style={{ fontSize: 20 }}>{DESCRIPTIONS_CLASSE[classification]?.emoji}</span>
+                <span style={{ fontWeight: 700 }}>{classification}</span>
               </div>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>
+              <div style={{
+                fontSize: 11, color: "var(--muted)", fontStyle: "italic",
+                textAlign: "center", maxWidth: 220, lineHeight: 1.4
+              }}>
+                {DESCRIPTIONS_CLASSE[classification]?.desc}
+              </div>
+
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
                 Tour {coupActuel?.numero_tour} — {coupActuel?.couleur}
               </div>
               {coupActuel?.evaluation?.rang > 1 && (
@@ -160,9 +211,19 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhot
                   Rang du coup : {coupActuel.evaluation.rang}/{coupActuel.evaluation.total_coups}
                 </div>
               )}
+              {coupActuel?.evaluation?.gain > 0 && (
+                <div style={{ fontSize: 11, color: "#88ff88" }}>
+                  +{coupActuel.evaluation.gain} cellule{coupActuel.evaluation.gain > 1 ? "s" : ""} gagnée{coupActuel.evaluation.gain > 1 ? "s" : ""}
+                </div>
+              )}
               {coupActuel?.evaluation?.meilleur_coup && classification !== "ELMAAS" && classification !== "MASSY" && (
                 <div style={{ fontSize: 11, color: "#ffaa44" }}>
-                  Meilleur : pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1} en ({coupActuel.evaluation.meilleur_coup.origine.join(",")})
+                  💡 Meilleur : pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1} en ({coupActuel.evaluation.meilleur_coup.origine.join(",")})
+                </div>
+              )}
+              {coupActuel?.evaluation?.score_optimal != null && coupActuel?.evaluation?.score_joue != null && (
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                  Score joué : {coupActuel.evaluation.score_joue.toFixed(1)} / optimal : {coupActuel.evaluation.score_optimal.toFixed(1)}
                 </div>
               )}
             </div>

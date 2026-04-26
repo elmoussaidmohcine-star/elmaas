@@ -112,15 +112,6 @@ with app.app_context():
         print(f"[migration] Erreur create_all : {e}")
         import traceback; traceback.print_exc()
 
-    # Migration ma_couleur APRÈS create_all (la table file_attente doit exister)
-    try:
-        db.session.execute(db.text("ALTER TABLE file_attente ADD COLUMN IF NOT EXISTS ma_couleur VARCHAR(10)"))
-        db.session.commit()
-        print("[migration] Colonne ma_couleur ajoutée à file_attente")
-    except Exception as e:
-        print(f"[migration] Erreur ma_couleur : {e}")
-        db.session.rollback()
-
 # Cache mémoire
 parties: dict[str, EtatJeu] = {}
 pixels_par_partie: dict[str, list] = {}
@@ -478,7 +469,7 @@ def lancer_analyse(partie_id: str):
     data = request.get_json() or {}
     couleur_joueur = data.get("couleur", "rouge")
     mode = data.get("mode", "rapide")
-    profondeur = 1 if mode == "rapide" else 3
+    profondeur = 1 if mode == "rapide" else 2
  
     # Reconstruire EtatJeu depuis le dict initial
     # (C'est un raccourci : on réutilise l'état initial simulé
@@ -867,7 +858,7 @@ def supprimer_partie(partie_id: str):
         bonus_double_tour.pop(partie_id, None)
         reconnaissance_tentee.pop(partie_id, None)
         joueurs_connectes.pop(partie_id, None)
-        #demandes_revanche.pop(partie_id, None)
+        demandes_revanche.pop(partie_id, None)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
 
