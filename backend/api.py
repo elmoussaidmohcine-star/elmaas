@@ -18,7 +18,7 @@ from PIL import Image
 from image_processor import traiter_photo
 from puzzle_generator import generer_puzzles, Plateau, Puzzle
 from pieces_generator import serialiser_piece
-from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, calculer_score_cellules, reinitialiser_plateau
+from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, calculer_score_cellules, reinitialiser_plateau, appliquer_pouvoir
 from ai_player import jouer_ia
 from config import DEBUG
 from models import db, Utilisateur, calculer_elo, PartieDB
@@ -737,17 +737,22 @@ def coup_ia(partie_id: str):
 
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
 
-    # Si l'IA a complété des puzzles → appliquer pouvoir automatiquement
+    # Si l'IA a complété des puzzles et doit choisir un pouvoir :
+    # on applique automatiquement "rien" pour ne pas bloquer le frontend.
+    # L'IA n'a pas de logique interactive pour les pouvoirs —
+    # le choix "rien" est toujours sûr.
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
-        joueur_ia = etat.joueur_actif()
-        adverse = etat.joueur_adverse()
-        if niveau >= 2 and adverse.main_active:
-            piece_prise = adverse.main_active.pop(0)
-            if joueur_ia.main_active:
-                piece_donnee = joueur_ia.main_active.pop(-1)
-                adverse.main_active.append(piece_donnee)
-            joueur_ia.main_active.append(piece_prise)
-        etat.passer_tour()  # Met à jour le timestamp
+        try:
+            bonus = appliquer_pouvoir(etat, "rien")
+            resultat.update(bonus)
+        except Exception as e_pouvoir:
+            print(f"[ia] Erreur pouvoir auto : {e_pouvoir}")
+            try:
+                etat.passer_tour()
+            except Exception:
+                pass
+        # S'assurer que attente_pouvoir est False dans la réponse au frontend
+        resultat["attente_pouvoir"] = False
 
     # FIX CRITIQUE : s'assurer que le timestamp est bien à MAINTENANT après le tour IA
     # (le passer_tour a déjà été appelé dans jouer_tour si pas d'attente_pouvoir)

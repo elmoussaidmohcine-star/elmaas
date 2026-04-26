@@ -872,7 +872,9 @@ export default function App() {
     if (!mancheTermineeInfo) return;
     const g = mancheTermineeInfo.gagnant;
     if (g && g !== "egalite" && pseudoAdverse) {
-      const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+      const maCouleur = modeIA !== "aucune"
+        ? (couleurHumain || "rouge")
+        : (monRole === "joueur2" ? "noir" : "rouge");
       const jaiGagne = g === maCouleur;
       const nouveauScore = {
         moi: scoresCumules.moi + (jaiGagne ? 1 : 0),
@@ -1456,7 +1458,10 @@ export default function App() {
 
   // Écran d'analyse (s'affiche par dessus le jeu après une manche terminée)
   if (showAnalyse) {
-    const couleurMoi = monRole === "joueur2" ? "noir" : "rouge";
+    // En mode IA, la couleur analysée = couleur du joueur humain (pas monRole qui est toujours joueur1)
+    const couleurMoi = modeIA !== "aucune"
+      ? (couleurHumain || "rouge")
+      : (monRole === "joueur2" ? "noir" : "rouge");
     return (
       <div className="app">
         {popupParams}
@@ -1488,7 +1493,11 @@ export default function App() {
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
             {(() => {
               const g = mancheTermineeInfo.gagnant;
-              const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+              // En mode IA, la couleur du joueur humain est couleurHumain.
+              // En mode 2 joueurs, on se base sur monRole.
+              const maCouleur = modeIA !== "aucune"
+                ? (couleurHumain || "rouge")
+                : (monRole === "joueur2" ? "noir" : "rouge");
               const jaiGagne = g === maCouleur;
               const egalite = g === "egalite";
               return (
