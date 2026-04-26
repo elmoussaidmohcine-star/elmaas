@@ -1157,20 +1157,50 @@ export default function App() {
     const tourIA = mode === "j1" ? 0 : 1;
     if (etatCourant.tour_actuel !== tourIA || etatCourant.manche_terminee) return;
     setIaEnCours(true);
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 600));
     try {
       const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
-      setEtat(res.data.etat);
-    } catch (err) { console.error("Erreur IA:", err); gererErreur404(err); }
-    finally { setIaEnCours(false); }
+      const nouvelEtat = res.data.etat;
+      setEtat(nouvelEtat);
+
+      // Si la manche est terminée, afficher le résultat
+      if (nouvelEtat?.manche_terminee && nouvelEtat?.gagnant) {
+        const scores = calculer_scores_locaux(nouvelEtat);
+        setMancheTermineeInfo({ gagnant: nouvelEtat.gagnant, scores });
+        return;
+      }
+
+      // Si c'est encore le tour de l'IA (double tour, série…), relancer immédiatement
+      if (nouvelEtat && nouvelEtat.tour_actuel === tourIA && !nouvelEtat.manche_terminee) {
+        // Petit délai pour laisser React mettre à jour l'affichage
+        await new Promise(r => setTimeout(r, 400));
+        setIaEnCours(false);
+        // Le useEffect va se redéclencher grâce à setEtat ci-dessus.
+        // Si tour_actuel n'a pas changé, on force manuellement.
+        await declencherIA(nouvelEtat, partieIdCourant, mode, niveau);
+        return;
+      }
+    } catch (err) {
+      console.error("Erreur IA:", err);
+      gererErreur404(err);
+    } finally {
+      setIaEnCours(false);
+    }
   }, [gererErreur404]);
 
   useEffect(() => {
-    if (etape === "jeu" && etat && partieId && modeIA !== "aucune" && !iaEnCours && !attenteChoixPouvoir && !pauseIAActive) {
+    if (etape === "jeu" && etat && partieId && modeIA !== "aucune" && !iaEnCours && !pauseIAActive) {
       const tourIA = modeIA === "j1" ? 0 : 1;
-      if (etat.tour_actuel === tourIA && !etat.manche_terminee) declencherIA(etat, partieId, modeIA, niveauIA);
+      if (etat.tour_actuel === tourIA && !etat.manche_terminee) {
+        // Si attenteChoixPouvoir est bloqué côté IA, on le reset — l'IA gère ses pouvoirs seule
+        if (attenteChoixPouvoir) {
+          setAttenteChoixPouvoir(false);
+          setPopup(null);
+        }
+        declencherIA(etat, partieId, modeIA, niveauIA);
+      }
     }
-  }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir, pauseIAActive]);
+  }, [etat?.tour_actuel, etat?.manche_terminee, etape, partieId, attenteChoixPouvoir, pauseIAActive]);
 
   const envoyerPouvoir = useCallback(async (body) => {
     try {

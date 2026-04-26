@@ -738,20 +738,21 @@ def coup_ia(partie_id: str):
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
 
     # Si l'IA a complété des puzzles et doit choisir un pouvoir :
-    # on applique automatiquement "rien" pour ne pas bloquer le frontend.
-    # L'IA n'a pas de logique interactive pour les pouvoirs —
-    # le choix "rien" est toujours sûr.
+    # on applique automatiquement "rien" et on passe le tour.
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
         try:
             bonus = appliquer_pouvoir(etat, "rien")
             resultat.update(bonus)
         except Exception as e_pouvoir:
             print(f"[ia] Erreur pouvoir auto : {e_pouvoir}")
-            try:
+        # passer_tour n'a pas été appelé dans jouer_tour (bloqué par attente_pouvoir)
+        # → on le fait ici manuellement
+        try:
+            if not etat.manche_terminee:
                 etat.passer_tour()
-            except Exception:
-                pass
-        # S'assurer que attente_pouvoir est False dans la réponse au frontend
+        except Exception as e_tour:
+            print(f"[ia] Erreur passer_tour : {e_tour}")
+        # Signaler au frontend que le pouvoir a été géré
         resultat["attente_pouvoir"] = False
 
     # FIX CRITIQUE : s'assurer que le timestamp est bien à MAINTENANT après le tour IA
@@ -910,7 +911,7 @@ def supprimer_partie(partie_id: str):
         bonus_double_tour.pop(partie_id, None)
         reconnaissance_tentee.pop(partie_id, None)
         joueurs_connectes.pop(partie_id, None)
-        demandes_revanche.pop(partie_id, None)
+        #demandes_revanche.pop(partie_id, None)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
 
