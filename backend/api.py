@@ -104,13 +104,23 @@ with app.app_context():
     
     try:
         db.create_all()
-        # Log quelles tables existent maintenant
         from sqlalchemy import inspect
         tables = inspect(db.engine).get_table_names()
         print(f"[migration] Tables après create_all : {tables}")
     except Exception as e:
         print(f"[migration] Erreur create_all : {e}")
         import traceback; traceback.print_exc()
+
+    # Migrations post create_all
+    try:
+        db.session.execute(db.text("ALTER TABLE file_attente ADD COLUMN IF NOT EXISTS ma_couleur VARCHAR(10)"))
+        db.session.execute(db.text("ALTER TABLE parties ADD COLUMN IF NOT EXISTS historique_json TEXT"))
+        db.session.execute(db.text("ALTER TABLE parties ADD COLUMN IF NOT EXISTS etat_initial_json TEXT"))
+        db.session.commit()
+        print("[migration] Colonnes ma_couleur + historique_json + etat_initial_json OK")
+    except Exception as e:
+        print(f"[migration] Erreur colonnes post create_all : {e}")
+        db.session.rollback()
 
 # Cache mémoire
 parties: dict[str, EtatJeu] = {}
@@ -123,9 +133,23 @@ demandes_pause: dict[str, str] = {}
 pause_active: dict[str, bool] = {}
 scores_manches: dict[str, dict] = {}
 timer_par_partie: dict[str, int] = {}
-historique_coups: dict[str, list] = {}    # partie_id -> liste de coups
-etats_initiaux: dict[str, dict] = {}      # partie_id -> etat sérialisé initial
-analyses_quotidiennes: dict[int, dict] = {}  # user_id -> {"date": date, "count": int
+historique_coups: dict[str, list] = {}
+etats_initiaux: dict[str, dict] = {}
+analyses_quotidiennes: dict[int, dict] = {}
+
+# Recharger les historiques depuis la DB au démarrage
+with app.app_context():
+    try:
+        parties_db = PartieDB.query.all()
+        for p in parties_db:
+            if p.historique_json:
+                historique_coups[p.id] = _json.loads(p.historique_json)
+            if p.etat_initial_json:
+                etats_initiaux[p.id] = _json.loads(p.etat_initial_json)
+        if parties_db:
+            print(f"[startup] {len(parties_db)} historiques rechargés depuis la DB")
+    except Exception as e:
+        print(f"[startup] Erreur rechargement historiques : {e}")
 
 
 def sauvegarder_partie(partie_id: str):
@@ -145,6 +169,13 @@ def sauvegarder_partie(partie_id: str):
         partie_db.recon_tentee = reconnaissance_tentee.get(partie_id, False)
         partie_db.timer_sec = timer_par_partie.get(partie_id, 30)
         partie_db.scores_manches_json = _json.dumps(scores_manches.get(partie_id, {"rouge": 0, "noir": 0}))
+        # Persister l'historique des coups (pour l'analyse post-partie)
+        hist = historique_coups.get(partie_id, [])
+        partie_db.historique_json = _json.dumps(hist)
+        # Persister l'état initial (snapshot pour rejouer depuis le début)
+        etat_init = etats_initiaux.get(partie_id)
+        if etat_init:
+            partie_db.etat_initial_json = _json.dumps(etat_init)
         db.session.commit()
     except Exception as e:
         if DEBUG:

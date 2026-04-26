@@ -64,6 +64,8 @@ class PartieDB(db.Model):
     recon_tentee  = db.Column(db.Boolean, default=False)
     timer_sec     = db.Column(db.Integer, default=30)
     scores_manches_json = db.Column(db.String(50), default='{"rouge":0,"noir":0}')
+    historique_json = db.Column(db.Text, nullable=True)  # liste des coups pour analyse
+    etat_initial_json = db.Column(db.Text, nullable=True)  # snapshot initial pour analyse
     cree_le       = db.Column(db.DateTime, default=lambda: __import__('datetime').datetime.utcnow())
     mise_a_jour   = db.Column(db.DateTime, default=lambda: __import__('datetime').datetime.utcnow(),
                               onupdate=lambda: __import__('datetime').datetime.utcnow())
