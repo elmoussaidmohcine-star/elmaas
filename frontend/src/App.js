@@ -967,15 +967,25 @@ export default function App() {
         setTimerRouge(restant);
         if (restant <= 0) {
           clearInterval(timerRef.current);
-          setPopup({ type: "temps_ecoule", titre: t("tempsEcoule", L),
-            message: t("rougeNonJoue", L), gagnant: t("noir", L), couleurGagnant: "noir" });
+          // Noir gagne — mettre à jour scoresManches ET déclencher la popup de fin normale
+          setScoresManches(prev => {
+            const nouveau = { ...prev, noir: (prev.noir ?? 0) + 1 };
+            return nouveau;
+          });
+          const scores = calculer_scores_locaux(etat);
+          setMancheTermineeInfo({ gagnant: "noir", scores, motif: "timeout" });
         }
       } else {
         setTimerNoir(restant);
         if (restant <= 0) {
           clearInterval(timerRef.current);
-          setPopup({ type: "temps_ecoule", titre: t("tempsEcoule", L),
-            message: t("noirNonJoue", L), gagnant: t("rouge", L), couleurGagnant: "rouge" });
+          // Rouge gagne — mettre à jour scoresManches ET déclencher la popup de fin normale
+          setScoresManches(prev => {
+            const nouveau = { ...prev, rouge: (prev.rouge ?? 0) + 1 };
+            return nouveau;
+          });
+          const scores = calculer_scores_locaux(etat);
+          setMancheTermineeInfo({ gagnant: "rouge", scores, motif: "timeout" });
         }
       }
     }, 200);
@@ -1480,7 +1490,15 @@ export default function App() {
                     {egalite ? t("egalite", L) : jaiGagne ? t("victoire", L) : t("defaite", L)}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                    {egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
+                    {mancheTermineeInfo.motif === "timeout"
+                      ? `⏱ ${t("tempsEcoule", L)} — ${trCouleur(g)} ${t("remporteManche", L)}`
+                      : egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
+                  </div>
+                  {/* Score des manches */}
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", fontSize: 20, fontFamily: "var(--brush)", marginTop: 4 }}>
+                    <span style={{ color: "var(--rouge-c)", fontWeight: 700 }}>{scoresManches.rouge ?? 0}</span>
+                    <span style={{ color: "var(--muted)", fontSize: 14 }}>manches</span>
+                    <span style={{ color: "#aaaaaa", fontWeight: 700 }}>{scoresManches.noir ?? 0}</span>
                   </div>
                 </>
               );
