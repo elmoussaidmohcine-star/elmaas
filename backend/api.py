@@ -323,6 +323,9 @@ def nouvelle_partie():
         prop_j1 = int(request.form.get("prop_j1", 16))
         prop_j2 = int(request.form.get("prop_j2", 16))
 
+        if prop_j1 < 16 or prop_j2 < 16:
+            return jsonify({"erreur": "Taille minimale : 16x16"}), 400
+
         from config import calculer_taille
         import config as cfg
         taille = calculer_taille(prop_j1, prop_j2)
