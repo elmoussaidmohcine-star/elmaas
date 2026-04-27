@@ -1,4 +1,8 @@
-// ELMAAS — translations.js FINAL
+// ELMAAS — translations.js
+// ═══════════════════════════════════════════════════════════
+// Système de citations poétiques par langue et par écran
+// + Toutes les traductions UI du jeu
+// ═══════════════════════════════════════════════════════════
 
 export const LANGUES = [
   { code: "fr", nom: "Français", theme: "theme-fr" },
@@ -7,87 +11,971 @@ export const LANGUES = [
   { code: "es", nom: "Español",  theme: "theme-es" },
 ];
 
+// ═══════════════════════════════════════════════════════════
+// SLOGANS — 100 quotes par langue par catégorie
+// Chaque langue a sa propre âme, pas une traduction
+// ═══════════════════════════════════════════════════════════
+
 export const SLOGANS = {
-  fr: [
-    "Les échecs sont vieux, ELMAAS vaut plus que l'or.",
-    "Merci au français d'avoir trouvé le meilleur nom : les échecs. Un aveu franc.",
-    "Pas de roi à protéger — c'est toi, le roi.",
-    "Un cheval qui vole en L... je jure l'avoir déjà vu quelque part.",
-    "Un pion devient reine. Saint Pion, priez pour nous.",
-    "Comment gagner une guerre si tes soldats ne voient ni à gauche ni à droite ?",
-    "Une guerre à huit soldats — c'est plutôt une bagarre de quartier.",
-    "Si la reine est plus forte que le roi, donnez-lui le trône.",
-    "La tour est en cours de construction.",
-    "Comment les Noirs pourraient-ils commencer ? Il faudrait qu'ils deviennent blancs d'abord.",
-    "Je reconnais ce coup : l'ouverture Istobranctuscolobantus, jouée par M. Kholobanfris dans son jardin en 1800,99.",
-    "Aux échecs, tu déplaces des statues. Ici, tu peins le monde.",
-  ],
-  en: [
-    "Chess is old, ELMAAS is better than gold.",
-    "No king to protect — you are the king.",
-    "A flying L-shaped horse... hmm, I swear I've seen that somewhere.",
-    "A pawn promoted to queen. Holy pawn, pray for us.",
-    "How do you win a war if your soldiers can't see left or right?",
-    "A war with 8 soldiers? That's a neighborhood scuffle.",
-    "If the queen is stronger than the king, just give her the throne.",
-    "The rook is currently under construction.",
-    "How could Black move first? They'd have to turn white.",
-    "I recognize this move — the Istobranctuscolobantus opening, played by Mr. Kholobanfris in his garden in 1800.99.",
-    "Chess moves statues. ELMAAS paints the world.",
-    "Sixty-four squares is cute. Try two hundred.",
-  ],
-  ar: [
-    "الشطرنج قديم، وإلماس أثمن من الذهب.",
-    "لا ملك تحميه — أنت الملك.",
-    "حصان يطير على شكل حرف... أقسم أني رأيت هذه الحركة في مكان ما.",
-    "جنديون يسيرون وراء الران. نحن لسنا متفائلين لهذا الحد.",
-    "كيف تنتصر في حرب وجنودك لا يرون يميناً ولا يساراً؟",
-    "حرب بثمانية جنود؟ هذا مجرد شجار في الحي.",
-    "إن كانت الملكة أقوى من الملك، فأعطوها العرش.",
-    "القلعة قيد الإنشاء.",
-    "كيف يبدأ الأسود أولاً؟ يجب أن يصير أبيض أولاً.",
-    "أعرف هذه الافتتاحية — استبرنكتوسكولوبنطوس، لعبها السيد خلوبنفريس في حديقته عام 1800,99.",
-    "الشطرنج يحرك التماثيل. إلماس يلون العالم.",
-  ],
-  es: [
-    "El ajedrez es viejo, ELMAAS vale más que el oro.",
-    "No hay rey que proteger — tú eres el rey.",
-    "Un caballo que vuela en forma de L... juro haberlo visto antes.",
-    "Un peón coronado reina. San Peón, ruega por nosotros.",
-    "¿Cómo ganar una guerra si tus soldados no ven a izquierda ni derecha?",
-    "¿Una guerra con 8 soldados? Eso es una pelea de barrio.",
-    "Si la reina es más fuerte que el rey, dale el trono.",
-    "La torre está en construcción.",
-    "¿Cómo van a empezar las negras? Tendrían que volverse blancas primero.",
-    "Reconozco esta jugada — la apertura Istobranctuscolobantus, jugada por el Sr. Kholobanfris en su jardín en 1800,99.",
-    "El ajedrez mueve estatuas. ELMAAS pinta el mundo.",
-  ],
+
+  // ────────────────────────────────────────────────────────
+  // FRANÇAIS — Ironique, philosophique, lucide, Cioran + Camus
+  // Se moque du Roi, révère l'intelligence
+  // ────────────────────────────────────────────────────────
+  fr: {
+    accueil: [
+      "Les échecs sont vieux. ELMAAS pense.",
+      "Merci au français d'avoir inventé le mot « les échecs ». Aveu involontaire.",
+      "Pas de roi à protéger — seulement une idée à défendre.",
+      "Un jeu de stratégie, d'art, et d'un tout petit ego.",
+      "Tu ne lances pas une partie. Tu ouvres quelque chose.",
+      "Ici, même un pion a des ambitions littéraires.",
+      "Les règles existent pour que les vrais joueurs les transcendent.",
+      "Un plateau, mille histoires, zéro excuse.",
+      "Aux échecs, tu apprends. Ici, tu te découvres.",
+      "Ton premier coup révèle déjà tout.",
+      "La logique te guide. L'instinct tranche.",
+      "Un jeu où perdre peut être élégant.",
+      "Chaque partie commence par un mensonge : je maîtrise.",
+      "Le hasard ne joue pas ici — ou peut-être qu'il joue mieux que toi.",
+      "Un cheval qui saute en L depuis des siècles. Personne n'a demandé pourquoi.",
+      "La reine est plus forte que le roi. Les échecs n'ont jamais expliqué ça.",
+      "Soixante-quatre cases pour un jeu qui se dit « de stratégie ». ELMAAS sourit.",
+      "Tu veux gagner ? Mauvais point de départ.",
+      "Chaque case est une décision que tu éviteras trop tard.",
+      "On commence toujours confiant. On finit rarement satisfait.",
+      "Le premier coup est souvent le plus naïf.",
+      "Tu vas comprendre — mais pas tout de suite.",
+      "Ici, le silence joue aussi.",
+      "Le plateau ne ment jamais. C'est son seul défaut.",
+      "Tu n'es pas prêt. Lance quand même.",
+      "Un joueur prudent est déjà en retard.",
+      "Chaque partie est une autopsie en avance.",
+      "Tu cherches la meilleure réponse à la mauvaise question.",
+      "La stratégie rassure. L'instinct tranche.",
+      "Ce jeu n'est pas juste. Il est précis.",
+      "Tu veux contrôler. Tu vas subir.",
+      "La confiance est un piège élégant.",
+      "Tu vas faire un beau coup. Puis un mauvais. C'est ça, jouer.",
+      "Même les bons coups cachent des regrets.",
+      "Tu joues contre quelqu'un… et contre toi-même.",
+      "Le doute est une mécanique, pas une faiblesse.",
+      "Plus tu réfléchis, plus tu vois tes erreurs arriver.",
+      "Tu ne perds jamais sans prévenir.",
+      "Le plateau attend ta moindre hésitation.",
+      "Ce jeu ne juge pas. Il expose.",
+      "Tu vas apprendre. Brutalement.",
+      "Un seul coup peut suffire à te définir.",
+      "Bienvenue dans un jeu qui ne te simplifie pas.",
+      "Ici on ne protège pas le roi. On le supprime.",
+      "La tour des échecs ne va jamais en diagonale. On comprend sa frustration.",
+      "Un fou limité à une couleur. Même en bois, on peut faire mieux.",
+      "Quatre-vingt pour cent des joueurs d'échecs pensent être dans les vingt pour cent supérieurs.",
+      "ELMAAS n'a pas de roi parce que le roi n'a jamais mérité sa place.",
+      "Dans les échecs, le pion qui rêve devient reine. ELMAAS te laisse choisir ce que tu veux devenir.",
+      "Ce plateau ne connaît pas la pitié. Mais il connaît l'art.",
+      "Chaque couleur raconte une histoire. Laquelle est la tienne ?",
+      "Il n'y a pas de bonne ouverture ici. Seulement ta vérité.",
+      "Tu viens pour jouer. Tu restes pour comprendre.",
+      "Le plateau est vide. Ton esprit ne devrait pas l'être.",
+      "Ce que tu poses ici, tu ne pourras pas le reprendre.",
+      "Toute décision prise ici était déjà en toi.",
+      "Certains jouent aux échecs. D'autres jouent avec leur propre intelligence.",
+      "ELMAAS n'a pas d'horloge qui s'arrête. Il a une vérité qui attend.",
+      "Si tu cherches un adversaire, regarde le plateau. C'est toi.",
+      "Ton cerveau est ton seul outil. C'est déjà suffisant, ou pas.",
+      "Le jeu ne te jugera pas. Il te lira.",
+      "Chaque partie est un aveu que tu ignorais vouloir faire.",
+      "Les règles d'ELMAAS sont simples. Ce qui les entoure ne l'est pas.",
+      "Tu poses une pièce. Tu ne sais pas encore ce que tu viens de dire.",
+      "Ici, la couleur que tu choisis n'est pas un hasard.",
+      "Ce que tu vois sur ce plateau dépend de ce que tu es.",
+      "Un plateau plein de décisions et aucune qui soit neutre.",
+      "Les grands joueurs ne calculent pas. Ils pressentent.",
+      "Le plateau est une page. Chaque coup est un mot.",
+      "ELMAAS — parce que les échecs ont eu 1500 ans pour s'améliorer et n'ont rien fait.",
+      "Ici, les pions n'attendent pas la promotion. Ils choisissent.",
+      "Bienvenue dans le jeu que les échecs auraient voulu inventer.",
+      "Ce jeu se souvient de chaque coup. Toi aussi tu devrais.",
+      "Il n'y a pas de tirage au sort dans ELMAAS. Seulement des choix.",
+      "Tu vas poser une pièce. Ce geste t'appartient.",
+      "La patience est une arme. La précipitation est un aveu.",
+      "Certains joueurs parlent. D'autres jouent. Les meilleurs font les deux.",
+      "Une partie d'ELMAAS est une conversation que personne n'oubliera.",
+      "Le plateau te parle. Tu l'écoutes rarement assez tôt.",
+      "Chaque case a une mémoire. Prends soin de ce que tu y déposes.",
+      "Tu n'as pas encore commencé et tu es déjà en train de perdre ou de gagner.",
+      "Le jeu commence avant le premier coup.",
+      "Dans les échecs, on finit toujours par un roi à genoux. ELMAAS préfère une toile.",
+      "ELMAAS : parce qu'une grille de seize cases vaut mille rois.",
+      "Chaque couleur que tu poses est une lettre. Ensemble, elles forment quelque chose.",
+      "Tu joues pour gagner. Mais tu resteras pour avoir appris.",
+      "L'art du jeu, c'est de ne pas laisser voir qu'on joue.",
+      "Le plateau est neutre. Ce que tu y fais ne l'est pas.",
+      "Tu vas jouer ta première partie. Elle ne sera jamais oubliée — par toi.",
+      "ELMAAS : le jeu qui ne protège pas les faibles ni les forts. Seulement les clairvoyants.",
+      "Même le meilleur joueur a un premier coup qu'il regrette.",
+      "Ce que tu poses maintenant changera tout ce qui vient après.",
+      "Prêt ? Le plateau, lui, l'est toujours.",
+      "Quatre couleurs, deux joueurs, une vérité.",
+      "Les échecs ont un roi inutile. ELMAAS a des joueurs utiles.",
+      "Ce plateau ne t'appartient pas encore. Fais-le tien.",
+      "Avant de jouer, regarde. Vraiment regarder, ça prend du temps.",
+      "Tu viens ici pour jouer. Tu repartiras différent.",
+    ],
+
+    victoire: [
+      "Victoire. Mais est-ce que tu as compris pourquoi ?",
+      "Tu n'as pas gagné. Tu as imposé ta vision.",
+      "Ton adversaire jouait. Toi, tu écrivais.",
+      "C'était propre. Presque inquiétant.",
+      "Même le plateau a hésité avant de te donner raison.",
+      "Tu as vu ce que les autres ne voient pas.",
+      "Une victoire calme est la plus dangereuse.",
+      "Le génie n'est jamais pressé.",
+      "Ce n'était pas un match. C'était une démonstration.",
+      "Tu n'as laissé aucune issue.",
+      "Gagner avec élégance est un art rare. Tu l'as.",
+      "Tu as joué comme si tu connaissais déjà la fin.",
+      "La différence entre vous deux était invisible. Tu l'as rendue évidente.",
+      "Il jouait contre toi. Tu jouais contre le jeu.",
+      "Victoire nette. Comme une phrase sans fioritures.",
+      "Tu as été meilleur. Simple. Irréfutable.",
+      "Ton adversaire a bien joué. Toi, tu as mieux pensé.",
+      "La partie ne pouvait se terminer autrement.",
+      "Tu as su quand attaquer et quand laisser venir.",
+      "Ce plateau te ressemble maintenant.",
+      "Tu as gagné sans bruit. C'est souvent le signe des grands.",
+      "Ton adversaire cherchait à te battre. Tu cherchais à comprendre.",
+      "La victoire la plus belle est celle qui paraît inévitable.",
+      "Tu n'as pas précipité. Tu n'as pas hésité. Tu as joué.",
+      "Il y a eu un moment où tu as tout vu. C'est là que tu as gagné.",
+      "Certains joueurs gagnent par chance. Toi, tu as gagné par clarté.",
+      "Tu as dominé sans écraser. C'est du talent.",
+      "Le plateau a rendu son verdict. Tu n'en doutais pas.",
+      "Victoire méritée. Mot pour mot.",
+      "Tu as construit quelque chose de beau ici.",
+      "Ton adversaire n'a pas perdu contre toi. Il a perdu contre ta méthode.",
+      "Tu as rendu ce jeu simple. C'est le signe que tu le maîtrises.",
+      "Une partie jouée comme ça, ça se retient.",
+      "La victoire est souvent dans les détails que l'autre ignore.",
+      "Tu as été précis là où il a été approximatif.",
+      "Ce plateau porte maintenant ta signature.",
+      "Tu as gagné parce que tu savais ce que tu voulais.",
+      "Ton adversaire a bien résisté. Tu as mieux insisté.",
+      "Les échecs t'auraient donné un trophée. ELMAAS te donne la vérité.",
+      "Tu as joué chaque coup comme une nécessité.",
+      "Il ne t'a pas vu venir. C'est exactement ce que tu voulais.",
+      "Victoire sobre. Les meilleures le sont toujours.",
+      "Tu as fait du jeu ce qu'il devrait être : un argument.",
+      "Ton adversaire était compétent. Tu étais lucide.",
+      "Il n'y avait pas de miracle ici. Juste du travail visible.",
+      "Tu as joué sans peur. C'est rare.",
+      "La fin était écrite dès le tiers de la partie.",
+      "Tu n'as pas gagné par hasard. Le hasard n'existe pas ici.",
+      "Bien joué — dans tous les sens du terme.",
+      "Tu as transformé un plateau en argumment irréfutable.",
+    ],
+
+    defaite: [
+      "Tu as perdu. Mais quelque chose en toi vient de grandir.",
+      "La vérité fait mal — mais elle enseigne.",
+      "Ce coup… tu le reverras ce soir.",
+      "Ton adversaire t'a lu comme un livre ouvert.",
+      "Perdre, c'est voir clair trop tard.",
+      "Tu n'étais pas loin. C'est ça le pire.",
+      "Chaque erreur a un goût différent. Celui-là restera.",
+      "Tu savais. Mais tu n'as pas écouté.",
+      "La prochaine fois, tu hésiteras moins.",
+      "Ce n'est pas une fin. C'est un début brutal.",
+      "Tu as perdu parce que tu as joué ce que tu voulais, pas ce qu'il fallait.",
+      "L'erreur était là depuis le début. Tu l'as juste vue à la fin.",
+      "Ton adversaire n'était pas plus intelligent. Il était plus attentif.",
+      "Une défaite propre vaut mieux qu'une victoire confuse.",
+      "Tu as offert des coups que tu ne pouvais pas te permettre.",
+      "La partie a tourné en un instant. Tu l'as vu mais trop tard.",
+      "Ce plateau t'a dit la vérité. C'est son rôle.",
+      "Tu n'as pas perdu par manque de talent. Par manque de patience.",
+      "Il n'y a pas de honte ici. Seulement des leçons.",
+      "Ce coup-là était une erreur. Et tu le sais depuis que tu l'as joué.",
+      "Perdre n'est pas échouer. C'est apprendre à un coût élevé.",
+      "Ton adversaire a trouvé ce que tu cherchais à cacher.",
+      "La défaite est une question que la prochaine partie répondra.",
+      "Tu as joué vite là où il fallait réfléchir.",
+      "Ce que tu as raté était à portée. C'est ça qui reste.",
+      "Le plateau t'a exposé. Maintenant tu sais.",
+      "Une bonne défaite te rapproche plus d'une victoire qu'une mauvaise.",
+      "Tu as été battu par quelqu'un qui a su ce que tu voulais faire.",
+      "La patience est ce qui t'a manqué. Elle se travaille.",
+      "Ce plateau te devait une leçon. Il vient de te la donner.",
+      "Tu as perdu le fil quelque part au milieu. Retrouve-le.",
+      "Ton adversaire a eu un coup d'avance. Un seul. C'est tout ce qu'il faut.",
+      "La défaite a une géographie précise. Retrouve l'endroit où tout a basculé.",
+      "Tu n'as pas joué mal. Tu as juste joué moins bien que lui aujourd'hui.",
+      "Ce plateau se souvient de tout. À toi de le battre avec cette mémoire.",
+      "Le jeu t'a rendu service : il t'a montré tes limites.",
+      "Cherche le coup où tu aurais dû faire autrement. Il existe.",
+      "La défaite est le meilleur professeur que tu n'as pas demandé.",
+      "Tu as cédé là où il fallait tenir. Note-le.",
+      "Ce n'est pas lui qui a gagné. C'est toi qui as offert.",
+      "Chaque partie perdue est un plan pour la prochaine.",
+      "Tu seras meilleur grâce à ça. C'est ce que tu veux vraiment savoir.",
+      "L'orgueil a joué pour toi quelques coups. C'est là que ça a commencé.",
+      "Ton adversaire a exploité exactement ce que tu essayais de cacher.",
+      "La prochaine fois, tu le verras venir.",
+      "Une défaite bien analysée vaut dix victoires oubliées.",
+      "Tu as perdu. Et c'est très bien.",
+      "Ce plateau t'a montré qui tu es quand tu perds. Regarde.",
+      "La capacité à perdre avec lucidité est plus rare que de gagner.",
+      "Tu vas revenir. Et tu te souviendras de ça.",
+    ],
+
+    attente: [
+      "Ton adversaire réfléchit… ou tremble.",
+      "Le silence est souvent un mauvais signe pour lui.",
+      "Quelqu'un, quelque part, doute déjà.",
+      "Patience. Le piège se referme lentement.",
+      "Plus il tarde, plus il est perdu.",
+      "Même attendre fait partie du jeu.",
+      "Tu joues déjà, même immobile.",
+      "Chaque seconde est une pression que tu n'as pas à exercer.",
+      "Il ne sait pas encore qu'il a perdu.",
+      "Le silence entre deux coups en dit plus que mille stratégies.",
+      "Tu regardes le plateau. Le plateau te regarde aussi.",
+      "L'attente est une arme pour ceux qui savent s'en servir.",
+      "Quelque part, il cherche une sortie qui n'existe pas.",
+      "Ton calme est déjà une menace.",
+      "Il réfléchit. Toi, tu as déjà réfléchi.",
+      "Cette seconde d'attente n'appartient qu'à toi.",
+      "Le plateau ne change pas. Mais lui, oui.",
+      "Laisse-le réfléchir. Chaque seconde le rapproche de son erreur.",
+      "Le temps n'est pas ton ennemi ici.",
+      "Cette pause est un test. Reste tranquille.",
+      "Il cherche. Tu as déjà trouvé.",
+      "Observe. Ce moment d'hésitation est une information.",
+      "Le meilleur joueur est souvent celui qui attend le mieux.",
+      "Son silence dit quelque chose. Écoute.",
+      "Pendant qu'il calcule, toi tu respires.",
+      "L'incertitude est de son côté. La clarté de ton côté.",
+      "Cette pause appartient à la partie autant que les coups.",
+      "Il revient sur sa décision. C'est une faiblesse.",
+      "Reste. Observe. Il va se trahir.",
+      "Le temps qu'il prend est le temps qu'il ne jouera pas.",
+    ],
+
+    analyse: [
+      "Analyse en cours… la vérité arrive.",
+      "Le moteur ne ment jamais.",
+      "Chaque erreur va être révélée. Es-tu prêt ?",
+      "Tu veux vraiment savoir ce que tu as joué ?",
+      "Ce moment où tout devient clair…",
+      "La machine voit ce que tu refuses de voir.",
+      "Prépare-toi à regretter certains coups.",
+      "Analyse en profondeur… ça pique souvent.",
+      "Le verdict approche. Il est toujours honnête.",
+      "Ici commence la vraie partie : comprendre.",
+      "Ce que tu as joué va être pesé, mesuré, jugé.",
+      "Le jeu est fini. La vérité, elle, commence.",
+      "Ton meilleur coup est peut-être dans cette analyse.",
+      "Voir ses erreurs est un luxe que peu s'accordent.",
+      "Le moteur ne tient pas compte de tes intentions. Seulement de tes coups.",
+      "Cette analyse est un miroir. Regarde dedans.",
+      "Ton adversaire voyait quelque chose. Tu vas découvrir quoi.",
+      "Il n'y a pas de bonne ou de mauvaise analyse. Il y a la vérité.",
+      "Ce que tu pensais avoir joué… et ce que tu as joué.",
+      "Chaque coup que tu verras avait une meilleure alternative.",
+      "L'analyse ne te demande pas de te justifier. Elle te montre.",
+      "Tu vas peut-être découvrir que tu as joué mieux que tu ne le croyais.",
+      "Ou pire. Mais dans les deux cas, tu progresseras.",
+      "Le moteur voit à une profondeur que l'esprit humain atteint rarement.",
+      "Patience. La vérité se construit coup par coup.",
+      "Certains coups que tu regrettais étaient les bons. Tu vas le découvrir.",
+      "D'autres que tu aimais étaient des erreurs. Tu vas le découvrir aussi.",
+      "C'est ici que le joueur devient un élève.",
+      "Analyse en cours — dans quelques instants, tu te connaîtras mieux.",
+      "La machine analyse. Toi, apprends à écouter ce qu'elle dit.",
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────
+  // ENGLISH — Cold, sharp, precise, Hemingway-esque directness
+  // Makes chess feel antiquated, elevates clarity
+  // ────────────────────────────────────────────────────────
+  en: {
+    accueil: [
+      "Chess is old. This is alive.",
+      "No king. No excuses. Just choices.",
+      "You don't start a game. You start a conversation.",
+      "Every move is a statement. Make it count.",
+      "You think you're ready. You're not yet.",
+      "Rules exist for players who haven't found the edge.",
+      "Play smart. Or don't play at all.",
+      "A board is just the beginning of what happens here.",
+      "You don't react here. You create.",
+      "This game remembers everything you do.",
+      "One move. One identity.",
+      "Chess has sixty-four squares. ELMAAS has no ceiling.",
+      "The king in chess is the weakest piece worth protecting. We dropped him.",
+      "A horse that jumps in an L-shape. We never questioned it. ELMAAS did.",
+      "The queen does all the work. The king stands there. Sound familiar?",
+      "Pawns dream of becoming queens in chess. Here, you choose what you become.",
+      "Sixty-four squares and a thousand limitations. We chose depth over tradition.",
+      "Chess is war with metaphors. ELMAAS is art with consequences.",
+      "The rook moves in straight lines forever. Admirable rigidity.",
+      "Eight soldiers. No left. No right. Just forward. ELMAAS disagrees.",
+      "You're here because you've outgrown simple grids.",
+      "This game doesn't ask you to protect anything. Only to build.",
+      "Every color you place is a decision that cannot be undone.",
+      "You don't win ELMAAS. You reveal something about yourself.",
+      "The best players don't calculate more. They see more.",
+      "Doubt is not weakness here. It's information.",
+      "Think before you place. Think again after.",
+      "The board is neutral. You are not.",
+      "What you see on this board depends entirely on who you are.",
+      "This isn't chess with better graphics. This is something else entirely.",
+      "Your first move says something. Choose what you want to say.",
+      "Confidence is the first thing this game will test.",
+      "Strategy is what you do when you're sure. ELMAAS asks for more.",
+      "You came to win. You might leave having understood something instead.",
+      "This board has no memory of your reputation.",
+      "There are no openings here. Only decisions.",
+      "Every piece you hold is a possibility. Not all are equally good.",
+      "The player who sees furthest doesn't always think longest.",
+      "Patience is a strategy. Impatience is a tell.",
+      "You're about to learn something about how you think.",
+      "The board is waiting. It's always more patient than you.",
+      "ELMAAS doesn't have a king because kings don't deserve protection.",
+      "This is the game chess wanted to become.",
+      "You can't bluff the board. It sees every choice.",
+      "Whatever you're about to play — own it.",
+      "Two colors. One winner. Zero luck.",
+      "The board sees your hesitation before you do.",
+      "You're not playing against someone. You're playing against clarity.",
+      "This game has no castle that can't be taken.",
+      "Your mind is the only piece that matters.",
+    ],
+
+    victoire: [
+      "Clean. Precise. Inevitable.",
+      "You didn't win. You dominated.",
+      "That was never close.",
+      "You saw further, and it showed.",
+      "Control. From start to finish.",
+      "That was calculated. All of it.",
+      "No mistakes. That's rare.",
+      "You broke their logic before they finished building it.",
+      "This is what mastery looks like, quietly.",
+      "You didn't rush. That's why you won.",
+      "They played the game. You played them.",
+      "Every move was a message. They read it too late.",
+      "You turned uncertainty into inevitability.",
+      "The board belongs to you now.",
+      "There was a moment where it became obvious. You found it first.",
+      "You made it look easy. The hardest things always do.",
+      "They had a plan. Yours was better.",
+      "Sharp. Direct. Finished.",
+      "You won without showing everything you had. That's real strength.",
+      "They never understood what they were up against.",
+      "You played the right game at the right speed.",
+      "Victory without noise is the loudest kind.",
+      "You outthought, outplaced, and outlasted.",
+      "The gap between you was invisible at the start. You made it undeniable.",
+      "Earned. Every point of it.",
+      "You gave them nothing to hold onto.",
+      "That kind of win is a signature.",
+      "You didn't just play better. You thought differently.",
+      "The best victories look like they were always going to happen.",
+      "Well played isn't strong enough. Well understood.",
+    ],
+
+    defaite: [
+      "You saw it too late.",
+      "That mistake cost everything.",
+      "You hesitated once. That was enough.",
+      "They were one step ahead. Exactly one.",
+      "You knew better. Next time, act on it.",
+      "Close isn't a category. It's a warning.",
+      "You lost control at a specific moment. Find it.",
+      "The game exposed you. That's its job.",
+      "You played what you wanted, not what was needed.",
+      "The error was small. The consequence wasn't.",
+      "They didn't outplay you. They out-waited you.",
+      "Your opponent found the crack. You put it there.",
+      "Losing here is information. Use it.",
+      "You gave away something you couldn't afford to.",
+      "There was a better move. You know which one.",
+      "The board told you. You didn't listen.",
+      "They read your pattern. Change it.",
+      "You rushed where patience was the move.",
+      "This loss is a blueprint for your next win.",
+      "You played with assumption. They played with observation.",
+      "What went wrong was small. That's the hardest kind of lesson.",
+      "You were good. Just not good enough today.",
+      "The game didn't punish you. It educated you.",
+      "Every loss here has a name. Find yours.",
+      "You'll see this differently next time. That's the point.",
+      "They won because they were present. You were somewhere else.",
+      "One moment of clarity would have changed everything.",
+      "You didn't lose to them. You lost to a version of yourself.",
+      "Come back sharper.",
+      "This is the game's way of helping you.",
+    ],
+
+    attente: [
+      "They're thinking. Or they're panicking.",
+      "Time reveals weakness. Watch.",
+      "Silence here is pressure you didn't have to apply.",
+      "They're stuck. You're not.",
+      "Every second they take is a second they're uncertain.",
+      "Your stillness is already a move.",
+      "The board doesn't change. But they do.",
+      "They came here to win. Right now they're just surviving.",
+      "Let them think. Thinking costs them.",
+      "The pause belongs to you. Stay in it.",
+      "Their hesitation is a signal. Read it.",
+      "You don't have to do anything. The clock is doing it for you.",
+      "They're reconsidering. That means they're losing their way.",
+      "Patience here isn't waiting. It's pressing.",
+      "Your calm is the most unsettling thing on this board right now.",
+      "They expected a response. You gave them silence.",
+      "They're looking for something they won't find.",
+      "Each second that passes shifts the weight further toward you.",
+      "The board waits. So do you. The difference is, you chose to.",
+      "They're calculating. You've already decided.",
+      "Stay composed. The moment is coming to you.",
+      "Every great player knows how to use silence.",
+      "They're in their head. Stay out of yours.",
+      "The longer they wait, the more they've already lost.",
+      "Your opponent's silence is their loudest admission.",
+      "You don't need to act. The pressure is working without you.",
+      "Stillness isn't inaction. It's force held in reserve.",
+      "This pause means something. Learn to read what.",
+      "They need time. You needed it earlier. That's the difference.",
+      "Wait. Then strike. That order matters.",
+    ],
+
+    analyse: [
+      "Analyzing. No excuses now.",
+      "Truth incoming. Brace.",
+      "The engine sees everything. Every move. Every alternative.",
+      "Mistakes were made. Some were yours. Here's which ones.",
+      "Let's see what actually happened.",
+      "The game is over. The lesson is just starting.",
+      "What you thought you played and what you played are two different things.",
+      "The engine doesn't care what you intended.",
+      "This is where you stop being a player and start being a student.",
+      "Every move you made had a better one. Let's find them.",
+      "The analysis doesn't judge you. It shows you.",
+      "What you see here will make you uncomfortable. Good.",
+      "Some of your best moves weren't your best moves.",
+      "Some of your worst moves were worse than you thought.",
+      "The engine is faster than any human. It's also less forgiving.",
+      "You're about to see the game the way it actually was.",
+      "This isn't criticism. This is data.",
+      "The move you were proud of might be here. Or it might not.",
+      "The truth about this game is arriving.",
+      "Understanding one loss here is worth ten casual wins.",
+      "The engine found what you missed. Learn its language.",
+      "This analysis is a conversation. Are you ready to listen?",
+      "What separated you from winning is about to become very clear.",
+      "Prepare to see your thinking from the outside.",
+      "The board remembered every choice. Now you will too.",
+      "Analysis is how good players become great players.",
+      "What happened here, really happened here.",
+      "Sit with this. It's worth it.",
+      "The analysis will show you where the game was still yours.",
+      "Your next win starts right here, in what you're about to see.",
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────
+  // العربية — شعر المتنبي، الصوفية، الحكمة الكلاسيكية
+  // فخامة، عمق، سخرية ذكية من الشطرنج
+  // ────────────────────────────────────────────────────────
+  ar: {
+    accueil: [
+      "الشطرنج قديمٌ كملوكه — وإلماس أحدثُ من أفكارهم.",
+      "لا ملكَ هنا يحتاج حمايتك. أنتَ الحكمة.",
+      "قيل «لعبة الملوك»، قلنا: الملوك أفقرُ الناس عقلاً.",
+      "في الشطرنج يتحرك الحصان على شكل حرف. قرونٌ ولم يسأل أحدٌ لماذا.",
+      "الوزيرُ يفعل كل شيء، والملك يقف. هذا ليس ذكاءً، هذا عجز.",
+      "الجندي يحلم بأن يصبح وزيراً. في إلماس، أنتَ تختار ما تصبح.",
+      "أربعٌ وستون خانة ظننّا أنها كافية لقرون. كانت بداية الفهم فقط.",
+      "في الشطرنج تبدأ الأبيض. في إلماس، يبدأ من يرى أكثر.",
+      "البرج يسير في خطٍّ مستقيم للأبد. الاستقامة المُملّة ليست فضيلة.",
+      "هذه ليست لعبةً — هذا كشفٌ يرتدي ثوب اللعبة.",
+      "أنتَ لا تبدأ مباراة. أنتَ تبدأ مواجهةً مع نفسك.",
+      "كل حركةٍ تقول الحقيقة التي تحاول إخفاءها.",
+      "اللوحة صامتة — لكنها تقرأ كل شيء.",
+      "لا تبحث عن الفوز. ابحث عن الفهم. الفوز سيتبعه.",
+      "في الشطرنج تُتبع القواعد. في إلماس، تختبر حدود عقلك.",
+      "كل بداية تحمل وهمَ السيطرة. الحقيقة تأتي لاحقاً.",
+      "اللعبة لا تحمي الأقوياء ولا الضعفاء. تحمي الواضحين.",
+      "هنا لا تُصان القطع — تُكشف النوايا.",
+      "ما تسميه خطةً قد يكون وهماً أنيقاً.",
+      "ابدأ — وستفهم لماذا كان الشطرنج بسيطاً جداً.",
+      "الشطرنج يطلب الطاعة. إلماس يطلب الجرأة.",
+      "اللوحة ليست ساحة حرب — إنها مرآة.",
+      "كل لاعبٍ يدخل واثقاً ويخرج صادقاً.",
+      "أنتَ لا تلعب ضد خصمك وحده. تلعب ضد حدودك.",
+      "كل خطوةٍ محسوبة — حتى تلك التي ستندم عليها.",
+      "الشطرنج يعلمك الحذر. إلماس يعلمك الرؤية.",
+      "هنا لا يوجد افتتاح محفوظ. بل بداية وعي.",
+      "حتى أفضل اللاعبين يبدؤون بوهم.",
+      "إلماس لا يرحب بك — بل يختبرك.",
+      "ادخل، إن كنتَ مستعداً أن تُفهَم.",
+      "الشطرنج أعطى الفروسية لحصانٍ لا يملكها. إلماس يعطيك إياها.",
+      "كل لونٍ تضعه هنا يقول شيئاً عنك.",
+      "اللوحة تنتظر. صبرها أطول من صبرك.",
+      "هذا ليس جلسةً ترفيهية. هذا امتحانٌ تقدمه لنفسك.",
+      "في إلماس، لا توجد قطعة مُقيَّدة. كلها تملك إرادة.",
+      "قواعد إلماس بسيطة. ما يحيط بها ليس كذلك.",
+      "قبل أن تلعب، انظر. النظر الحقيقي يأخذ وقتاً.",
+      "ما ستضعه على هذا الطاولة لن تستطيع استرداده.",
+      "كل قرارٍ اتخذته هنا كان موجوداً فيك قبل اللعب.",
+      "أربع ألوان، لاعبان، حقيقة واحدة.",
+      "الشطرنج ورثَ ملكاً لا يستحق تاجه. إلماس ألغى التاج.",
+      "هذه اللوحة لا تعرف سمعتك. ابنِ واحدة جديدة.",
+      "المتأني يصل. المتسرع يُعرِّف نفسه مبكراً.",
+      "أعظم اللاعبين لا يحسبون أكثر — يرون أوضح.",
+      "الشك ليس ضعفاً هنا. إنه معلومة.",
+      "ما رأيته على هذه اللوحة يعكس ما أنتَ عليه.",
+      "هذه اللعبة تتذكر كل ما تفعله. وأنتَ؟",
+      "الإجابة الصحيحة ليست دائماً المتوقعة.",
+      "مرحباً في اللعبة التي أراد الشطرنج أن يكونها.",
+      "تأتي للعب وتغادر وقد فهمتَ أكثر مما كنتَ تعرف.",
+    ],
+
+    victoire: [
+      "لم تفز — بل كشفتَ الفارق.",
+      "كان انتصاراً هادئاً، كأنه كان حتمياً.",
+      "لم تترك احتمالاً ولا عذراً.",
+      "لقد رأيتَ ما لم يُرَ.",
+      "لم تكن أسرع — بل أوضح.",
+      "حتى اللوحة وافقتك في النهاية.",
+      "هذا ليس حظاً. هذا إدراك.",
+      "انتصارٌ بلا ضجيج — أخطر أنواع الانتصار.",
+      "لم تلعب جيداً فحسب — بل فهمتَ أكثر.",
+      "خصمك كان يلعب. أنتَ كنتَ ترى.",
+      "كل حركةٍ كانت إجابة لسؤالٍ لم يُطرح.",
+      "لم يكن هناك صراع — كانت هناك نتيجة حتمية.",
+      "هذا ما يحدث حين تختفي الأخطاء.",
+      "انتصارك لم يكن مفاجئاً — كان متوقعاً منذ البداية.",
+      "كنتَ خطوةً أمامه دائماً. هذا يكفي.",
+      "لم تتسرع ولم تتردد. لعبتَ.",
+      "اللعبة انتهت قبل أن يدرك خصمك.",
+      "تفوّق صامت — لكنه كان واضحاً طوال الوقت.",
+      "هذا ليس فوزاً فحسب — هذه سيطرة.",
+      "جعلتَ اللعبة تبدو سهلة. وهذا مخيف.",
+      "في موضعٍ واحد رأيتَ ما رفض هو أن يراه.",
+      "الحسم لم يكن في آخر حركة. كان في ترتيبك للنية.",
+      "ما أعطاك الفوز لم يكن القوة — بل الوضوح.",
+      "أحكمتَ اللعبة حين فتحها. وهذا الأعظم.",
+      "خصمك لم يخسر منك — خسر من منهجك.",
+      "فوزٌ من هذا النوع يترك أثراً في الذاكرة.",
+      "كلُّ ما فكّرتَ فيه وُجد على اللوحة. هذا تناسق.",
+      "الفوز جميل. لكن الفوز بهذا الأسلوب، أجمل.",
+      "لم يكن التنافس متكافئاً. أنتَ تعرف لماذا.",
+      "احتفظ بهذا الشعور. وارجع للمجازفة في المرة القادمة.",
+    ],
+
+    defaite: [
+      "الخسارة مؤلمة — لكنها صادقة.",
+      "كنتَ تعرف. لكنك تجاهلت.",
+      "حركةٌ واحدة كانت كافية لتغيير كل شيء.",
+      "تعلمتَ — ولكن متأخراً. في المرة القادمة، أبكر.",
+      "الخطأ كان واضحاً — بعد فوات الأوان.",
+      "لم تخسر فجأة — خسرتَ تدريجياً ببطء.",
+      "كل تردد له ثمن. دفعتَه الآن.",
+      "كنتَ قريباً. وهذا ما يؤلم أكثر.",
+      "اللعبة لم تخدعك — أنتَ خدعتَ نفسك.",
+      "الحقيقة ظهرت أخيراً. هذا لصالحك.",
+      "لم يكن خصمك أقوى — بل كنتَ أقل وضوحاً.",
+      "كل خسارة تحمل درساً، إن كنتَ مستعداً لسماعه.",
+      "رأيتَ الفرصة — لكنك لم تتحرك نحوها.",
+      "التفكير وحده لا يكفي. القرار يكفي.",
+      "أحياناً القرار أهم من الخطة.",
+      "الخسارة ليست النهاية — بل كشف البداية الحقيقية.",
+      "ما أخطأتَ فيه تعرفه جيداً الآن. سمِّه.",
+      "اللوحة لا تنسى. لذا لا تنسَ أنت.",
+      "الفرصة كانت هناك — ثم اختفت لأنك لم تمسك بها.",
+      "في المرة القادمة لن تتركَ هذه اللحظة تمر.",
+      "الغرور لعب بدلاً منك في بعض الحركات.",
+      "خصمك استغل ما كنتَ تحاول إخفاءه.",
+      "الخسارة بهذا الوضوح، مكسبٌ في حد ذاتها.",
+      "العود إلى هذه اللوحة هو الرد الأمثل على هذه الخسارة.",
+      "لا يتعلم اللاعب من الفوز إلا القليل. الخسارة تعلّمه أكثر.",
+      "ما شعرتَ به الآن هو الوقود الأصح.",
+      "حلّل — ثم ارجع.",
+      "أفضل اللاعبين عرفوا الخسارة قبل أن يعرفوا الفوز.",
+      "هذه الخسارة لم تكن عبثاً. كانت تعليماً مكلفاً.",
+      "ارجع. ستكون مختلفاً.",
+    ],
+
+    attente: [
+      "خصمك يفكر — أو ينهار ببطء.",
+      "الصمت هنا ليس هدوءاً — بل ضغط.",
+      "كل ثانية تزيد شكوكه.",
+      "هو لا يتأخر — هو يضيع.",
+      "الوقت يكشف ما تخفيه العقول.",
+      "التردد يُطيل اللحظة ويُقصّر النتيجة.",
+      "كل تأخير اعترافٌ غير مباشر.",
+      "ربما يبحث عن مخرج لا وجود له.",
+      "الصمت بين حركتين أبلغ من الكلام.",
+      "القرار الصعب يأخذ وقتاً. وهو لم يستعد له.",
+      "كلما طال الانتظار، اقترب الخطأ.",
+      "هو يرى — لكنه لا يثق بما يرى.",
+      "اللحظة تزداد ثقلاً على جانبه.",
+      "حتى الزمن يراقب اللوحة الآن.",
+      "هناك شيءٌ لا يراه — بعد. دعه يبحث.",
+      "هدوؤك هو أكثر ما يُقلقه الآن.",
+      "صبرك سلاح. لا تُفصح عنه.",
+      "ما يعانيه الآن هو ما أعددتَ له.",
+      "هو يحسب. أنتَ قد انتهيتَ من الحساب.",
+      "كل ثانية تمر دون قرار منه هي ثانية تصبُّ في مصلحتك.",
+      "الصامت أحياناً هو الأقوى.",
+      "انتظر. اللحظة ستأتي إليك.",
+      "مَن لا يتردد لا يُهزم بالوقت.",
+      "تردده رسالة. اقرأها.",
+      "الثقة لا تنتظر. التردد نعم.",
+      "ثباتك في هذه اللحظة هو فوزك القادم.",
+      "هو في رأسه. أنتَ في اللوحة. هذا الفارق.",
+      "دعه يفكر. التفكير أحياناً يُكلّف أكثر مما يُفيد.",
+      "انتظر بوعي. هذا ليس سلبية — هذا مراقبة.",
+      "كل لحظة صمتٍ منك هي ضغطٌ لم تبذل فيه جهداً.",
+    ],
+
+    analyse: [
+      "جارٍ التحليل — الحقيقة قادمة.",
+      "المحرك لا يُجامل. لا أحد.",
+      "كل خطأٍ سيظهر. كن مستعداً.",
+      "هل تريد فعلاً أن ترى ما حدث؟",
+      "ما تجاهلتَه سيعود الآن.",
+      "الحقيقة لا تتأخر — لكنها تصل.",
+      "كل حركةٍ لها وزن. الآن ستفهمه.",
+      "التحليل لا يرحم — ولا يُخطئ.",
+      "هنا تبدأ المعرفة الحقيقية.",
+      "الآن لا مكان للأعذار.",
+      "كل قرارٍ ستراه كما هو، لا كما أردتَه.",
+      "ما ظننتَه جيداً قد لا يكون كذلك.",
+      "الفرق بينك وبين الأفضل سيتضح الآن.",
+      "استعد لبعض الندم — وبعض المفاجآت الإيجابية.",
+      "الحقيقة دائماً أوضح بعد النهاية.",
+      "التحليل لا يسألك عن نواياك. يسألك عن حركاتك.",
+      "المحرك يرى ما رفض عقلك رؤيته.",
+      "هذه ليست جلسة انتقاد — بل جلسة تعلم.",
+      "ما فاتَك سيصبح ما تبحث عنه في المرة القادمة.",
+      "أفضل حركةٍ كانت بمتناولك. أين كانت؟",
+      "التحليل يُعلّمك كيف ترى اللوحة بعيون أوضح.",
+      "الآن أنتَ تلعب دورَ المراقب، وهو الأصعب.",
+      "كل دقيقةٍ تمضيها هنا تساوي عشر مباريات.",
+      "لقد لعبتَ. الآن افهم ما لعبتَه.",
+      "المحرك وجد ما أضعتَه. تعلم منه.",
+      "الانتهاء من التحليل يعني البداية الحقيقية.",
+      "ستجد هنا الحركة التي كان يمكن أن تُغير كل شيء.",
+      "التحليل مرآة — النظر فيها يحتاج شجاعة.",
+      "ما ستراه الآن سيغيّر طريقة لعبك للأبد.",
+      "هذه اللحظة، هذا التحليل، هذا هو الفارق بين اللاعبين.",
+    ],
+  },
+
+  // ────────────────────────────────────────────────────────
+  // ESPAÑOL — Neruda, Borges, García Márquez
+  // Emocional, humano, lírico, vivo
+  // Se burla del ajedrez con ternura
+  // ────────────────────────────────────────────────────────
+  es: {
+    accueil: [
+      "El ajedrez tiene seiscientos años. ELMAAS tiene ahora.",
+      "No hay rey que proteger. Solo decisiones que tomar.",
+      "Empiezas una partida. En realidad, empiezas un diálogo.",
+      "Cada ficha que colocas dice algo de ti.",
+      "Crees que estás listo. Nadie lo está del todo.",
+      "Las reglas existen para los que no han encontrado los límites.",
+      "El caballo del ajedrez salta en L desde hace siglos. Nadie preguntó por qué.",
+      "La reina hace todo el trabajo. El rey espera. Ya te digo yo quién manda.",
+      "Ocho soldados que solo avanzan. ELMAAS preguntó: ¿y si tuvieran más opciones?",
+      "No juegas contra alguien. Juegas contra ti mismo también.",
+      "El tablero no miente. Esa es su única crueldad.",
+      "Aquí no hay apertura memorizada. Solo tu forma de pensar.",
+      "Lo que ves en este tablero depende de quién eres hoy.",
+      "La estrategia te tranquiliza. El instinto te revela.",
+      "Este juego recuerda todo lo que haces.",
+      "Una jugada. Una identidad.",
+      "El ajedrez tiene sesenta y cuatro casillas. Nosotros preferimos el infinito.",
+      "El peón sueña con ser reina en el ajedrez. Aquí tú eliges lo que quieres ser.",
+      "La torre siempre en línea recta. Qué aburrida dignidad la suya.",
+      "ELMAAS: porque los reyes ya tuvieron su tiempo.",
+      "Cada color que colocas es una letra. Juntos forman algo.",
+      "No ganas ELMAAS. Descubres algo sobre ti.",
+      "Los mejores jugadores no calculan más. Ven más.",
+      "La duda no es debilidad aquí. Es información valiosa.",
+      "Tu primer movimiento ya dice algo. Elige bien qué.",
+      "La confianza es lo primero que este juego pondrá a prueba.",
+      "Estrategia es lo que haces cuando estás seguro. ELMAAS pide más.",
+      "Viniste a ganar. Puede que te vayas habiendo aprendido más.",
+      "Este tablero no conoce tu reputación. Construye una nueva.",
+      "No hay aperturas aquí. Solo decisiones.",
+      "Cada ficha que tienes es una posibilidad. No todas valen igual.",
+      "El jugador que ve más lejos no siempre piensa más tiempo.",
+      "La paciencia es una estrategia. La impaciencia, una confesión.",
+      "Estás a punto de aprender algo sobre cómo piensas.",
+      "El tablero espera. Siempre es más paciente que tú.",
+      "ELMAAS no tiene rey porque los reyes no merecen protección.",
+      "No puedes engañar al tablero. Ve cada elección.",
+      "Lo que estás a punto de jugar — hazlo tuyo.",
+      "Dos colores. Un ganador. Cero suerte.",
+      "El tablero ve tu duda antes de que la veas tú.",
+      "No juegas contra alguien. Juegas contra la claridad.",
+      "Este juego tiene algo que el ajedrez nunca tuvo: libertad real.",
+      "Antes de jugar, mira. Mirar de verdad toma tiempo.",
+      "Lo que coloques aquí no podrá retirarse.",
+      "Cada decisión que tomes ya estaba dentro de ti.",
+      "Este es el juego que el ajedrez quería ser.",
+      "Cuatro colores, dos jugadores, una verdad.",
+      "El tablero es neutro. Tú no lo eres.",
+      "Bienvenido al juego que se recuerda.",
+      "Juegas para ganar. Pero te quedarás por haber entendido algo.",
+    ],
+
+    victoire: [
+      "Limpio. Preciso. Inevitable.",
+      "No ganaste. Dominaste.",
+      "Eso nunca estuvo cerca.",
+      "Viste más lejos, y se notó.",
+      "Control. De principio a fin.",
+      "Calculado. Todo.",
+      "Sin errores. Eso es raro.",
+      "Rompiste su lógica antes de que terminara de construirla.",
+      "Así es como se ve la maestría, en silencio.",
+      "No te apresuraste. Por eso ganaste.",
+      "Ellos jugaron el juego. Tú los jugaste a ellos.",
+      "Cada jugada fue un mensaje. Lo leyeron demasiado tarde.",
+      "Convertiste la incertidumbre en inevitabilidad.",
+      "Este tablero es tuyo ahora.",
+      "Hubo un momento en que todo fue obvio. Lo encontraste primero.",
+      "Lo hiciste parecer fácil. Las cosas más difíciles siempre lo parecen.",
+      "Tenían un plan. El tuyo era mejor.",
+      "Directo. Terminado.",
+      "Ganaste sin mostrar todo lo que tenías. Eso es fuerza real.",
+      "Nunca entendieron a qué se enfrentaban.",
+      "Jugaste el juego correcto al ritmo correcto.",
+      "La victoria sin ruido es la más elocuente.",
+      "Superaste, colocaste mejor, y duraste más.",
+      "La diferencia era invisible al principio. La hiciste innegable.",
+      "Merecido. Cada punto.",
+      "No les diste nada a lo que aferrarse.",
+      "Ese tipo de victoria es una firma.",
+      "No solo jugaste mejor. Pensaste diferente.",
+      "Las mejores victorias parecen que siempre iban a ocurrir.",
+      "Bien jugado no es suficiente. Bien comprendido.",
+    ],
+
+    defaite: [
+      "Lo viste demasiado tarde.",
+      "Ese error costó todo.",
+      "Dudaste una vez. Fue suficiente.",
+      "Estaban un paso adelante. Exactamente uno.",
+      "Sabías mejor. La próxima vez, actúa en consecuencia.",
+      "Cerca no es una categoría. Es una advertencia.",
+      "Perdiste el control en un momento específico. Encuéntralo.",
+      "El juego te expuso. Ese es su trabajo.",
+      "Jugaste lo que querías, no lo que se necesitaba.",
+      "El error fue pequeño. La consecuencia no.",
+      "No te superaron. Te superaron en paciencia.",
+      "Tu rival encontró la grieta. Tú la pusiste ahí.",
+      "Perder aquí es información. Úsala.",
+      "Diste algo que no podías permitirte dar.",
+      "Había una jugada mejor. Sabes cuál es.",
+      "El tablero te lo dijo. No escuchaste.",
+      "Leyeron tu patrón. Cámbialo.",
+      "Te apresuraste donde la paciencia era la jugada.",
+      "Esta derrota es el plano de tu próxima victoria.",
+      "Jugaste con suposiciones. Ellos jugaron con observación.",
+      "Lo que salió mal fue pequeño. Ese es el tipo de lección más difícil.",
+      "Fuiste bueno. Solo que hoy no lo suficiente.",
+      "El juego no te castigó. Te educó.",
+      "Cada derrota aquí tiene nombre. Encuentra el tuyo.",
+      "Lo verás diferente la próxima vez. Ese es el punto.",
+      "Perdiste porque no estabas presente. Ellos sí.",
+      "Un momento de claridad lo habría cambiado todo.",
+      "No perdiste contra ellos. Perdiste contra una versión de ti mismo.",
+      "Vuelve más afilado.",
+      "Así te ayuda este juego.",
+    ],
+
+    attente: [
+      "Están pensando. O están en pánico.",
+      "El tiempo revela debilidad. Observa.",
+      "Tu silencio es una presión que no tuviste que aplicar.",
+      "Están atascados. Tú no.",
+      "Cada segundo que toman es un segundo de incertidumbre para ellos.",
+      "Tu quietud ya es una jugada.",
+      "El tablero no cambia. Pero ellos sí.",
+      "Vinieron a ganar. Ahora solo están sobreviviendo.",
+      "Déjalos pensar. Pensar les cuesta.",
+      "Esta pausa te pertenece. Quédate en ella.",
+      "Su duda es una señal. Léela.",
+      "No tienes que hacer nada. El reloj lo hace por ti.",
+      "Están reconsiderando. Eso significa que están perdidos.",
+      "La paciencia aquí no es esperar. Es presionar.",
+      "Tu calma es lo más inquietante del tablero ahora mismo.",
+      "Esperaban respuesta. Les diste silencio.",
+      "Están buscando algo que no encontrarán.",
+      "Cada segundo que pasa desplaza el peso más hacia ti.",
+      "El tablero espera. Tú también. La diferencia es que tú lo elegiste.",
+      "Están calculando. Tú ya decidiste.",
+      "Mantén la compostura. El momento viene hacia ti.",
+      "Todo gran jugador sabe usar el silencio.",
+      "Están en su cabeza. Quédate fuera de la tuya.",
+      "Cuanto más esperan, más han perdido ya.",
+      "El silencio de tu rival es su admisión más ruidosa.",
+      "No necesitas actuar. La presión trabaja sin ti.",
+      "La quietud no es inacción. Es fuerza en reserva.",
+      "Esta pausa significa algo. Aprende a leer qué.",
+      "Ellos necesitan tiempo. Tú lo necesitaste antes. Esa es la diferencia.",
+      "Espera. Luego mueve. Ese orden importa.",
+    ],
+
+    analyse: [
+      "Analizando. Sin excusas ahora.",
+      "La verdad viene. Prepárate.",
+      "El motor lo ve todo. Cada jugada. Cada alternativa.",
+      "Se cometieron errores. Algunos fueron tuyos. Aquí están.",
+      "Veamos qué pasó realmente.",
+      "El juego terminó. La lección acaba de empezar.",
+      "Lo que creías que jugaste y lo que jugaste son cosas distintas.",
+      "El motor no tiene en cuenta tus intenciones.",
+      "Aquí dejas de ser jugador y empiezas a ser alumno.",
+      "Cada jugada que hiciste tenía una mejor. Vamos a encontrarlas.",
+      "El análisis no te juzga. Te muestra.",
+      "Lo que veas aquí te incomodará. Bien.",
+      "Algunas de tus mejores jugadas no eran las mejores.",
+      "Algunas de las peores eran peores de lo que pensabas.",
+      "El motor es más rápido que cualquier humano. También más implacable.",
+      "Estás a punto de ver el juego como realmente fue.",
+      "Esto no es crítica. Son datos.",
+      "La jugada de la que estabas orgulloso puede estar aquí. O no.",
+      "La verdad sobre este juego está llegando.",
+      "Entender una derrota aquí vale diez victorias casuales.",
+      "El motor encontró lo que te perdiste. Aprende su idioma.",
+      "Este análisis es una conversación. ¿Estás listo para escuchar?",
+      "Lo que te separó de ganar está a punto de quedar muy claro.",
+      "Prepárate para ver tu pensamiento desde fuera.",
+      "El tablero recordó cada elección. Ahora tú también.",
+      "El análisis es cómo los buenos jugadores se vuelven grandes.",
+      "Lo que pasó aquí, realmente pasó aquí.",
+      "Siéntate con esto. Vale la pena.",
+      "El análisis te mostrará dónde el juego aún era tuyo.",
+      "Tu próxima victoria empieza aquí, en lo que estás a punto de ver.",
+    ],
+  },
 };
 
-let _sloganCache = null;
-export function getSloganAleatoire(indexLangue) {
-  if (_sloganCache && _sloganCache.langue === indexLangue) return _sloganCache.phrase;
-  const code = LANGUES[indexLangue].code;
-  const liste = SLOGANS[code] || SLOGANS.fr;
-  const phrase = liste[Math.floor(Math.random() * liste.length)];
-  _sloganCache = { langue: indexLangue, phrase };
-  return phrase;
+// ═══════════════════════════════════════════════════════════
+// SYSTÈME GÉNÉRATIF — Combinaisons infinies par langue
+// Les fragments sont valides grammaticalement et poétiques
+// ═══════════════════════════════════════════════════════════
+
+const FRAGMENTS = {
+  fr: {
+    sujets:  ["Le plateau", "Ton adversaire", "Le jeu", "Ton coup", "Le silence", "L'erreur", "Ta décision", "Le temps", "Chaque case"],
+    verbes:  ["attend", "observe", "révèle", "trahit", "anticipe", "expose", "cache", "répond à", "questionne"],
+    fins:    ["ton erreur.", "ce que tu dissimules.", "ta prochaine hésitation.", "ce que tu refuses de voir.", "ta façon de penser.", "ta véritable intention.", "le joueur que tu es."],
+  },
+  en: {
+    sujets:  ["The board", "Your opponent", "This game", "Your move", "The silence", "Your choice", "Time", "Every square"],
+    verbes:  ["waits for", "reveals", "exposes", "anticipates", "questions", "challenges", "sees through", "demands"],
+    fins:    ["your next mistake.", "what you're hiding.", "who you really are.", "your hesitation.", "your intention.", "your true skill.", "the player behind the move."],
+  },
+  ar: {
+    sujets:  ["اللوحة", "خصمك", "هذه اللعبة", "حركتك", "الصمت", "قرارك", "الوقت", "كل خانة"],
+    verbes:  ["تنتظر", "تكشف", "ترصد", "تتوقع", "تُظهر", "تُجيب على", "تتحدى", "تسأل عن"],
+    fins:    ["خطأك القادم.", "ما تحاول إخفاءه.", "حقيقة من أنت.", "ترددك.", "نيتك الحقيقية.", "مستواك الفعلي.", "اللاعب خلف الحركة."],
+  },
+  es: {
+    sujets:  ["El tablero", "Tu rival", "Este juego", "Tu jugada", "El silencio", "Tu elección", "El tiempo", "Cada casilla"],
+    verbes:  ["espera", "revela", "expone", "anticipa", "cuestiona", "desafía", "ve a través de", "exige"],
+    fins:    ["tu próximo error.", "lo que escondes.", "quién eres realmente.", "tu duda.", "tu intención.", "tu nivel real.", "al jugador detrás de la jugada."],
+  },
+};
+
+function genererCitation(codeLangue) {
+  const f = FRAGMENTS[codeLangue] || FRAGMENTS.fr;
+  const s = f.sujets[Math.floor(Math.random() * f.sujets.length)];
+  const v = f.verbes[Math.floor(Math.random() * f.verbes.length)];
+  const e = f.fins[Math.floor(Math.random() * f.fins.length)];
+  return `${s} ${v} ${e}`;
 }
-export function getCitationAttente(indexLangue) {
-  const code = LANGUES[indexLangue].code;
-  const liste = SLOGANS[code] || SLOGANS.fr;
+
+// ═══════════════════════════════════════════════════════════
+// FONCTIONS D'ACCÈS AUX CITATIONS
+// ═══════════════════════════════════════════════════════════
+
+let _cache = {};
+
+export function getSloganAccueil(indexLangue) {
+  const code = LANGUES[indexLangue]?.code || "fr";
+  const liste = SLOGANS[code]?.accueil || SLOGANS.fr.accueil;
+  // Mélanger les générés et les existants : 85% stockés, 15% générés
+  if (Math.random() < 0.15) return genererCitation(code);
+  const key = `accueil_${code}`;
+  if (!_cache[key]) {
+    _cache[key] = Math.floor(Math.random() * liste.length);
+  }
+  return liste[_cache[key]];
+}
+
+export function getSloganAleatoire(indexLangue) {
+  // Alias pour accueil — compatibilité avec l'ancien code
+  const code = LANGUES[indexLangue]?.code || "fr";
+  const liste = SLOGANS[code]?.accueil || SLOGANS.fr.accueil;
+  if (Math.random() < 0.15) return genererCitation(code);
+  const k = `slogan_${code}_${Math.floor(Date.now() / 30000)}`;
+  if (!_cache[k]) _cache[k] = Math.floor(Math.random() * liste.length);
+  return liste[_cache[k]];
+}
+
+export function getSloganVictoire(indexLangue) {
+  const code = LANGUES[indexLangue]?.code || "fr";
+  const liste = SLOGANS[code]?.victoire || SLOGANS.fr.victoire;
   return liste[Math.floor(Math.random() * liste.length)];
 }
 
-// Classification de coup (analyse)
+export function getSloganDefaite(indexLangue) {
+  const code = LANGUES[indexLangue]?.code || "fr";
+  const liste = SLOGANS[code]?.defaite || SLOGANS.fr.defaite;
+  return liste[Math.floor(Math.random() * liste.length)];
+}
+
+export function getCitationAttente(indexLangue) {
+  const code = LANGUES[indexLangue]?.code || "fr";
+  const liste = SLOGANS[code]?.attente || SLOGANS.fr.attente;
+  return liste[Math.floor(Math.random() * liste.length)];
+}
+
+export function getSloganAnalyse(indexLangue) {
+  const code = LANGUES[indexLangue]?.code || "fr";
+  const liste = SLOGANS[code]?.analyse || SLOGANS.fr.analyse;
+  return liste[Math.floor(Math.random() * liste.length)];
+}
+
+// ═══════════════════════════════════════════════════════════
+// CLASSIFICATION DES COUPS (analyse)
+// ═══════════════════════════════════════════════════════════
+
 export const CLASSIFICATION_COUP = {
-  ELMAAS:    { couleur: "#ffd700", ordre: 0 },  // Brilliant
-  ELMAASYON: { couleur: "#88ff88", ordre: 1 },  // Great
-  MASSY:     { couleur: "#44cc44", ordre: 2 },  // Best
-  NOTMESSY:  { couleur: "#88aaff", ordre: 3 },  // Good
-  MISSED:    { couleur: "#ffaa44", ordre: 4 },  // Very bad
-  CHESS:     { couleur: "#ff4422", ordre: 5 },  // Worst
+  ELMAAS:    { couleur: "#ffd700", ordre: 0 },
+  ELMAASYON: { couleur: "#88ff88", ordre: 1 },
+  MASSY:     { couleur: "#44cc44", ordre: 2 },
+  NOTMESSY:  { couleur: "#88aaff", ordre: 3 },
+  MISSED:    { couleur: "#ffaa44", ordre: 4 },
+  CHESS:     { couleur: "#ff4422", ordre: 5 },
 };
+
+// ═══════════════════════════════════════════════════════════
+// TRADUCTIONS UI (toutes les clés de l'interface)
+// ═══════════════════════════════════════════════════════════
 
 export const T = {
   sousSlogan: [
@@ -110,8 +998,6 @@ export const T = {
   pseudoDispo: ["✓ Disponible", "✓ Available", "✓ متاح", "✓ Disponible"],
   pseudoPris: ["Ce pseudo est déjà pris", "This username is taken", "هذا الاسم مأخوذ", "Este nombre ya existe"],
   pseudoTropCourt: ["Au moins 2 caractères", "At least 2 characters", "حرفان على الأقل", "Al menos 2 caracteres"],
-
-  // Filtre mots sacrés
   motSacreErreur: [
     "Ce mot contient une référence sacrée. Si votre vrai nom contient ce mot (ex: Abdallah), choisissez un autre pseudo. Avec nos excuses.",
     "This word contains a sacred reference. If your real name contains it, please choose another. Our apologies.",
@@ -137,7 +1023,6 @@ export const T = {
   jouerContreAmi: ["Jouer contre un ami", "Play against a friend", "اللعب ضد صديق", "Jugar contra un amigo"],
   jouerContreIA: ["Jouer contre l'IA", "Play against AI", "اللعب ضد الذكاء الاصطناعي", "Jugar contra la IA"],
 
-  // "5 min trop cheesy"
   cheesyTitre: ["That's too cheesy to do here", "That's too cheesy to do here", "هذا مضجر جداً هنا", "Eso es demasiado aburrido aquí"],
   cheesyMessage: [
     "5 minutes par tour ? Ce n'est pas un jeu d'attente. Choisis un autre temps.",
@@ -193,11 +1078,9 @@ export const T = {
   ],
   annulerRecherche: ["Annuler", "Cancel", "إلغاء", "Cancelar"],
 
-  // Couleurs
   rouge: ["Rouge", "Red", "أحمر", "Rojo"],
   noir: ["Noir", "Black", "أسود", "Negro"],
 
-  // Header
   manche: ["manche", "round", "جولة", "ronda"],
   manches: ["manches", "rounds", "جولات", "rondas"],
   tour: ["Tour", "Turn", "الدور", "Turno"],
@@ -206,8 +1089,6 @@ export const T = {
   doubleTourActif: ["Double tour actif", "Double turn active", "دور مزدوج نشط", "Doble turno activo"],
   serie: ["Série", "Streak", "سلسلة", "Racha"],
   nouvellePartie: ["Nouvelle partie", "New game", "لعبة جديدة", "Nueva partida"],
-
-  // Score cumulé
   scoreContre: ["Score vs", "Score vs", "النتيجة ضد", "Puntuación vs"],
 
   adversaire: ["Adversaire", "Opponent", "الخصم", "Rival"],
@@ -217,34 +1098,28 @@ export const T = {
   reserve: ["Réserve :", "Reserve:", "الاحتياطي:", "Reserva:"],
   piecesPosees: ["Pièces posées :", "Pieces placed:", "القطع الموضوعة:", "Piezas colocadas:"],
   serieLabel: ["Série :", "Streak:", "السلسلة:", "Racha:"],
-  mainAdverseVide: ["Main adverse vide", "Opponent hand empty", "يد الخصم فارغة", "Mano rival vacía"],
 
-  // Actions
   actions: ["Actions", "Actions", "الإجراءات", "Acciones"],
   repiocher: ["Repiocher", "Redraw", "سحب جديد", "Volver a robar"],
   scout: ["Scout", "Scout", "استكشاف", "Explorar"],
   reconnaitre: ["Reconnaître", "Recognize", "تعرف", "Reconocer"],
   dejaTente: ["Déjà tenté", "Already tried", "تمت المحاولة", "Ya intentado"],
-  cliquerPlateau: ["Clique sur le plateau pour placer", "Click the board to place", "انقر على اللوحة للوضع", "Clic en el tablero"],
   pause: ["Pause", "Pause", "إيقاف مؤقت", "Pausa"],
   choisirRecompense: ["Choisissez votre récompense", "Choose your reward", "اختر مكافأتك", "Elige tu recompensa"],
   attendsTonTour: ["Attends ton tour...", "Wait your turn...", "انتظر دورك...", "Espera tu turno..."],
 
-  // Message entre joueurs
   envoyerMessage: ["Envoyer un message (max 30)", "Send a message (max 30)", "إرسال رسالة (30 كحد أقصى)", "Mensaje (máx 30)"],
-  attentionSpam: ["Patiente 3 secondes...", "Wait 3 seconds...", "انتظر 3 ثوان...", "Espera 3 segundos..."],
 
-  // Pouvoirs
   puzzleComplete: ["Puzzle complété", "Puzzle completed", "اللغز مكتمل", "Rompecabezas completado"],
   serieDe: ["Série de", "Streak of", "سلسلة من", "Racha de"],
   rienFaire: ["Rien faire", "Do nothing", "لا شيء", "No hacer nada"],
   rienFaireDesc: ["Passer au tour suivant", "Skip to next turn", "الانتقال للدور التالي", "Al siguiente turno"],
   proteger: ["Protéger", "Protect", "حماية", "Proteger"],
-  protegerDesc: ["Une pièce invulnérable 1 tour", "One piece invulnerable 1 turn", "قطعة محصنة لدور", "Pieza invulnerable 1 turno"],
+  protegerDesc: ["Protège une case du plateau pendant 1 tour", "Protect a board cell for 1 turn", "احمِ خانة من اللوحة لدور واحد", "Protege una casilla del tablero 1 turno"],
   echanger: ["Échanger", "Exchange", "تبادل", "Intercambiar"],
-  echangerDesc: ["Recolorie une pièce adverse", "Recolor opponent piece", "إعادة تلوين قطعة الخصم", "Recolorea rival"],
+  echangerDesc: ["Recolorie une case adverse", "Recolor opponent's cell", "إعادة تلوين خانة الخصم", "Recolorea casilla rival"],
   extraire: ["Extraire", "Extract", "استخراج", "Extraer"],
-  extraireDesc: ["Retire jusqu'à 2 pièces", "Remove up to 2 pieces", "إزالة قطعتين", "Retira hasta 2"],
+  extraireDesc: ["Retire jusqu'à 2 pièces", "Remove up to 2 pieces", "إزالة حتى قطعتين", "Retira hasta 2"],
 
   scoutProchaines: ["prochaines pièces", "next pieces", "القطع التالية", "próximas piezas"],
   echangeAleatoire: ["échangée(s) aléatoirement", "swapped randomly", "تبديلها عشوائياً", "cambiadas al azar"],
@@ -261,7 +1136,6 @@ export const T = {
   fermer: ["Fermer", "Close", "إغلاق", "Cerrar"],
   min3CarDevinette: ["Min 3 caractères.", "Min 3 chars.", "3 أحرف على الأقل.", "Mín 3 caracteres."],
 
-  // Manuel
   manuelTitre: ["Manuel ELMAAS", "ELMAAS Manual", "دليل إلماس", "Manual ELMAAS"],
   manuelIntro: ["Un jeu où la stratégie rencontre l'art.", "Where strategy meets art.", "حيث تلتقي الاستراتيجية بالفن.", "Donde la estrategia se une al arte."],
   objectif: ["Objectif", "Objective", "الهدف", "Objetivo"],
@@ -276,7 +1150,6 @@ export const T = {
   astuceTitre: ["Astuce", "Tip", "نصيحة", "Consejo"],
   astuceDesc: ["Forcer l'adversaire à rejouer peut valoir plus que jouer.", "Forcing opponent to replay can beat playing.", "إجبار الخصم على اللعب قد يكون أفضل.", "Forzar al rival puede ganar."],
 
-  // Fin partie
   tempsEcoule: ["Temps écoulé", "Time's up", "انتهى الوقت", "Tiempo agotado"],
   rougeNonJoue: ["Le Rouge n'a pas joué à temps.", "Red didn't play in time.", "لم يلعب الأحمر في الوقت.", "Rojo no jugó."],
   noirNonJoue: ["Le Noir n'a pas joué à temps.", "Black didn't play in time.", "لم يلعب الأسود في الوقت.", "Negro no jugó."],
@@ -291,8 +1164,6 @@ export const T = {
   egalite: ["Egalite", "Tie", "تعادل", "Empate"],
   bienJoue: ["Bien joue", "Well played", "أحسنت", "Bien jugado"],
   remporteManche: ["remporte la manche", "wins the round", "يفوز بالجولة", "gana"],
-  manchesRouge: ["Rouge :", "Red:", "الأحمر:", "Rojo:"],
-  manchesNoir: ["Noir :", "Black:", "الأسود:", "Negro:"],
 
   pauseDemandee: ["Pause demandée", "Pause requested", "تم طلب الإيقاف", "Pausa solicitada"],
   attenteReponseAdverse: ["En attente...", "Waiting...", "في انتظار...", "Esperando..."],
@@ -306,8 +1177,8 @@ export const T = {
   revancheDemandee: ["Revanche demandée", "Rematch requested", "طلب مباراة ثأرية", "Revancha"],
   adversaireProposeRevanche: ["propose une revanche.", "proposes a rematch.", "يقترح مباراة ثأرية.", "propone revancha."],
 
-  cliquerTienne: ["Clique sur une de tes pièces", "Click one of your pieces", "انقر على قطعة لك", "Clic en tu pieza"],
-  cliquerDonnerPrendre: ["Clique ta pièce puis celle adverse", "Click your piece then opponent's", "انقر قطعتك ثم قطعة الخصم", "Tu pieza luego rival"],
+  cliquerTienne: ["Clique sur une case que tu possèdes", "Click a cell you own", "انقر على خانة تملكها", "Clic en una casilla tuya"],
+  cliquerDonnerPrendre: ["Clique sur une case adverse à échanger", "Click an opponent cell to exchange", "انقر خانة الخصم للتبادل", "Clic casilla rival para intercambiar"],
   cliquer1ou2: ["Clique 1 ou 2 pièces puis Confirmer", "Click 1 or 2 pieces then Confirm", "انقر 1 أو 2 قطع ثم أكد", "1 o 2 piezas luego Confirmar"],
   cliquerPieceAdverse: ["Clique une pièce adverse", "Click opponent piece", "انقر قطعة الخصم", "Clic pieza rival"],
   selectionnee: ["sélectionnée", "selected", "محددة", "seleccionada"],
@@ -337,7 +1208,6 @@ export const T = {
   parties: ["Parties", "Games", "الألعاب", "Partidas"],
   winPct: ["Win%", "Win%", "فوز%", "% Victorias"],
 
-  // Analyse
   analyseTitre: ["Analyse de partie", "Game analysis", "تحليل المباراة", "Análisis"],
   analyseQuotaAtteint: [
     "Quota d'analyse atteint pour aujourd'hui. Passe à ELMAASYON ou ELMAAS pour plus.",
@@ -350,11 +1220,16 @@ export const T = {
   coupSur: ["Coup", "Move", "الحركة", "Movimiento"],
 };
 
+// ═══════════════════════════════════════════════════════════
+// FONCTION D'ACCÈS UI
+// ═══════════════════════════════════════════════════════════
+
 export function t(cle, indexLangue = 0) {
   const entree = T[cle];
-  if (!entree) { console.warn(`[t] ${cle}?`); return cle; }
+  if (!entree) { console.warn(`[t] clé manquante: ${cle}`); return cle; }
   return entree[indexLangue] || entree[0];
 }
+
 export function getIndexLangue(codeLangue) {
   const idx = LANGUES.findIndex(l => l.code === codeLangue);
   return idx >= 0 ? idx : 0;

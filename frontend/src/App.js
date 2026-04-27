@@ -6,7 +6,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 import Board from "./Board";
-import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, CLASSIFICATION_COUP } from "./translations";
+import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, getSloganVictoire, getSloganDefaite, getSloganAnalyse, CLASSIFICATION_COUP } from "./translations";
 import "./App.css";
 import EcranAnalyse from "./EcranAnalyse";
 
@@ -1388,27 +1388,6 @@ export default function App() {
     </div>
   );
 
-  // Écran d'analyse (s'affiche par dessus le jeu après une manche terminée)
-  if (showAnalyse) {
-    const couleurMoi = modeIA !== "aucune"
-      ? (couleurHumain || "rouge")
-      : (monRole === "joueur2" ? "noir" : "rouge");
-    return (
-      <div className="app">
-        {popupParams}
-        <EcranAnalyse
-          partieId={partieId}
-          couleurJoueur={couleurMoi}
-          mode={modeAnalyse}
-          pixelsPhoto={pixelsPhoto}
-          taille={taille}
-          L={L}
-          onFermer={() => { setShowAnalyse(false); handleReset(); }}
-        />
-      </div>
-    );
-  }
-
   // Jeu
   return (
     <div className="app jeu">
@@ -1437,6 +1416,12 @@ export default function App() {
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
                     {egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
+                  </div>
+                  <div style={{
+                    fontSize: 12, fontStyle: "italic", color: "var(--muted)",
+                    textAlign: "center", maxWidth: 320, lineHeight: 1.5, padding: "4px 0"
+                  }}>
+                    {egalite ? "" : jaiGagne ? getSloganVictoire(L) : getSloganDefaite(L)}
                   </div>
                 </>
               );
@@ -1643,7 +1628,8 @@ export default function App() {
                   <MiniPiece piece={piece} couleur={joueurAffiche?.couleur}
                     estSelectionnee={pieceIdx === i || estSelectPourDonner}
                     onClick={() => {
-                      if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
+                      if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
+                      else if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
                       else if (!enModeCible && !attenteChoixPouvoir && estMonTour) { setPieceIdx(pieceIdx === i ? null : i); }
                     }} />
                 </div>

@@ -5,9 +5,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Board from "./Board";
-import { t, CLASSIFICATION_COUP } from "./translations";
+import { t, getSloganAnalyse } from "./translations";
 
-const API = "https://elmaas-backend.onrender.com";
+const API = "https://elmaas.up.railway.app";
 const COULEURS_CLASSE = {
   ELMAAS:    "#ffd700",
   ELMAASYON: "#88ff88",
@@ -72,6 +72,9 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhot
           <div className="spinner" style={{ margin: "20px auto" }} />
           <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
             Analyse en cours... (peut prendre quelques minutes)
+          </div>
+          <div style={{ fontSize: 11, fontStyle: "italic", color: "var(--muted)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}>
+            {getSloganAnalyse(L || 0)}
           </div>
         </div>
       </div>
