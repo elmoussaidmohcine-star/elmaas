@@ -1580,7 +1580,7 @@ export default function App() {
         <div className="header-gauche">
           <h1 className="titre-jeu-petit">ELMAAS</h1>
           <div className="pseudo-joueur rouge">
-            <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS") : (utilisateur?.pseudo || "Joueur 1")}</span>
+            <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : (utilisateur?.pseudo || "Joueur 1")}</span>
             <span className="pseudo-score">{etat?.scores?.rouge ?? 0}</span>
           </div>
         </div>
@@ -1599,7 +1599,7 @@ export default function App() {
 
         <div className="header-droite">
           <div className="pseudo-joueur noir">
-            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}</span>
+            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : pseudoAdverse}</span>
             <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
           </div>
           <div className="tour-info">

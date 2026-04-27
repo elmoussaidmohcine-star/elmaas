@@ -753,7 +753,23 @@ def coup_ia(partie_id: str):
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
         joueur_ia = etat.joueur_actif()
         adverse = etat.joueur_adverse()
-        if niveau >= 2 and adverse.main_active:
+        if niveau >= 4:
+            # NIVEAU 4 : choix intelligent du pouvoir
+            from ai_player import choisir_pouvoir_niveau_4
+            pouvoir_choisi, cible = choisir_pouvoir_niveau_4(etat, joueur_ia, resultat.get("puzzles_completes", []))
+            if pouvoir_choisi == "extraire" and cible:
+                from game_engine import appliquer_bonus_serie
+                bonus = appliquer_bonus_serie(etat, cible)
+                if bonus.get("recoloriages_possibles", 0) > 0 and cible:
+                    from game_engine import recolorier_piece
+                    recolorier_piece(etat, cible[0])
+            elif pouvoir_choisi == "echanger" and cible:
+                from game_engine import appliquer_pouvoir
+                appliquer_pouvoir(etat, "echanger", cible)
+            else:
+                from game_engine import appliquer_pouvoir
+                appliquer_pouvoir(etat, "rien")
+        elif niveau >= 2 and adverse.main_active:
             piece_prise = adverse.main_active.pop(0)
             if joueur_ia.main_active:
                 piece_donnee = joueur_ia.main_active.pop(-1)

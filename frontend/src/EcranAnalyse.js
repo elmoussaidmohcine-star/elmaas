@@ -1,5 +1,5 @@
 // ELMAAS — EcranAnalyse.js (CORRIGÉ)
-// Écran qui rejoue la partie coup par coup avec classifications
+// Analyse des DEUX joueurs avec plateau évolutif
 
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -17,27 +17,40 @@ const COULEURS_CLASSE = {
 };
 
 export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhoto, taille, onFermer, L }) {
-  const [analyse, setAnalyse] = useState(null);
+  const [analyseMoi, setAnalyseMoi] = useState(null);
+  const [analyseAdv, setAnalyseAdv] = useState(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
   const [indexCoup, setIndexCoup] = useState(0);
+  const [coteActif, setCoteActif] = useState("moi"); // "moi" ou "adv"
   const [quotaInfo, setQuotaInfo] = useState(null);
-  const [coupActuel, setCoupActuel] = useState(null);
-  const [modeRetenter, setModeRetenter] = useState(false);
+  const [etatsPlateau, setEtatsPlateau] = useState([]); // état après chaque coup
 
   useEffect(() => {
     const fetchAnalyse = async () => {
       try {
         const token = localStorage.getItem("elmaas_token");
-        const res = await axios.post(
+
+        // Analyse MOI
+        const resMoi = await axios.post(
           `${API}/analyse/${partieId}`,
           { couleur: couleurJoueur, mode: mode || "rapide" },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setAnalyse(res.data.analyse);
+        setAnalyseMoi(resMoi.data.analyse);
+
+        // Analyse ADVERSAIRE (couleur opposée)
+        const couleurAdv = couleurJoueur === "rouge" ? "noir" : "rouge";
+        const resAdv = await axios.post(
+          `${API}/analyse/${partieId}`,
+          { couleur: couleurAdv, mode: mode || "rapide" },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setAnalyseAdv(resAdv.data.analyse);
+
         setQuotaInfo({
-          restant: res.data.quota_restant,
-          plan: res.data.plan
+          restant: resMoi.data.quota_restant,
+          plan: resMoi.data.plan
         });
       } catch (err) {
         if (err.response?.status === 429) {
@@ -54,11 +67,35 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     fetchAnalyse();
   }, [partieId, couleurJoueur, mode]);
 
-  useEffect(() => {
-    if (analyse && analyse.coups[indexCoup]) {
-      setCoupActuel(analyse.coups[indexCoup]);
+  // Construire l'état du plateau pour le coup actuel
+  const analyse = coteActif === "moi" ? analyseMoi : analyseAdv;
+  const coupActuel = analyse?.coups?.[indexCoup];
+
+  // Reconstruire l'état du plateau à partir du snapshot
+  const etatPlateau = (() => {
+    if (!coupActuel?.plateau_avant) return null;
+    const pieces = {};
+    for (const [cle, val] of Object.entries(coupActuel.plateau_avant)) {
+      pieces[cle] = val;
     }
-  }, [analyse, indexCoup]);
+    // Ajouter le coup actuel
+    if (coupActuel.type === "poser" && coupActuel.piece_data) {
+      const orig = coupActuel.origine;
+      for (const [dr, dc] of coupActuel.piece_data.cellules || []) {
+        const r = orig[0] + dr, c = orig[1] + dc;
+        pieces[`${r},${c}`] = coupActuel.couleur;
+      }
+    }
+    return {
+      plateau: {
+        pieces,
+        puzzles: {}, // simplifié
+        cellules_libres: [],
+        cellules_actives: Object.keys(pieces),
+        grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0))
+      }
+    };
+  })();
 
   const precedent = () => setIndexCoup(Math.max(0, indexCoup - 1));
   const suivant = () => setIndexCoup(Math.min((analyse?.coups.length || 1) - 1, indexCoup + 1));
@@ -94,36 +131,46 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     );
   }
 
-  if (!analyse || !analyse.coups.length) {
-    return (
-      <div className="popup-overlay" onClick={onFermer}>
-        <div className="popup-pouvoir" onClick={e => e.stopPropagation()}>
-          <div className="popup-titre">{t("analyseTitre", L)}</div>
-          <div style={{ color: "var(--muted)" }}>Aucun coup à analyser.</div>
-          <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
-        </div>
-      </div>
-    );
-  }
-
+  const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
+  const precision = analyseCourante?.precision_pct ?? 0;
+  const stats = analyseCourante?.stats || {};
   const classification = coupActuel?.evaluation?.classification;
   const couleurClasse = COULEURS_CLASSE[classification] || "var(--muted)";
+  const couleurLabel = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
   return (
     <div className="ecran-analyse-overlay">
       <div className="ecran-analyse">
         {/* Header */}
         <div className="analyse-header">
-          <div className="analyse-titre">{t("analyseTitre", L)}</div>
+          <div className="analyse-titre">{t("analyseTitre", L)} — {couleurLabel.toUpperCase()}</div>
           <div className="analyse-precision">
-            {analyse.precision_pct}% <small>précision</small>
+            {precision}% <small>précision</small>
           </div>
           <button className="btn-reset" onClick={onFermer}>{t("fermer", L)}</button>
         </div>
 
-        {/* Stats récapitulatives */}
+        {/* Switch joueur */}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "8px" }}>
+          <button 
+            className={`popup-btn ${coteActif === "moi" ? "popup-btn-revanche" : ""}`}
+            onClick={() => { setCoteActif("moi"); setIndexCoup(0); }}
+            style={{ flex: 1, maxWidth: 200, justifyContent: "center" }}
+          >
+            Moi ({couleurJoueur}) — {analyseMoi?.precision_pct ?? 0}%
+          </button>
+          <button 
+            className={`popup-btn ${coteActif === "adv" ? "popup-btn-revanche" : ""}`}
+            onClick={() => { setCoteActif("adv"); setIndexCoup(0); }}
+            style={{ flex: 1, maxWidth: 200, justifyContent: "center" }}
+          >
+            Adversaire ({couleurJoueur === "rouge" ? "noir" : "rouge"}) — {analyseAdv?.precision_pct ?? 0}%
+          </button>
+        </div>
+
+        {/* Stats */}
         <div className="analyse-stats">
-          {Object.entries(analyse.stats).map(([cls, nb]) => nb > 0 && (
+          {Object.entries(stats).map(([cls, nb]) => nb > 0 && (
             <div key={cls} className="stat-badge" style={{ borderColor: COULEURS_CLASSE[cls], color: COULEURS_CLASSE[cls] }}>
               <span className="stat-nb">{nb}</span>
               <span className="stat-label">{cls}</span>
@@ -134,81 +181,56 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         {/* Zone de lecture */}
         <div className="analyse-corps">
           <div className="analyse-plateau">
-            <Board
-              etat={{ plateau: { pieces: {}, puzzles: {}, cellules_libres: [], cellules_actives: [], grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0)) } }}
-              taille={taille}
-              pixelsPhoto={pixelsPhoto}
-              onPoserPiece={null}
-            />
+            {etatPlateau ? (
+              <Board
+                etat={etatPlateau}
+                taille={taille}
+                pixelsPhoto={pixelsPhoto}
+                onPoserPiece={null}
+              />
+            ) : (
+              <div style={{ color: "var(--muted)", textAlign: "center" }}>Chargement du plateau...</div>
+            )}
           </div>
 
           <div className="analyse-panneau">
             <div className="analyse-coup-info">
               <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                {t("coupSur", L)} {indexCoup + 1} / {analyse.coups.length}
+                Coup {indexCoup + 1} / {analyseCourante?.coups.length || 0}
               </div>
               <div className="analyse-badge-classe" style={{
                 background: couleurClasse + "22",
                 borderColor: couleurClasse,
                 color: couleurClasse
               }}>
-                {classification}
+                {classification || "—"}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
                 Tour {coupActuel?.numero_tour} — {coupActuel?.couleur}
               </div>
               {coupActuel?.evaluation?.rang > 1 && (
                 <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                  Rang du coup : {coupActuel.evaluation.rang}/{coupActuel.evaluation.total_coups}
+                  Rang : {coupActuel.evaluation.rang}/{coupActuel.evaluation.total_coups}
                 </div>
               )}
               {coupActuel?.evaluation?.meilleur_coup && classification !== "ELMAAS" && classification !== "MASSY" && (
                 <div style={{ fontSize: 11, color: "#ffaa44" }}>
-                  Meilleur : pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1} en ({coupActuel.evaluation.meilleur_coup.origine.join(",")})
+                  Meilleur : pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1}
                 </div>
               )}
             </div>
 
             <div className="analyse-navigation">
-              <button className="popup-btn" onClick={precedent} disabled={indexCoup === 0}>◄</button>
-              <button className="popup-btn" onClick={suivant} disabled={indexCoup >= analyse.coups.length - 1}>►</button>
+              <button className="popup-btn" onClick={precedent} disabled={indexCoup === 0}>◄ Précédent</button>
+              <button className="popup-btn" onClick={suivant} disabled={indexCoup >= (analyseCourante?.coups.length || 1) - 1}>Suivant ►</button>
             </div>
-
-            <button className="popup-btn popup-btn-revanche"
-              onClick={() => setModeRetenter(true)}
-              style={{ marginTop: 12 }}>
-              {t("rejouerCoup", L)}
-            </button>
           </div>
         </div>
 
         {/* Quota */}
-        {quotaInfo && quotaInfo.restant >= 0 && (
+        {quotaInfo && (
           <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", padding: 8 }}>
-            Analyses restantes aujourd'hui : {quotaInfo.restant} ({quotaInfo.plan})
-          </div>
-        )}
-
-        {modeRetenter && (
-          <div className="popup-overlay" onClick={() => setModeRetenter(false)}>
-            <div className="popup-pouvoir" onClick={e => e.stopPropagation()}>
-              <div className="popup-titre">Rejouer ce coup</div>
-              <div className="popup-sous-titre">
-                Reprendre la partie à partir du coup {indexCoup + 1} contre l'IA Expert ?
-              </div>
-              <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
-                <button className="popup-btn popup-btn-revanche" style={{ flex: 1 }}
-                  onClick={() => {
-                    alert("Fonctionnalité en cours d'implémentation — le frontend est prêt.");
-                    setModeRetenter(false);
-                  }}>
-                  Oui, jouer
-                </button>
-                <button className="popup-btn" style={{ flex: 1 }} onClick={() => setModeRetenter(false)}>
-                  Annuler
-                </button>
-              </div>
-            </div>
+            Analyses restantes : {quotaInfo.restant === -1 ? "∞" : quotaInfo.restant}
           </div>
         )}
       </div>
