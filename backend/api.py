@@ -469,9 +469,23 @@ def lancer_analyse(partie_id: str):
     etat = parties.get(partie_id)
     historique = historique_coups.get(partie_id, [])
     etat_init_dict = etats_initiaux.get(partie_id)
- 
-    if not etat or not historique or not etat_init_dict:
-        return jsonify({"erreur": "Partie introuvable ou déjà analysée"}), 404
+
+    # Recharger depuis DB si nécessaire (après redémarrage Render)
+    if not historique or not etat_init_dict:
+        from models import PartieDB
+        partie_db = PartieDB.query.get(partie_id)
+        if partie_db:
+            if not historique and partie_db.historique_json:
+                import json as _json2
+                historique = _json2.loads(partie_db.historique_json)
+                historique_coups[partie_id] = historique
+            if not etat_init_dict and partie_db.etat_initial_json:
+                import json as _json2
+                etat_init_dict = _json2.loads(partie_db.etat_initial_json)
+                etats_initiaux[partie_id] = etat_init_dict
+
+    if not historique or not etat_init_dict:
+        return jsonify({"erreur": "Partie introuvable ou historique manquant"}), 404
  
     # Vérif authentification + quotas
     from auth import get_user_from_request
@@ -743,23 +757,88 @@ def coup_ia(partie_id: str):
 
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
 
-    # Si l'IA a complété des puzzles et doit choisir un pouvoir :
-    # on applique automatiquement "rien" et on passe le tour.
+    # Si l'IA a complété des puzzles → choisir un pouvoir intelligemment
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
+        pouvoir_ia = "rien"
+        infos_pouvoir_ia = {}  # Détails pour affichage frontend
+
         try:
-            bonus = appliquer_pouvoir(etat, "rien")
-            resultat.update(bonus)
+            # Stratégie de choix du pouvoir :
+            # 1. Si l'adversaire a des cases non protégées dans des puzzles quasi-complets → échanger
+            # 2. Si j'ai des cases dans des puzzles que je veux protéger → protéger
+            # 3. Sinon → rien
+            pieces_plateau = etat.plateau.pieces
+            puzzles = etat.plateau.puzzles
+            couleur_adv = "noir" if joueur.couleur == "rouge" else "rouge"
+
+            # Chercher la meilleure case adverse à échanger
+            meilleur_echange = None
+            meilleur_score_ech = 0
+            for puzzle in puzzles.values():
+                if puzzle.complete_par or puzzle.brise:
+                    continue
+                if puzzle.type_couleur not in (f"mono_{joueur.couleur}", "mixte"):
+                    continue
+                for r, c in puzzle.cellules:
+                    cle = f"{r},{c}"
+                    if pieces_plateau.get(cle) == couleur_adv:
+                        if cle not in (etat.joueur_adverse().pieces_protegees or set()):
+                            nb_adv = sum(1 for rr, cc in puzzle.cellules
+                                         if pieces_plateau.get(f"{rr},{cc}") == couleur_adv)
+                            if nb_adv > meilleur_score_ech:
+                                meilleur_score_ech = nb_adv
+                                meilleur_echange = (r, c)
+
+            # Chercher la meilleure case à protéger
+            meilleur_protection = None
+            meilleur_score_prot = 0
+            for puzzle in puzzles.values():
+                if puzzle.complete_par or puzzle.brise:
+                    continue
+                for r, c in puzzle.cellules:
+                    cle = f"{r},{c}"
+                    if pieces_plateau.get(cle) == joueur.couleur:
+                        nb_moi = sum(1 for rr, cc in puzzle.cellules
+                                     if pieces_plateau.get(f"{rr},{cc}") == joueur.couleur)
+                        if nb_moi > meilleur_score_prot:
+                            meilleur_score_prot = nb_moi
+                            meilleur_protection = (r, c)
+
+            if meilleur_echange and meilleur_score_ech >= 2:
+                # Échanger une case adverse dans un puzzle favorable
+                r_ech = appliquer_pouvoir(etat, "echanger", meilleur_echange)
+                if r_ech.get("succes"):
+                    pouvoir_ia = "echanger"
+                    infos_pouvoir_ia = {"case": list(meilleur_echange), "couleur_avant": couleur_adv}
+                    resultat.update(r_ech)
+            elif meilleur_protection and niveau >= 2:
+                # Protéger une case importante
+                r_prot = appliquer_pouvoir(etat, "proteger", meilleur_protection)
+                if r_prot.get("succes"):
+                    pouvoir_ia = "proteger"
+                    infos_pouvoir_ia = {"case": list(meilleur_protection)}
+                    resultat.update(r_prot)
+            else:
+                bonus = appliquer_pouvoir(etat, "rien")
+                resultat.update(bonus)
+
         except Exception as e_pouvoir:
             print(f"[ia] Erreur pouvoir auto : {e_pouvoir}")
-        # passer_tour n'a pas été appelé dans jouer_tour (bloqué par attente_pouvoir)
-        # → on le fait ici manuellement
+            try:
+                appliquer_pouvoir(etat, "rien")
+            except:
+                pass
+
+        # Passer le tour (jouer_tour ne l'a pas fait car attente_pouvoir=True)
         try:
             if not etat.manche_terminee:
                 etat.passer_tour()
         except Exception as e_tour:
             print(f"[ia] Erreur passer_tour : {e_tour}")
-        # Signaler au frontend que le pouvoir a été géré
+
         resultat["attente_pouvoir"] = False
+        resultat["pouvoir_ia"] = pouvoir_ia
+        resultat["infos_pouvoir_ia"] = infos_pouvoir_ia
 
     # FIX CRITIQUE : s'assurer que le timestamp est bien à MAINTENANT après le tour IA
     # (le passer_tour a déjà été appelé dans jouer_tour si pas d'attente_pouvoir)
@@ -917,7 +996,7 @@ def supprimer_partie(partie_id: str):
         bonus_double_tour.pop(partie_id, None)
         reconnaissance_tentee.pop(partie_id, None)
         joueurs_connectes.pop(partie_id, None)
-       # demandes_revanche.pop(partie_id, None)
+        demandes_revanche.pop(partie_id, None)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
 

@@ -704,6 +704,41 @@ function PopupPouvoir({ onChoisir, serie, L }) {
   );
 }
 
+function PopupIAPouvoir({ pouvoir, infos, couleurIA, onFermer, L }) {
+  const couleurLabel = couleurIA === "rouge" ? "Rouge" : "Noir";
+  return (
+    <div className="popup-overlay" onClick={onFermer}>
+      <div className="popup-pouvoir" onClick={e => e.stopPropagation()} style={{ gap: 14, minWidth: 300 }}>
+        <div className="popup-titre" style={{ color: "var(--accent)" }}>
+          {pouvoir === "echanger" ? "Echange IA" : "Protection IA"}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
+          {couleurLabel} a utilise son pouvoir
+        </div>
+        {pouvoir === "echanger" && infos.case && (
+          <div style={{ fontSize: 13, textAlign: "center", padding: "8px 12px",
+            background: "var(--bg2)", borderRadius: 8, border: "1px solid var(--bord)" }}>
+            Case echangee : ({infos.case[0]}, {infos.case[1]})<br/>
+            <span style={{ color: infos.couleur_avant === "rouge" ? "#ff4422" : "#4488ff", fontWeight: 700 }}>
+              {infos.couleur_avant}
+            </span>
+            {" → "}
+            <span style={{ color: couleurIA === "rouge" ? "#ff4422" : "#4488ff", fontWeight: 700 }}>
+              {couleurIA}
+            </span>
+          </div>
+        )}
+        {pouvoir === "proteger" && infos.case && (
+          <div style={{ fontSize: 13, textAlign: "center", padding: "8px 12px",
+            background: "var(--bg2)", borderRadius: 8, border: "1px solid var(--bord)" }}>
+            Case protegee : ({infos.case[0]}, {infos.case[1]})
+          </div>
+        )}
+        <button className="popup-btn" onClick={onFermer}>OK</button>
+      </div>
+    </div>
+  );
+}
 function PopupScout({ pieces, couleur, echanges, onFermer, L }) {
   return (
     <div className="popup-overlay">
@@ -855,6 +890,7 @@ export default function App() {
   const [extractionsEnCours, setExtractionsEnCours] = useState([]);
   const [pieceADonner, setPieceADonner] = useState(null);
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
+  const [popupIAPouvoir, setPopupIAPouvoir] = useState(null); // { type: "proteger"|"echanger", details }
   const [scoutEchanges, setScoutEchanges] = useState([]);
   const [matchmakingActif, setMatchmakingActif] = useState(false);
   const [modeAnalyse, setModeAnalyse] = useState("rapide");
@@ -1163,6 +1199,15 @@ export default function App() {
       const nouvelEtat = res.data.etat;
       setEtat(nouvelEtat);
 
+      // Afficher popup si l'IA a utilisé un pouvoir
+      if (res.data.pouvoir_ia && res.data.pouvoir_ia !== "rien") {
+        setPopupIAPouvoir({
+          type: res.data.pouvoir_ia,
+          infos: res.data.infos_pouvoir_ia || {},
+          couleurIA: modeIA === "j1" ? "rouge" : "noir",
+        });
+      }
+
       // Si la manche est terminée, afficher le résultat
       if (nouvelEtat?.manche_terminee && nouvelEtat?.gagnant) {
         const scores = calculer_scores_locaux(nouvelEtat);
@@ -1247,9 +1292,20 @@ export default function App() {
   const handlePouvoir = useCallback((choix) => {
     setPopup(null);
     if (choix === "rien") envoyerPouvoir({ pouvoir: "rien" });
-    else if (choix === "proteger") { setAttenteChoixPouvoir(true); setPopup({ type: "attente_cible", pouvoir: "proteger", message: t("cliquerTienne", L) }); }
-    else if (choix === "echanger") { setPieceADonner(null); setAttenteChoixPouvoir(true); setPopup({ type: "attente_cible", pouvoir: "echanger", message: t("cliquerDonnerPrendre", L) }); }
-    else if (choix === "extraire") { setExtractionsEnCours([]); setAttenteChoixPouvoir(true); setPopup({ type: "attente_extraire", message: t("cliquer1ou2", L) }); }
+    else if (choix === "proteger") {
+      setAttenteChoixPouvoir(true);
+      setPopup({ type: "attente_cible", pouvoir: "proteger", message: t("cliquerTienne", L) });
+    }
+    else if (choix === "echanger") {
+      setPieceADonner(null);
+      setAttenteChoixPouvoir(true);
+      setPopup({ type: "attente_cible", pouvoir: "echanger", message: t("cliquerAdversaire", L) });
+    }
+    else if (choix === "extraire") {
+      setExtractionsEnCours([]);
+      setAttenteChoixPouvoir(true);
+      setPopup({ type: "attente_extraire", message: t("cliquer1ou2", L) });
+    }
   }, [envoyerPouvoir, L]);
 
   const handleCiblePouvoir = useCallback(async (position) => {
@@ -1274,7 +1330,8 @@ export default function App() {
       return;
     }
     if (p.type === "attente_cible") {
-      const pouvoir = p.pouvoir; 
+      const pouvoir = p.pouvoir;
+      setAttenteChoixPouvoir(false);
       setPopup(null);
       await envoyerPouvoir({ pouvoir, cible_pouvoir: position });
     }
@@ -1627,6 +1684,16 @@ export default function App() {
       )}
 
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} L={L} />}
+
+      {popupIAPouvoir && (
+        <PopupIAPouvoir
+          pouvoir={popupIAPouvoir.type}
+          infos={popupIAPouvoir.infos}
+          couleurIA={popupIAPouvoir.couleurIA}
+          onFermer={() => setPopupIAPouvoir(null)}
+          L={L}
+        />
+      )}
       {popup?.type === "scout" && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
       {popup?.type === "manuel" && <PopupManuel onFermer={() => setPopup(null)} L={L} />}
       {popup?.type === "reconnaissance" && (
