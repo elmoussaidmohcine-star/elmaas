@@ -1,7 +1,7 @@
-// ELMAAS — EcranAnalyse.js (CORRIGÉ)
-// Analyse des DEUX joueurs avec plateau évolutif
+// ELMAAS — EcranAnalyse.js v2 CORRIGÉ
+// Analyse séquentielle avec reconstruction correcte du plateau
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import Board from "./Board";
 import { t, getSloganAnalyse } from "./translations";
@@ -22,9 +22,8 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
   const [indexCoup, setIndexCoup] = useState(0);
-  const [coteActif, setCoteActif] = useState("moi"); // "moi" ou "adv"
+  const [coteActif, setCoteActif] = useState("moi");
   const [quotaInfo, setQuotaInfo] = useState(null);
-  const [etatsPlateau, setEtatsPlateau] = useState([]); // état après chaque coup
 
   useEffect(() => {
     const fetchAnalyse = async () => {
@@ -67,38 +66,51 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     fetchAnalyse();
   }, [partieId, couleurJoueur, mode]);
 
-  // Construire l'état du plateau pour le coup actuel
-  const analyse = coteActif === "moi" ? analyseMoi : analyseAdv;
-  const coupActuel = analyse?.coups?.[indexCoup];
+  const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
+  const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
-  // Reconstruire l'état du plateau à partir du snapshot
-  const etatPlateau = (() => {
-    if (!coupActuel?.plateau_avant) return null;
+  // ✅ CORRECTION: Reconstruction séquentielle du plateau
+  // On applique tous les coups jusqu'à indexCoup pour reconstruire l'état
+  const etatPlateau = useMemo(() => {
+    if (!analyseCourante?.coups || analyseCourante.coups.length === 0) return null;
+
     const pieces = {};
-    for (const [cle, val] of Object.entries(coupActuel.plateau_avant)) {
-      pieces[cle] = val;
-    }
-    // Ajouter le coup actuel
-    if (coupActuel.type === "poser" && coupActuel.piece_data) {
-      const orig = coupActuel.origine;
-      for (const [dr, dc] of coupActuel.piece_data.cellules || []) {
-        const r = orig[0] + dr, c = orig[1] + dc;
-        pieces[`${r},${c}`] = coupActuel.couleur;
+    const coupsJusquaIndex = analyseCourante.coups.slice(0, indexCoup + 1);
+
+    // Reconstruire en appliquant chaque coup séquentiellement
+    for (const coup of coupsJusquaIndex) {
+      if (coup.type === "poser" && coup.piece_data && coup.origine) {
+        const orig = coup.origine;
+        for (const [dr, dc] of coup.piece_data.cellules || []) {
+          const r = orig[0] + dr, c = orig[1] + dc;
+          if (r >= 0 && r < taille && c >= 0 && c < taille) {
+            // Si c'est une pièce d'enlèvement (ELMAAS), on met "diamant"
+            // Sinon on met la couleur du joueur
+            const valeur = coup.piece_data.enlevement ? "diamant" : coup.couleur;
+            pieces[`${r},${c}`] = valeur;
+          }
+        }
+      } else if (coup.type === "repiocher") {
+        // Le repiocher ne change pas le plateau
       }
+      // Note: les pouvoirs (échange, extraction) sont appliqués côté serveur
+      // et reflétés dans les coups suivants
     }
+
     return {
       plateau: {
         pieces,
-        puzzles: {}, // simplifié
+        puzzles: {}, // simplifié - on ne reconstruit pas les puzzles pour l'affichage
         cellules_libres: [],
         cellules_actives: Object.keys(pieces),
         grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0))
       }
     };
-  })();
+  }, [analyseCourante, indexCoup, taille]);
 
+  const coupActuel = analyseCourante?.coups?.[indexCoup];
   const precedent = () => setIndexCoup(Math.max(0, indexCoup - 1));
-  const suivant = () => setIndexCoup(Math.min((analyse?.coups.length || 1) - 1, indexCoup + 1));
+  const suivant = () => setIndexCoup(Math.min((analyseCourante?.coups.length || 1) - 1, indexCoup + 1));
 
   if (chargement) {
     return (
@@ -131,19 +143,17 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     );
   }
 
-  const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
   const precision = analyseCourante?.precision_pct ?? 0;
   const stats = analyseCourante?.stats || {};
   const classification = coupActuel?.evaluation?.classification;
   const couleurClasse = COULEURS_CLASSE[classification] || "var(--muted)";
-  const couleurLabel = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
   return (
     <div className="ecran-analyse-overlay">
       <div className="ecran-analyse">
         {/* Header */}
         <div className="analyse-header">
-          <div className="analyse-titre">{t("analyseTitre", L)} — {couleurLabel.toUpperCase()}</div>
+          <div className="analyse-titre">{t("analyseTitre", L)} — {couleurAnalysee.toUpperCase()}</div>
           <div className="analyse-precision">
             {precision}% <small>précision</small>
           </div>
@@ -178,7 +188,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           ))}
         </div>
 
-        {/* Zone de lecture */}
+        {/* ✅ Zone de lecture - Plateau évolutif */}
         <div className="analyse-corps">
           <div className="analyse-plateau">
             {etatPlateau ? (
@@ -218,11 +228,33 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                   Meilleur : pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1}
                 </div>
               )}
+
+              {/* ✅ Info sur la pièce jouée */}
+              {coupActuel?.piece_data && (
+                <div style={{ fontSize: 11, color: "var(--texte)", marginTop: 8, padding: "6px", background: "var(--bg3)", borderRadius: "4px" }}>
+                  <div>Forme: <strong>{coupActuel.piece_data.forme}</strong></div>
+                  {coupActuel.piece_data.enlevement && (
+                    <div style={{ color: "#00BFFF" }}>⚡ ELMAAS (diamant)</div>
+                  )}
+                  <div>Origine: [{coupActuel.origine?.join(", ")}]</div>
+                </div>
+              )}
             </div>
 
             <div className="analyse-navigation">
               <button className="popup-btn" onClick={precedent} disabled={indexCoup === 0}>◄ Précédent</button>
               <button className="popup-btn" onClick={suivant} disabled={indexCoup >= (analyseCourante?.coups.length || 1) - 1}>Suivant ►</button>
+            </div>
+
+            {/* ✅ Barre de progression */}
+            <div style={{ width: "100%", height: "4px", background: "var(--bord)", borderRadius: "2px", marginTop: "8px" }}>
+              <div style={{
+                width: `${((indexCoup + 1) / (analyseCourante?.coups.length || 1)) * 100}%`,
+                height: "100%",
+                background: couleurClasse,
+                borderRadius: "2px",
+                transition: "width 0.3s ease"
+              }} />
             </div>
           </div>
         </div>
