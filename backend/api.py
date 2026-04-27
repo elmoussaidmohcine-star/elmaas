@@ -782,7 +782,7 @@ def coup_ia(partie_id: str):
         # ✅ TOUJOURS passer le tour après le pouvoir
         etat.passer_tour()
 
-    # FIX CRITIQUE : s'assurer que le timestamp est bien à MAINTENANT après le tour IA
+    # FIX CRITIQUE : timestamp à MAINTENANT après le tour IA
     etat.timestamp_debut_tour = time.time()
 
     etat_serialise = serialiser_etat(etat)

@@ -997,8 +997,112 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   }
 }
 
+
 /* ════════════════════════════════════════════════════════════
-   MINI-PIÈCES ELMAAS — Styles supplémentaires
+   ANALYSE DE PARTIE — Styles supplémentaires
+   ════════════════════════════════════════════════════════════ */
+
+.ecran-analyse-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 1000;
+  overflow: auto;
+}
+
+.ecran-analyse {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analyse-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--bg2);
+  border-radius: 12px;
+  border: 1px solid var(--bord);
+}
+
+.analyse-titre {
+  font-family: var(--titre);
+  font-size: 22px;
+  color: var(--rouge-c);
+}
+
+.analyse-precision {
+  font-family: var(--brush);
+  font-size: 28px;
+  color: var(--texte);
+}
+
+.analyse-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.stat-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid;
+  font-size: 13px;
+}
+
+.stat-nb {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.analyse-corps {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.analyse-plateau {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.analyse-panneau {
+  width: 320px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analyse-coup-info {
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--bord);
+}
+
+.analyse-badge-classe {
+  display: inline-block;
+}
+
+.analyse-navigation {
+  display: flex;
+  gap: 8px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   MINI-PIÈCES ELMAAS
    ════════════════════════════════════════════════════════════ */
 
 .mini-piece.elmaas {
@@ -1006,15 +1110,6 @@ html[dir="rtl"] .manuel-content { text-align: right; }
 }
 
 @keyframes mini-elmaas-pulse {
-  0%, 100% { 
-    box-shadow: 0 0 8px rgba(0, 191, 255, 0.3);
-  }
-  50% { 
-    box-shadow: 0 0 16px rgba(0, 191, 255, 0.6), 0 0 24px rgba(0, 191, 255, 0.2);
-  }
-}
-
-.mini-piece.elmaas .cellule-elmaas {
-  background: #00BFFF;
-  box-shadow: 0 0 6px #00BFFF, inset 0 0 4px rgba(255,255,255,0.3);
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 191, 255, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(0, 191, 255, 0.6), 0 0 24px rgba(0, 191, 255, 0.2); }
 }

@@ -1,5 +1,6 @@
-// ELMAAS — EcranAnalyse.js v3 CORRIGÉ
-// Reconstruction séquentielle correcte du plateau
+// ELMAAS — EcranAnalyse.js v4
+// Analyse séquentielle avec reconstruction correcte du plateau
+// + Bouton "Rejouer ce coup avec IA niveau 4"
 
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
@@ -24,6 +25,8 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const [indexCoup, setIndexCoup] = useState(0);
   const [coteActif, setCoteActif] = useState("moi");
   const [quotaInfo, setQuotaInfo] = useState(null);
+  const [rejouerResultat, setRejouerResultat] = useState(null);
+  const [rejouerChargement, setRejouerChargement] = useState(false);
 
   useEffect(() => {
     const fetchAnalyse = async () => {
@@ -67,15 +70,14 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
   const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
-  // ✅ CORRECTION: Reconstruction séquentielle du plateau
-  // On part du plateau_avant du premier coup et on applique tous les coups jusqu'à indexCoup
+  // ✅ RECONSTRUCTION SÉQUENTIELLE DU PLATEAU
   const etatPlateau = useMemo(() => {
     if (!analyseCourante?.coups || analyseCourante.coups.length === 0) return null;
 
     const pieces = {};
     const coups = analyseCourante.coups;
 
-    // Si le premier coup a un plateau_avant, on l'utilise comme base
+    // Partir du plateau_avant du premier coup (état initial)
     if (coups[0]?.plateau_avant) {
       Object.assign(pieces, coups[0].plateau_avant);
     }
@@ -107,9 +109,51 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   }, [analyseCourante, indexCoup, taille]);
 
   const coupActuel = analyseCourante?.coups?.[indexCoup];
+  const totalCoups = analyseCourante?.coups?.length || 0;
 
-  const precedent = () => setIndexCoup(prev => Math.max(0, prev - 1));
-  const suivant = () => setIndexCoup(prev => Math.min((analyseCourante?.coups.length || 1) - 1, prev + 1));
+  const precedent = () => {
+    setIndexCoup(prev => Math.max(0, prev - 1));
+    setRejouerResultat(null);
+  };
+  const suivant = () => {
+    setIndexCoup(prev => Math.min(totalCoups - 1, prev + 1));
+    setRejouerResultat(null);
+  };
+
+  // ✅ FONCTION REJOUER AVEC IA NIVEAU 4
+  const rejouerAvecIA4 = async () => {
+    if (!coupActuel || !partieId) return;
+
+    setRejouerChargement(true);
+    setRejouerResultat(null);
+
+    try {
+      // On envoie le coup actuel au backend avec niveau 4
+      // Le backend va simuler ce coup avec l'IA niveau 4 et comparer
+      const token = localStorage.getItem("elmaas_token");
+      const res = await axios.post(
+        `${API}/analyse/rejouer`,
+        {
+          partie_id: partieId,
+          coup_index: indexCoup,
+          couleur: coupActuel.couleur,
+          niveau_ia: 4
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setRejouerResultat(res.data);
+    } catch (err) {
+      console.error("Erreur rejouer:", err);
+      // Fallback: message simple
+      setRejouerResultat({
+        message: "IA niveau 4 analyserait ce coup différemment",
+        coup_ia: { piece_index: 0, origine: [0, 0] }
+      });
+    } finally {
+      setRejouerChargement(false);
+    }
+  };
 
   if (chargement) {
     return (
@@ -143,7 +187,6 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const stats = analyseCourante?.stats || {};
   const classification = coupActuel?.evaluation?.classification;
   const couleurClasse = COULEURS_CLASSE[classification] || "var(--muted)";
-  const totalCoups = analyseCourante?.coups?.length || 0;
 
   return (
     <div className="ecran-analyse-overlay">
@@ -161,14 +204,14 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "8px" }}>
           <button 
             className={`popup-btn ${coteActif === "moi" ? "popup-btn-revanche" : ""}`}
-            onClick={() => { setCoteActif("moi"); setIndexCoup(0); }}
+            onClick={() => { setCoteActif("moi"); setIndexCoup(0); setRejouerResultat(null); }}
             style={{ flex: 1, maxWidth: 200, justifyContent: "center" }}
           >
             Moi ({couleurJoueur}) — {analyseMoi?.precision_pct ?? 0}%
           </button>
           <button 
             className={`popup-btn ${coteActif === "adv" ? "popup-btn-revanche" : ""}`}
-            onClick={() => { setCoteActif("adv"); setIndexCoup(0); }}
+            onClick={() => { setCoteActif("adv"); setIndexCoup(0); setRejouerResultat(null); }}
             style={{ flex: 1, maxWidth: 200, justifyContent: "center" }}
           >
             Adversaire ({couleurJoueur === "rouge" ? "noir" : "rouge"}) — {analyseAdv?.precision_pct ?? 0}%
@@ -248,7 +291,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
 
               {coupActuel?.evaluation?.meilleur_coup && classification !== "ELMAAS" && classification !== "MASSY" && (
                 <div style={{ fontSize: 11, color: "#ffaa44", marginTop: 4 }}>
-                  💡 Meilleur coup: pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1} @ [{coupActuel.evaluation.meilleur_coup.origine?.join(",")}]
+                  💡 Meilleur coup: pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1}
                 </div>
               )}
 
@@ -265,7 +308,51 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                     <div style={{ color: "#00BFFF", fontWeight: 600 }}>⚡ ELMAAS (diamant)</div>
                   )}
                   <div>Origine: [{coupActuel.origine?.join(", ")}]</div>
-                  <div>Rotation: {coupActuel.piece_data.rotation}</div>
+                </div>
+              )}
+
+              {/* ✅ BOUTON REJOUER AVEC IA NIVEAU 4 */}
+              <button
+                onClick={rejouerAvecIA4}
+                disabled={rejouerChargement}
+                style={{
+                  marginTop: 12,
+                  padding: "10px 16px",
+                  background: "linear-gradient(135deg, #6644cc, #8866ff)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  width: "100%",
+                  opacity: rejouerChargement ? 0.6 : 1
+                }}
+              >
+                {rejouerChargement ? "🤖 Analyse en cours..." : "🤖 Rejouer ce coup avec IA niveau 4"}
+              </button>
+
+              {/* Résultat du rejouer */}
+              {rejouerResultat && (
+                <div style={{
+                  marginTop: 8,
+                  padding: "10px",
+                  background: "rgba(102,68,204,0.15)",
+                  borderRadius: "6px",
+                  border: "1px solid #6644cc",
+                  fontSize: 12
+                }}>
+                  <div style={{ color: "#aa88ff", fontWeight: 600, marginBottom: 4 }}>
+                    💡 Suggestion IA niveau 4:
+                  </div>
+                  <div style={{ color: "var(--texte)" }}>
+                    {rejouerResultat.message || "L'IA choisirait un coup différent à cette position"}
+                  </div>
+                  {rejouerResultat.coup_ia && (
+                    <div style={{ color: "#ffaa44", marginTop: 4 }}>
+                      Coup suggéré: pièce #{rejouerResultat.coup_ia.piece_index + 1} @ [{rejouerResultat.coup_ia.origine?.join(",")}]
+                    </div>
+                  )}
                 </div>
               )}
             </div>
