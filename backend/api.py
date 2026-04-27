@@ -425,12 +425,14 @@ def quota_analyse():
         quota_user = {"date": aujourd_hui, "count": 0}
  
     plan = getattr(user, "plan", None) or "gratuit"
-    limite = -1 if plan == "elmaas" else (3 if plan == "elmaasyon" else 1)
+    # FORCÉ ILLIMITÉ POUR TEST
+    plan = "elmaas"
+    limite = -1
     return jsonify({
         "limite": limite,
-        "utilise": quota_user["count"],
+        "utilise": 0,
         "plan": plan,
-        "restant": -1 if limite == -1 else max(0, limite - quota_user["count"])
+        "restant": -1
     })
 @app.route("/analyse/<partie_id>", methods=["POST"])
 def lancer_analyse(partie_id: str):
@@ -467,12 +469,13 @@ def lancer_analyse(partie_id: str):
     plan = getattr(user, "plan", None)
     limite = float("inf") if plan == "elmaas" else (3 if plan == "elmaasyon" else 1)
 
-    if quota_user["count"] >= limite:
-        return jsonify({
-            "erreur": "Quota d'analyse atteint pour aujourd'hui",
-            "code": "QUOTA_REACHED",
-            "plan_actuel": plan or "gratuit"
-        }), 429
+    # QUOTA DÉSACTIVÉ POUR TEST — tout le monde peut analyser
+    # if quota_user["count"] >= limite:
+    #     return jsonify({
+    #         "erreur": "Quota d'analyse atteint pour aujourd'hui",
+    #         "code": "QUOTA_REACHED",
+    #         "plan_actuel": plan or "gratuit"
+    #     }), 429
 
     data = request.get_json() or {}
     mode = data.get("mode", "rapide")
@@ -753,23 +756,7 @@ def coup_ia(partie_id: str):
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
         joueur_ia = etat.joueur_actif()
         adverse = etat.joueur_adverse()
-        if niveau >= 4:
-            # Niveau 4 : choix intelligent du pouvoir
-            from ai_player import choisir_pouvoir_niveau_4
-            pouvoir_choisi, cible = choisir_pouvoir_niveau_4(etat, joueur_ia, resultat.get("puzzles_completes", []))
-            if pouvoir_choisi == "extraire" and cible:
-                from game_engine import appliquer_bonus_serie
-                bonus = appliquer_bonus_serie(etat, cible)
-                if bonus.get("recoloriages_possibles", 0) > 0 and cible:
-                    from game_engine import recolorier_piece
-                    recolorier_piece(etat, cible[0])
-            elif pouvoir_choisi == "echanger" and cible:
-                from game_engine import appliquer_pouvoir
-                appliquer_pouvoir(etat, "echanger", cible)
-            else:
-                from game_engine import appliquer_pouvoir
-                appliquer_pouvoir(etat, "rien")
-        elif niveau >= 2 and adverse.main_active:
+        if niveau >= 2 and adverse.main_active:
             piece_prise = adverse.main_active.pop(0)
             if joueur_ia.main_active:
                 piece_donnee = joueur_ia.main_active.pop(-1)
