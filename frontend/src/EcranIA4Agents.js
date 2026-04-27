@@ -149,7 +149,7 @@ export default function EcranIA4Agents({ onFermer, L }) {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <h1 style={{ fontFamily: "var(--titre)", fontSize: 24, color: "var(--rouge-c)" }}>
-              🤖 4 Agents IA
+               4 Agents IA
             </h1>
             <div style={{ fontSize: 12, color: "var(--muted)" }}>
               Match: <strong style={{ color: agentRouge.couleur }}>{agentRouge.nom}</strong> vs 
@@ -225,7 +225,7 @@ export default function EcranIA4Agents({ onFermer, L }) {
               />
             ) : (
               <div style={{ color: "var(--muted)", textAlign: "center" }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+                <div style={{ fontSize: 48, marginBottom: 16 }}></div>
                 <div>Clique "Nouvelle partie" pour lancer le match</div>
               </div>
             )}
@@ -290,7 +290,7 @@ export default function EcranIA4Agents({ onFermer, L }) {
                   color: resultat.gagnant === "rouge" ? agentRouge.couleur : agentNoir.couleur,
                   textAlign: "center"
                 }}>
-                  🏆 {resultat.gagnant === "rouge" ? agentRouge.nom : agentNoir.nom} gagne!
+                   {resultat.gagnant === "rouge" ? agentRouge.nom : agentNoir.nom} gagne!
                 </div>
                 <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", marginTop: 4 }}>
                   {resultat.motif === "victoire_immediate" ? "Victoire immédiate (série de 5)" : "Plateau plein"}
