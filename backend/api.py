@@ -501,14 +501,10 @@ def lancer_analyse(partie_id: str):
     couleur_joueur = data.get("couleur", "rouge")
     mode = data.get("mode", "rapide")
     profondeur = 1 if mode == "rapide" else 2
- 
+
     # Reconstruire EtatJeu depuis le dict initial
-    # (C'est un raccourci : on réutilise l'état initial simulé
-    # en repartant du plateau généré à la création)
     try:
         import copy as _copy
-        # Utiliser le snapshot initial pris à la création de la partie
-        # (pas l'état final, sinon l'analyse rejoue les coups dans le mauvais sens)
         etat_initial = parties.get(partie_id)  # fallback
         if etat_init_dict:
             try:
@@ -517,10 +513,11 @@ def lancer_analyse(partie_id: str):
             except Exception as e_deser:
                 print(f"[analyse] Impossible de désérialiser etat_initial : {e_deser}")
 
+        # Analyser TOUTES les couleurs — le frontend filtre lui-même
         resultat = analyser_partie_complete(
             coups_historique=historique,
             etat_initial=etat_initial,
-            couleur_joueur=couleur_joueur,
+            couleur_joueur=None,   # None = analyser les deux joueurs
             profondeur=profondeur
         )
 
@@ -920,7 +917,7 @@ def supprimer_partie(partie_id: str):
         bonus_double_tour.pop(partie_id, None)
         reconnaissance_tentee.pop(partie_id, None)
         joueurs_connectes.pop(partie_id, None)
-        demandes_revanche.pop(partie_id, None)
+       # demandes_revanche.pop(partie_id, None)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
 

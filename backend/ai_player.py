@@ -8,10 +8,15 @@
 
 import random
 from pieces_generator import cellules_absolues, placement_valide
-from config import TAILLE_TAB, DEBUG
+import config  # Import du module entier pour lire TAILLE_TAB dynamiquement
 
 
 # ── Utilitaires ──────────────────────────────────────────────
+
+def get_taille():
+    """Lit TAILLE_TAB depuis config à chaque appel (supporte le changement dynamique)."""
+    return config.TAILLE_TAB
+
 
 def placements_possibles(piece, pieces, taille):
     """Retourne tous les (origine) valides pour une pièce."""
@@ -189,10 +194,10 @@ def ia_niveau_1(etat, joueur):
 
     for idx in indices:
         piece = main[idx]
-        possibles = placements_possibles(piece, etat.plateau.pieces, TAILLE_TAB)
+        possibles = placements_possibles(piece, etat.plateau.pieces, get_taille())
         if possibles:
             origine = random.choice(possibles)
-            if DEBUG:
+            if config.DEBUG:
                 print(f"[IA-1] pose {piece['forme']} en {origine}")
             return idx, origine
 
@@ -201,48 +206,9 @@ def ia_niveau_1(etat, joueur):
 
 def ia_niveau_2(etat, joueur):
     """
-    Niveau 2 — Stratégique (greedy).
-    Choisit le placement qui maximise les cellules utiles dans les puzzles.
-    Préfère compléter un puzzle si possible.
-    Sait utiliser les pièces d'enlèvement contre l'adversaire.
-    """
-    main = joueur.main_active
-    puzzles = etat.plateau.puzzles
-    pieces_plateau = etat.plateau.pieces
-    couleur = joueur.couleur
-
-    meilleur = None
-    meilleur_score = -1
-
-    for idx, piece in enumerate(main):
-        possibles = placements_possibles(piece, pieces_plateau, TAILLE_TAB)
-        for origine in possibles:
-            # Simuler le placement
-            nouvelles_pieces = simuler_pose(pieces_plateau, piece, origine, couleur, TAILLE_TAB)
-
-            # Score : puzzles complétés en priorité
-            puzzles_finis = compter_puzzles_completes(nouvelles_pieces, puzzles, couleur)
-            score_cellules = score_cellules_dans_puzzles(piece, origine, puzzles, couleur, TAILLE_TAB)
-            # Score spécifique enlèvement
-            bonus_enlev = score_enlevement(piece, origine, pieces_plateau, puzzles, couleur, TAILLE_TAB)
-
-            score = puzzles_finis * 100 + score_cellules + bonus_enlev
-
-            if score > meilleur_score:
-                meilleur_score = score
-                meilleur = (idx, origine)
-
-    if meilleur:
-        if DEBUG:
-            print(f"[IA-2] pose {main[meilleur[0]]['forme']} en {meilleur[1]} (score={meilleur_score})")
-    return meilleur
-
-
-def ia_niveau_3(etat, joueur):
-    """
-    Niveau 3 — Expert.
-    Greedy + blocage adversaire + évite d'aider l'adversaire.
-    Sait utiliser les pièces d'enlèvement contre les puzzles adverses.
+    Niveau 2 — Stratégique avancé.
+    Greedy + blocage adversaire + pénalité pour aider l'adversaire.
+    Sait utiliser les pièces d'enlèvement.
     """
     main = joueur.main_active
     puzzles = etat.plateau.puzzles
@@ -254,24 +220,22 @@ def ia_niveau_3(etat, joueur):
     meilleur_score = -999
 
     for idx, piece in enumerate(main):
-        possibles = placements_possibles(piece, pieces_plateau, TAILLE_TAB)
+        possibles = placements_possibles(piece, pieces_plateau, get_taille())
         for origine in possibles:
-            nouvelles_pieces = simuler_pose(pieces_plateau, piece, origine, couleur, TAILLE_TAB)
+            nouvelles_pieces = simuler_pose(pieces_plateau, piece, origine, couleur, get_taille())
 
             # Score offensif
             puzzles_finis = compter_puzzles_completes(nouvelles_pieces, puzzles, couleur)
-            score_cellules = score_cellules_dans_puzzles(piece, origine, puzzles, couleur, TAILLE_TAB)
+            score_cellules = score_cellules_dans_puzzles(piece, origine, puzzles, couleur, get_taille())
+            bonus_enlev = score_enlevement(piece, origine, pieces_plateau, puzzles, couleur, get_taille())
 
-            # Score spécifique enlèvement (très puissant pour l'expert)
-            bonus_enlev = score_enlevement(piece, origine, pieces_plateau, puzzles, couleur, TAILLE_TAB)
-
-            # Score défensif — bloquer l'adversaire (uniquement pour pièces normales)
+            # Score défensif
             if not piece.get("enlevement"):
-                score_def = score_blocage_adversaire(piece, origine, puzzles, couleur_adverse, TAILLE_TAB)
+                score_def = score_blocage_adversaire(piece, origine, puzzles, couleur_adverse, get_taille())
             else:
                 score_def = 0
 
-            # Pénalité : aider l'adversaire en complétant son puzzle (pièces normales)
+            # Pénalité : aider l'adversaire
             penalite = 0
             if not piece.get("enlevement"):
                 for puzzle in puzzles.values():
@@ -292,8 +256,313 @@ def ia_niveau_3(etat, joueur):
                 meilleur = (idx, origine)
 
     if meilleur:
-        if DEBUG:
-            print(f"[IA-3] pose {main[meilleur[0]]['forme']} en {meilleur[1]} (score={meilleur_score})")
+        if config.DEBUG:
+            print(f"[IA-2] pose {main[meilleur[0]]['forme']} en {meilleur[1]} (score={meilleur_score})")
+    return meilleur
+
+
+def evaluer_position_globale(pieces_plateau, puzzles, couleur, couleur_adverse) -> float:
+    """
+    Évalue la qualité d'une position pour `couleur`.
+    Prend en compte :
+    - Puzzles complétés (valeur acquise)
+    - Puzzles quasi-complets (1-2 cases manquantes = menace immédiate)
+    - Contrôle territorial dans chaque puzzle
+    - Urgence : bloquer l'adversaire avant qu'il complète
+    """
+    score = 0.0
+
+    for puzzle in puzzles.values():
+        if puzzle.brise:
+            continue
+
+        cellules = puzzle.cellules
+        nb_total = len(cellules)
+        if nb_total == 0:
+            continue
+
+        # ── Puzzles déjà complétés ──
+        if puzzle.complete_par == couleur:
+            score += nb_total * 12.0
+            continue
+        if puzzle.complete_par == couleur_adverse:
+            score -= nb_total * 12.0
+            continue
+
+        # ── Puzzle en cours : analyser la progression ──
+        nb_moi = 0
+        nb_adv = 0
+        nb_vide = 0
+        for r, c in cellules:
+            v = pieces_plateau.get(f"{r},{c}")
+            if v is None:
+                nb_vide += 1
+            elif v == couleur:
+                nb_moi += 1
+            elif v == couleur_adverse:
+                nb_adv += 1
+            # diamant : neutre, ignoré
+
+        nb_posees = nb_moi + nb_adv
+        pct_rempli = nb_posees / nb_total
+
+        if puzzle.type_couleur in ("mono_rouge", "mono_noir"):
+            gagnant_naturel = "rouge" if puzzle.type_couleur == "mono_rouge" else "noir"
+
+            if gagnant_naturel == couleur:
+                if nb_adv == 0:
+                    # Puzzle pur pour moi
+                    # Bonus fort si quasi-complet (urgence de finir)
+                    if nb_vide <= 2:
+                        score += nb_total * 8.0  # Très proche de la victoire
+                    else:
+                        score += nb_moi * 4.0 + pct_rempli * nb_total * 2.0
+                else:
+                    # Contaminé : je dois soit bloquer soit abandonner
+                    # Plus l'adversaire a de cases, moins ça vaut
+                    score += nb_moi * 1.0 - nb_adv * 3.0
+            else:
+                # Puzzle favorable à l'adversaire
+                if nb_moi == 0:
+                    # Pas encore bloqué : l'adversaire peut le compléter
+                    if nb_vide <= 2:
+                        score -= nb_total * 8.0  # URGENT : bloquer !
+                    else:
+                        score -= nb_adv * 4.0 - pct_rempli * nb_total * 1.0
+                else:
+                    # J'ai des pièces dedans → je bloque activement
+                    score += nb_moi * 3.0 - nb_adv * 1.0
+
+        else:  # mixte
+            # Le prochain à compléter gagne → avantage au plus avancé
+            avance = nb_moi - nb_adv
+            if nb_vide <= 2 and nb_posees > 0:
+                # Quasi-complet : très précieux si je suis en avance
+                score += avance * 6.0 + pct_rempli * 3.0
+            else:
+                score += avance * 2.0 + pct_rempli * 1.5
+
+    return score
+
+
+def meilleure_reponse_adverse(etat_simule, couleur_adverse, top_n=5):
+    """
+    Simule rapidement le meilleur coup de l'adversaire (greedy pur, limité à top_n coups).
+    Retourne le score résultant pour l'adversaire après son meilleur coup.
+    """
+    joueur_adv = etat_simule.joueur_actif()
+    if joueur_adv.couleur != couleur_adverse:
+        joueur_adv = etat_simule.joueur_adverse()
+
+    pieces_plateau = etat_simule.plateau.pieces
+    puzzles = etat_simule.plateau.puzzles
+    taille = get_taille()
+    couleur_moi = "noir" if couleur_adverse == "rouge" else "rouge"
+
+    meilleur_score_adv = -9999.0
+    candidats = []
+
+    for idx, piece in enumerate(joueur_adv.main_active):
+        possibles = placements_possibles(piece, pieces_plateau, taille)
+        for origine in possibles:
+            nouvelles = simuler_pose(pieces_plateau, piece, origine, couleur_adverse, taille)
+            puzzles_adv = compter_puzzles_completes(nouvelles, puzzles, couleur_adverse)
+            sc = puzzles_adv * 200 + score_cellules_dans_puzzles(
+                piece, origine, puzzles, couleur_adverse, taille)
+            candidats.append((sc, nouvelles))
+
+    if not candidats:
+        return evaluer_position_globale(pieces_plateau, puzzles, couleur_moi, couleur_adverse)
+
+    candidats.sort(key=lambda x: x[0], reverse=True)
+    # Évaluer les top_n meilleurs coups adverses et retourner le pire pour moi
+    pire_pour_moi = 9999.0
+    for _, nouvelles in candidats[:top_n]:
+        val = evaluer_position_globale(nouvelles, puzzles, couleur_moi, couleur_adverse)
+        if val < pire_pour_moi:
+            pire_pour_moi = val
+
+    return pire_pour_moi
+
+
+def ia_niveau_3(etat, joueur):
+    """
+    Niveau 3 — ELMAAS (Expert).
+
+    Hiérarchie de décision stricte :
+    1. COMPLÉTION IMMÉDIATE : si un coup complète ≥1 puzzle, choisir celui
+       qui maximise les cellules gagnées + score positionnel. Jamais passer
+       cette opportunité — c'est la règle absolue.
+    2. BLOCAGE URGENT : si l'adversaire peut compléter un puzzle au prochain
+       coup (1-2 cases vides), le bloquer immédiatement même si ça coûte
+       du positionnement.
+    3. LOOK-AHEAD : si ni complétion ni urgence, simuler la meilleure
+       réponse adverse sur les 10 meilleurs candidats greedy et choisir
+       le coup qui laisse la meilleure position après la réponse adverse.
+    """
+    main = joueur.main_active
+    if not main:
+        return None
+
+    puzzles = etat.plateau.puzzles
+    pieces_plateau = etat.plateau.pieces
+    couleur = joueur.couleur
+    couleur_adverse = "noir" if couleur == "rouge" else "rouge"
+    taille = get_taille()
+
+    # ── PHASE 1 : chercher toutes les complétions directes ───
+    completions = []  # (gain_cellules, idx, origine)
+
+    for idx, piece in enumerate(main):
+        if piece.get("enlevement"):
+            continue  # Phase 1 : pièces normales seulement
+        possibles = placements_possibles(piece, pieces_plateau, taille)
+        for origine in possibles:
+            nouvelles = simuler_pose(pieces_plateau, piece, origine, couleur, taille)
+            nb_finis = compter_puzzles_completes(nouvelles, puzzles, couleur)
+            if nb_finis > 0:
+                # Compter les cellules exactes gagnées
+                gain = 0
+                for puzzle in puzzles.values():
+                    if puzzle.complete_par == couleur or puzzle.brise:
+                        continue
+                    cellules = puzzle.cellules
+                    couleurs_apres = {nouvelles.get(f"{r},{c}") for r, c in cellules}
+                    couleurs_apres.discard(None)
+                    a_diamant = "diamant" in couleurs_apres
+                    cj = couleurs_apres - {"diamant"}
+                    if all(nouvelles.get(f"{r},{c}") is not None for r, c in cellules):
+                        if puzzle.type_couleur == "mono_rouge" and not a_diamant and cj == {"rouge"}:
+                            gain += len(cellules)
+                        elif puzzle.type_couleur == "mono_noir" and not a_diamant and cj == {"noir"}:
+                            gain += len(cellules)
+                        elif puzzle.type_couleur == "mixte" and "rouge" in cj and "noir" in cj:
+                            gain += len(cellules)
+                # Score de tie-break : progression positionnelle
+                s_pos = score_cellules_dans_puzzles(piece, origine, puzzles, couleur, taille)
+                completions.append((gain * 100 + s_pos, gain, idx, origine))
+
+    if completions:
+        # Choisir la complétion qui maximise le gain
+        completions.sort(reverse=True)
+        _, _, idx_ret, org_ret = completions[0]
+        if config.DEBUG:
+            print(f"[IA-3] COMPLÉTION: {main[idx_ret]['forme']} @ {org_ret} gain={completions[0][1]}")
+        return idx_ret, org_ret
+
+    # ── PHASE 2 : détection de blocage urgent ────────────────
+    # Puzzle adverse quasi-complet (≤2 cases vides, 0 de mes pièces dedans)
+    puzzles_urgents = []
+    for puzzle in puzzles.values():
+        if puzzle.complete_par or puzzle.brise:
+            continue
+        gagnant_nat = "rouge" if puzzle.type_couleur == "mono_rouge" else \
+                      "noir" if puzzle.type_couleur == "mono_noir" else None
+        if gagnant_nat != couleur_adverse:
+            continue
+        nb_adv = sum(1 for r, c in puzzle.cellules
+                     if pieces_plateau.get(f"{r},{c}") == couleur_adverse)
+        nb_moi = sum(1 for r, c in puzzle.cellules
+                     if pieces_plateau.get(f"{r},{c}") == couleur)
+        nb_vide = sum(1 for r, c in puzzle.cellules
+                      if pieces_plateau.get(f"{r},{c}") is None)
+        if nb_adv > 0 and nb_moi == 0 and nb_vide <= 2:
+            puzzles_urgents.append(puzzle)
+
+    if puzzles_urgents:
+        # Trouver le coup qui bloque un puzzle urgent
+        meilleur_blocage = None
+        meilleur_s = -9999
+        for idx, piece in enumerate(main):
+            if piece.get("enlevement"):
+                continue
+            possibles = placements_possibles(piece, pieces_plateau, taille)
+            for origine in possibles:
+                absolues = set(cellules_absolues(piece, origine))
+                for puzzle in puzzles_urgents:
+                    if any(pos in puzzle.cellules for pos in absolues):
+                        # Ce coup bloque le puzzle urgent
+                        s = (len(puzzle.cellules) * 10
+                             + score_cellules_dans_puzzles(piece, origine, puzzles, couleur, taille))
+                        if s > meilleur_s:
+                            meilleur_s = s
+                            meilleur_blocage = (idx, origine)
+        if meilleur_blocage:
+            if config.DEBUG:
+                print(f"[IA-3] BLOCAGE URGENT @ {meilleur_blocage[1]}")
+            return meilleur_blocage
+
+    # ── PHASE 3 : look-ahead sur top-10 candidats greedy ────
+    candidats = []  # (score_greedy, idx, origine)
+
+    for idx, piece in enumerate(main):
+        est_enlev = piece.get("enlevement", False)
+        possibles = placements_possibles(piece, pieces_plateau, taille)
+        for origine in possibles:
+            if est_enlev:
+                s = score_enlevement(piece, origine, pieces_plateau, puzzles, couleur, taille) * 3
+            else:
+                s = score_cellules_dans_puzzles(piece, origine, puzzles, couleur, taille) * 2
+                # Pénalité : poser dans un puzzle mono adverse avec des pièces adverses dedans
+                absolues = cellules_absolues(piece, origine)
+                for r, c in absolues:
+                    for puzzle in puzzles.values():
+                        if puzzle.complete_par or puzzle.brise:
+                            continue
+                        if (r, c) not in puzzle.cellules:
+                            continue
+                        nb_adv_p = sum(1 for rr, cc in puzzle.cellules
+                                       if pieces_plateau.get(f"{rr},{cc}") == couleur_adverse)
+                        if puzzle.type_couleur == "mono_rouge" and couleur == "noir" and nb_adv_p > 0:
+                            s -= 15
+                        elif puzzle.type_couleur == "mono_noir" and couleur == "rouge" and nb_adv_p > 0:
+                            s -= 15
+            candidats.append((s, idx, origine))
+
+    if not candidats:
+        return None
+
+    candidats.sort(reverse=True)
+    top10 = candidats[:10]
+
+    # Look-ahead : simuler meilleure réponse adverse sur top-10
+    meilleur_score_final = float("-inf")
+    meilleur = (top10[0][1], top10[0][2])  # fallback
+
+    for s_greedy, idx, origine in top10:
+        piece = main[idx]
+        nouvelles = simuler_pose(pieces_plateau, piece, origine, couleur, taille)
+
+        # Évaluer position après mon coup
+        pos_moi = evaluer_position_globale(nouvelles, puzzles, couleur, couleur_adverse)
+
+        # Simuler la réponse adverse (greedy léger, max 3 pièces adverses × 15 origines)
+        joueur_adv = etat.joueur_adverse()
+        pire_pour_moi = pos_moi
+        for idx_adv, piece_adv in enumerate(joueur_adv.main_active[:3]):
+            if piece_adv.get("enlevement"):
+                continue
+            possibles_adv = placements_possibles(piece_adv, nouvelles, taille)
+            scores_adv = []
+            for org_adv in possibles_adv[:15]:
+                nouv_adv = simuler_pose(nouvelles, piece_adv, org_adv, couleur_adverse, taille)
+                s_adv = (compter_puzzles_completes(nouv_adv, puzzles, couleur_adverse) * 100
+                         + score_cellules_dans_puzzles(piece_adv, org_adv, puzzles,
+                                                       couleur_adverse, taille))
+                scores_adv.append((s_adv, nouv_adv))
+            if scores_adv:
+                scores_adv.sort(key=lambda x: x[0], reverse=True)
+                val = evaluer_position_globale(scores_adv[0][1], puzzles, couleur, couleur_adverse)
+                pire_pour_moi = min(pire_pour_moi, val)
+
+        # Score final : combinaison greedy + look-ahead
+        score_final = s_greedy * 0.3 + pire_pour_moi * 0.7
+        if score_final > meilleur_score_final:
+            meilleur_score_final = score_final
+            meilleur = (idx, origine)
+
+    if config.DEBUG:
+        print(f"[IA-3] LOOKAHEAD: {main[meilleur[0]]['forme']} @ {meilleur[1]} ({meilleur_score_final:.1f})")
     return meilleur
 
 
