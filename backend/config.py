@@ -34,7 +34,6 @@ SERIE_VICTOIRE_IMMEDIATE = 5
 
 POUVOIRS_DISPONIBLES = [
     "rien",
-    "proteger",
     "echanger",
 ]
 

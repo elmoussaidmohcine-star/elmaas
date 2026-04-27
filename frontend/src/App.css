@@ -531,25 +531,19 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   .tour-info { font-size: 11px; }
   .badge-ia, .badge-serie { font-size: 10px; padding: 1px 4px; }
 
-  .timers {
-    gap: 4px;
-    padding: 4px;
-    background: transparent;
-    border: none;
-  }
-  .timer-bloc {
-    padding: 4px 10px;
-    min-width: 60px;
-  }
+  .timers { gap: 4px; padding: 4px; background: transparent; border: none; }
+  .timer-bloc { padding: 4px 10px; min-width: 60px; }
   .timer-val { font-size: 17px; }
   .timer-label { font-size: 8px; }
 
+  /* Zone de jeu : colonnes sur mobile */
   .zone-jeu {
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
   }
 
+  /* Panneaux latéraux → barres horizontales scrollables */
   .panneau-main, .panneau-actions {
     width: 100%;
     min-width: unset;
@@ -560,59 +554,115 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     border-right: none;
     border-left: none;
     border-bottom: 1px solid var(--bord);
+    max-height: 140px;
+    overflow-y: auto;
   }
-  .panneau-actions { border-top: 1px solid var(--bord); border-bottom: none; }
-  .panneau-titre { width: 100%; margin-top: 0 !important; }
-  .main-pieces-list { flex-wrap: nowrap; overflow-x: auto; gap: 6px; }
+  .panneau-actions {
+    border-top: 1px solid var(--bord);
+    border-bottom: none;
+    max-height: 120px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+  }
+  .panneau-titre { width: 100%; margin-top: 0 !important; font-size: 11px; }
+  .main-pieces-list { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 2px; }
   .serie-info { font-size: 12px; }
 
+  /* Plateau central : prend toute la largeur */
   .plateau-central {
-    padding: 6px;
+    padding: 4px;
     flex: unset;
     width: 100%;
     overflow: auto;
+    /* Centrer le plateau */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
   }
 
-  .btn-action { padding: 7px 10px; font-size: 13px; }
+  /* Pièces dans la main : plus grandes sur mobile pour les doigts */
+  .mini-piece { min-width: 36px; min-height: 36px; }
+
+  .btn-action {
+    padding: 10px 14px;
+    font-size: 14px;
+    min-height: 44px; /* zone de tap minimale */
+    flex: 1 1 auto;
+  }
   .hint-action { font-size: 11px; }
 
   .zone-adverse { padding: 4px 8px; gap: 6px; }
   .adverse-label { font-size: 11px; }
   .piece-cachee { width: 16px; height: 16px; }
 
-  .ecran-taille { padding: 24px 16px; gap: 20px; }
+  /* Écrans lobby / taille */
+  .ecran-taille { padding: 24px 16px; gap: 16px; }
+  .ecran-taille h1 { font-size: clamp(28px, 10vw, 48px); }
   .taille-inputs { gap: 16px; flex-wrap: wrap; justify-content: center; }
   .taille-final { font-size: 48px; }
-  .lobby-card { padding: 24px 20px; min-width: unset; width: 90%; }
-  .lobby-code { font-size: 11px; }
+  .lobby-card { padding: 24px 16px; min-width: unset; width: calc(100% - 32px); max-width: 420px; }
+  .lobby-code { font-size: 11px; letter-spacing: 2px; }
+  .lobby-input { font-size: 16px; } /* évite le zoom iOS */
+  input, select, textarea { font-size: 16px; } /* évite le zoom iOS sur focus */
 
+  /* Popups */
   .popup-pouvoir, .popup-scout {
     min-width: unset;
-    width: 90vw;
+    width: 92vw;
+    max-width: 420px;
     padding: 20px 16px;
   }
   .popup-titre { font-size: 20px; }
-  .popup-btn { font-size: 14px; padding: 10px 12px; }
+  .popup-btn {
+    font-size: 15px;
+    padding: 12px 14px;
+    min-height: 48px;
+  }
+  .popup-options { gap: 8px; }
 
+  /* Bandeau cible */
   .bandeau-cible {
     width: 90vw;
     flex-wrap: wrap;
     font-size: 13px;
-    padding: 8px 12px;
+    padding: 10px 12px;
     gap: 8px;
   }
+  .bandeau-cible button {
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 14px;
+  }
 
-  .btn-params-flottant { top: 8px; right: 8px; width: 36px; height: 36px; font-size: 15px; }
+  .btn-params-flottant { top: 8px; right: 8px; width: 40px; height: 40px; font-size: 16px; }
   html[dir="rtl"] .btn-params-flottant { right: auto; left: 8px; }
 
   .scores { gap: 8px; }
   .score-lbl { font-size: 9px; }
+
+  /* Chat */
+  .chat-zone { width: 100%; }
+  .chat-zone input { font-size: 15px; flex: 1; }
+
+  /* Écran analyse */
+  .ecran-analyse { padding: 0; }
+  .analyse-corps { flex-direction: column; }
+  .analyse-plateau { width: 100%; }
+  .analyse-panneau { width: 100%; padding: 12px; }
 }
 
 @media (max-width: 480px) {
-  .titre-jeu { font-size: clamp(36px, 12vw, 60px); }
+  .titre-jeu { font-size: clamp(30px, 11vw, 52px); }
   .panneau-main, .panneau-actions { padding: 4px 6px; }
-  .btn-reset { font-size: 11px; padding: 4px 8px; }
+  .btn-reset { font-size: 11px; padding: 6px 10px; min-height: 36px; }
+  /* Boutons header encore plus petits */
+  .btn-manuel { width: 32px; height: 32px; font-size: 14px; }
+  /* Timer plus compact */
+  .timer-val { font-size: 15px; }
+  .timer-label { font-size: 7px; }
+
   .btn-manuel { width: 26px; height: 26px; font-size: 12px; }
   .popup-gagnant { font-size: 22px; padding: 10px 20px; }
   .popup-options-fin { flex-direction: column; }
@@ -803,47 +853,3 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   .analyse-panneau { width: 100%; min-width: unset; }
   .analyse-precision { font-size: 20px; }
 }
-/* ── Animation pièces ELMAAS / Diamant ── */
-@keyframes diamant-shimmer {
-  0%   { background-position: 0%   50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0%   50%; }
-}
-
-/* ── Score des manches dans le header ── */
-.score-manches-label {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-  margin-top: 2px;
-}
-.score-manches-val {
-  font-family: var(--brush);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-}
-.score-manches-val.rouge { color: var(--rouge-c); }
-.score-manches-val.noir  { color: #aaaaaa; }
-.score-manches-sep {
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.05em;
-}
-
-/* Score manches centré entre les timers */
-.score-manches-centre {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-family: var(--brush);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  margin-top: 4px;
-}
-.score-manches-rouge { color: var(--rouge-c); }
-.score-manches-tiret { color: var(--muted); font-size: 16px; }
-.score-manches-noir  { color: #aaaaaa; }

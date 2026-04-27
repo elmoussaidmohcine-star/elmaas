@@ -85,7 +85,7 @@ class EtatJeu:
 # ── Initialisation du jeu ────────────────────────────────────
 
 def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
-    from pieces_generator import generer_piece
+    from pieces_generator import generer_piece, FORMES
     couleur_mono = "mono_rouge" if couleur == COULEUR_JOUEUR_1 else "mono_noir"
 
     cellules_couleur = sum(
@@ -99,17 +99,30 @@ def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
     cible = cellules_couleur + cellules_mixtes // 2
     cible = max(cible, 10)
 
+    # Pièces "grosses" = 4 cellules ou plus (I4, L, J, T, S, Z, O)
+    GROSSES = {n for n, f in FORMES.items() if len(f) >= 4}
     pieces = []
     total = 0
     nb_solo = 0
+    nb_grosses = 0
+    nb_petites = 0  # I2=2, I3=3, 1=1
     while total < cible:
         piece = generer_piece()
         if piece["forme"] == "1":
             if nb_solo >= 1:
                 continue
             nb_solo += 1
+        taille_p = len(piece["cellules"])
+        est_grosse = piece["forme"] in GROSSES
+        # Contrainte : somme des grosses < 2 × somme des petites
+        if est_grosse and nb_petites > 0 and nb_grosses >= nb_petites * 2:
+            continue  # trop de grosses pièces, on regenere
         pieces.append(piece)
-        total += len(piece["cellules"])
+        total += taille_p
+        if est_grosse:
+            nb_grosses += 1
+        else:
+            nb_petites += 1
     return pieces
 
 def reinitialiser_plateau(plateau: Plateau) -> Plateau:
@@ -711,6 +724,30 @@ def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
 
     if not etat.manche_terminee and not attente_pouvoir:
         etat.passer_tour()
+        # Vérifier si le joueur suivant peut poser une pièce
+        # Si non, terminer la manche (le gagnant est celui avec le plus de points)
+        if not etat.manche_terminee:
+            joueur_suivant = etat.joueur_actif()
+            if joueur_suivant.main_active:
+                from pieces_generator import placement_valide
+                taille = etat.plateau.grille_bicolore.shape[0]
+                peut_jouer = False
+                for piece in joueur_suivant.main_active:
+                    if peut_jouer:
+                        break
+                    for r in range(taille):
+                        for c in range(taille):
+                            valide, _ = placement_valide(piece, (r, c), etat.plateau.pieces, taille)
+                            if valide:
+                                peut_jouer = True
+                                break
+                        if peut_jouer:
+                            break
+                if not peut_jouer and not joueur_suivant.reserve:
+                    terminer_manche(etat)
+                    resultat["manche_terminee"] = True
+                    resultat["gagnant"] = etat.gagnant
+                    resultat["motif"] = "no_moves"
 
     return resultat
 

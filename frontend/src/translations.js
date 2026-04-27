@@ -1137,18 +1137,58 @@ export const T = {
   min3CarDevinette: ["Min 3 caractères.", "Min 3 chars.", "3 أحرف على الأقل.", "Mín 3 caracteres."],
 
   manuelTitre: ["Manuel ELMAAS", "ELMAAS Manual", "دليل إلماس", "Manual ELMAAS"],
-  manuelIntro: ["Un jeu où la stratégie rencontre l'art.", "Where strategy meets art.", "حيث تلتقي الاستراتيجية بالفن.", "Donde la estrategia se une al arte."],
+  manuelIntro: [
+    "Un jeu de stratégie, d'art et d'intuition. Pas de roi. Pas d'excuse.",
+    "Strategy, art, and instinct. No king. No excuses.",
+    "استراتيجية، فن، وحدس. بلا ملك. بلا مبررات.",
+    "Estrategia, arte e instinto. Sin rey. Sin excusas."
+  ],
   objectif: ["Objectif", "Objective", "الهدف", "Objetivo"],
-  objectifDesc: ["Complétez le plus de puzzles à votre couleur.", "Complete the most puzzles in your color.", "أكمل أكبر عدد من الألغاز بلونك.", "Completa más rompecabezas."],
-  actionsParTour: ["Actions par tour", "Actions per turn", "الإجراءات لكل دور", "Acciones"],
-  actionPoser: ["Poser : choisissez une pièce, cliquez sur le plateau.", "Place: pick a piece, click the board.", "الوضع: اختر قطعة وانقر.", "Colocar."],
-  actionRepiocher: ["Repiocher : remplace toute ta main.", "Redraw: replace entire hand.", "السحب: استبدل يدك.", "Robar: reemplaza mano."],
-  actionScout: ["Scout : voir 3 prochaines pièces.", "Scout: see next 3 pieces.", "الاستكشاف: القطع الثلاث القادمة.", "Explorar: próximas 3."],
-  series: ["Séries", "Streaks", "السلاسل", "Rachas"],
-  serie3Desc: ["3 d'affilée → Extraire.", "3 in a row → Extract.", "3 متتالية → استخراج.", "3 seguidos → Extraer."],
-  serie5Desc: ["5 d'affilée → victoire.", "5 in a row → victory.", "5 متتالية → نصر.", "5 seguidos → victoria."],
-  astuceTitre: ["Astuce", "Tip", "نصيحة", "Consejo"],
-  astuceDesc: ["Forcer l'adversaire à rejouer peut valoir plus que jouer.", "Forcing opponent to replay can beat playing.", "إجبار الخصم على اللعب قد يكون أفضل.", "Forzar al rival puede ganar."],
+  objectifDesc: [
+    "Complétez le maximum de puzzles à votre couleur pour accumuler des cellules. Le joueur avec le plus de cellules remporte la manche.",
+    "Complete as many puzzles as possible in your color to accumulate cells. The player with the most cells wins the round.",
+    "أكمل أكبر عدد من الألغاز بلونك لتجميع الخلايا. اللاعب الذي يملك أكبر عدد من الخلايا يفوز بالجولة.",
+    "Completa la mayor cantidad de rompecabezas en tu color para acumular celdas. El jugador con más celdas gana la ronda."
+  ],
+  actionsParTour: ["Actions par tour", "Actions per turn", "الإجراءات لكل دور", "Acciones por turno"],
+  actionPoser: [
+    "Poser : sélectionne une pièce dans ta main, puis clique sur le plateau pour la placer. La pièce doit entrer dans les puzzles de ta couleur.",
+    "Place: select a piece from your hand, then click the board. The piece must fit within puzzles of your color.",
+    "الوضع: اختر قطعة من يدك ثم انقر على اللوحة لوضعها. يجب أن تناسب الألغاز ذات لونك.",
+    "Colocar: selecciona una pieza de tu mano, luego haz clic en el tablero. La pieza debe encajar en los puzzles de tu color."
+  ],
+  actionRepiocher: [
+    "Repiocher : remplace toute ta main par de nouvelles pièces. Utile si aucune pièce ne convient.",
+    "Redraw: replace your entire hand with new pieces. Useful when no piece fits.",
+    "السحب: استبدل يدك بالكامل بقطع جديدة. مفيد عندما لا تناسب أي قطعة.",
+    "Robar: reemplaza tu mano completa con piezas nuevas. Útil cuando ninguna pieza encaja."
+  ],
+  actionScout: [
+    "Scout : aperçu des 3 prochaines pièces de ta réserve. Planifie à l'avance.",
+    "Scout: preview the next 3 pieces in your reserve. Plan ahead.",
+    "الاستكشاف: معاينة القطع الثلاث القادمة في احتياطيك. خطط مسبقاً.",
+    "Explorar: vista previa de las próximas 3 piezas de tu reserva. Planifica con anticipación."
+  ],
+  series: ["Séries & Récompenses", "Streaks & Rewards", "السلاسل والمكافآت", "Rachas y Recompensas"],
+  serie3Desc: [
+    "3 puzzles d'affilée → tu peux échanger une case adverse ou extraire jusqu'à 2 pièces du plateau.",
+    "3 puzzles in a row → exchange an opponent cell or extract up to 2 pieces from the board.",
+    "3 ألغاز متتالية → يمكنك تبادل خانة الخصم أو استخراج حتى قطعتين من اللوحة.",
+    "3 puzzles seguidos → intercambia una celda rival o extrae hasta 2 piezas del tablero."
+  ],
+  serie5Desc: [
+    "5 puzzles d'affilée → victoire immédiate de la manche !",
+    "5 puzzles in a row → immediate round victory!",
+    "5 ألغاز متتالية → نصر فوري للجولة!",
+    "5 puzzles seguidos → ¡victoria inmediata de la ronda!"
+  ],
+  astuceTitre: ["Astuce", "Pro Tip", "نصيحة الخبراء", "Consejo Pro"],
+  astuceDesc: [
+    "Si tu ne peux plus poser de pièce, la manche se termine automatiquement. Surveille l'espace disponible sur le plateau !",
+    "If you can't place any piece, the round ends automatically. Keep an eye on available board space!",
+    "إن لم تستطع وضع أي قطعة، تنتهي الجولة تلقائياً. راقب المساحة المتاحة على اللوحة!",
+    "Si no puedes colocar ninguna pieza, la ronda termina automáticamente. ¡Vigila el espacio disponible en el tablero!"
+  ],
 
   tempsEcoule: ["Temps écoulé", "Time's up", "انتهى الوقت", "Tiempo agotado"],
   rougeNonJoue: ["Le Rouge n'a pas joué à temps.", "Red didn't play in time.", "لم يلعب الأحمر في الوقت.", "Rojo no jugó."],
@@ -1178,6 +1218,7 @@ export const T = {
   adversaireProposeRevanche: ["propose une revanche.", "proposes a rematch.", "يقترح مباراة ثأرية.", "propone revancha."],
 
   cliquerTienne: ["Clique sur une case que tu possèdes", "Click a cell you own", "انقر على خانة تملكها", "Clic en una casilla tuya"],
+  cliquerAdversaire: ["Clique sur une case adverse à récupérer", "Click an opponent cell to take", "انقر على خانة الخصم للاستحواذ", "Clic en casilla rival para tomar"],
   cliquerDonnerPrendre: ["Clique sur une case adverse à échanger", "Click an opponent cell to exchange", "انقر خانة الخصم للتبادل", "Clic casilla rival para intercambiar"],
   cliquer1ou2: ["Clique 1 ou 2 pièces puis Confirmer", "Click 1 or 2 pieces then Confirm", "انقر 1 أو 2 قطع ثم أكد", "1 o 2 piezas luego Confirmar"],
   cliquerPieceAdverse: ["Clique une pièce adverse", "Click opponent piece", "انقر قطعة الخصم", "Clic pieza rival"],

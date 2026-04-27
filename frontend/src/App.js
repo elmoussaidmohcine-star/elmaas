@@ -319,13 +319,13 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
 // ── Popup Matchmaking ──
 function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }) {
   const [tempsEcoule, setTempsEcoule] = useState(0);
-  const [citation, setCitation] = useState(getCitationAttente(0));
+  const [citation, setCitation] = useState(() => getCitationAttente(getLangueInitiale()));
   const [echec, setEchec] = useState(false);
   const [tolerance, setTolerance] = useState(100);
  
   useEffect(() => {
     const i = setInterval(() => setTempsEcoule(t => t + 1), 1000);
-    const c = setInterval(() => setCitation(getCitationAttente(0)), 8000);
+    const c = setInterval(() => setCitation(getCitationAttente(L)), 8000);
     return () => { clearInterval(i); clearInterval(c); };
   }, []);
  
@@ -642,7 +642,6 @@ function PopupPouvoir({ onChoisir, serie, L }) {
   const estSerie3 = serie >= 3;
   const options = [
     { id: "rien", label: t("rienFaire", L), desc: t("rienFaireDesc", L) },
-    { id: "proteger", label: t("proteger", L), desc: t("protegerDesc", L) },
     { id: "echanger", label: t("echanger", L), desc: t("echangerDesc", L) },
     ...(estSerie3 ? [{ id: "extraire", label: `${t("extraire", L)} (${t("serie", L)} ${serie})`, desc: t("extraireDesc", L) }] : []),
   ];
@@ -1170,8 +1169,7 @@ export default function App() {
   const handlePouvoir = useCallback((choix) => {
     setPopup(null);
     if (choix === "rien") envoyerPouvoir({ pouvoir: "rien" });
-    else if (choix === "proteger") { setAttenteChoixPouvoir(true); setPopup({ type: "attente_cible", pouvoir: "proteger", message: t("cliquerTienne", L) }); }
-    else if (choix === "echanger") { setPieceADonner(null); setAttenteChoixPouvoir(true); setPopup({ type: "attente_cible", pouvoir: "echanger", message: t("cliquerDonnerPrendre", L) }); }
+    else if (choix === "echanger") { setPieceADonner(null); setAttenteChoixPouvoir(true); setPopup({ type: "attente_cible", pouvoir: "echanger", message: t("cliquerAdversaire", L) }); }
     else if (choix === "extraire") { setExtractionsEnCours([]); setAttenteChoixPouvoir(true); setPopup({ type: "attente_extraire", message: t("cliquer1ou2", L) }); }
   }, [envoyerPouvoir, L]);
 
