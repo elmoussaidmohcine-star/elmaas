@@ -424,12 +424,9 @@ def quota_analyse():
     if quota_user["date"] != aujourd_hui:
         quota_user = {"date": aujourd_hui, "count": 0}
  
-    plan = getattr(user, "plan", None) or "gratuit"
-    # FORCÉ ILLIMITÉ POUR TEST
-    plan = "elmaas"
-    limite = -1
+    plan = "elmaas"  # FORCÉ ILLIMITÉ POUR TEST
     return jsonify({
-        "limite": limite,
+        "limite": -1,
         "utilise": 0,
         "plan": plan,
         "restant": -1
@@ -469,7 +466,7 @@ def lancer_analyse(partie_id: str):
     plan = getattr(user, "plan", None)
     limite = float("inf") if plan == "elmaas" else (3 if plan == "elmaasyon" else 1)
 
-    # QUOTA DÉSACTIVÉ POUR TEST — tout le monde peut analyser
+    # QUOTA DÉSACTIVÉ POUR TEST
     # if quota_user["count"] >= limite:
     #     return jsonify({
     #         "erreur": "Quota d'analyse atteint pour aujourd'hui",
@@ -765,11 +762,12 @@ def coup_ia(partie_id: str):
         etat.passer_tour()  # Met à jour le timestamp
 
     # FIX CRITIQUE : s'assurer que le timestamp est bien à MAINTENANT après le tour IA
-    # (le passer_tour a déjà été appelé dans jouer_tour si pas d'attente_pouvoir)
     etat.timestamp_debut_tour = time.time()
 
     etat_serialise = serialiser_etat(etat)
     resultat["etat"] = etat_serialise
+    resultat["manche_terminee"] = etat.manche_terminee
+    resultat["gagnant"] = etat.gagnant
     if "puzzles_completes" in resultat:
         resultat["puzzles_completes"] = [serialiser_puzzle(p) for p in resultat["puzzles_completes"]]
 

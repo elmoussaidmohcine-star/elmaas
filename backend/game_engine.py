@@ -85,7 +85,7 @@ class EtatJeu:
 # ── Initialisation du jeu ────────────────────────────────────
 
 def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
-    """Ancienne fonction — gardée pour compatibilité tests."""
+    """Calcul asymétrique original — gardé pour compatibilité."""
     from pieces_generator import generer_piece, FORMES
     couleur_mono = "mono_rouge" if couleur == COULEUR_JOUEUR_1 else "mono_noir"
 
@@ -129,7 +129,6 @@ def calculer_pieces_initiales_equilibrees(plateau: Plateau) -> list:
     """
     Calcule le même nombre de pièces pour les deux joueurs.
     Basé sur la MOYENNE des cellules rouges et noires + mixtes partagés.
-    Élimine l'avantage photo-dépendant.
     """
     from pieces_generator import generer_piece, FORMES
 
@@ -190,12 +189,12 @@ def reinitialiser_plateau(plateau: Plateau) -> Plateau:
 def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     from pieces_generator import generer_piece
 
-    # ÉQUILIBRAGE : même nombre de pièces initiales
+    # ÉQUILIBRAGE : même nombre de pièces initiales pour les deux joueurs
     pieces_communes = calculer_pieces_initiales_equilibrees(plateau)
     reserve_j1_liste = list(pieces_communes)
     reserve_j2_liste = list(pieces_communes)
 
-    # Pièce initiale : générée indépendamment pour ne pas pénaliser un joueur
+    # Pièce initiale : générée indépendamment pour ne PAS voler un joueur
     piece_initiale = generer_piece()
     reserve_j1 = reserve_j1_liste
     reserve_j2 = reserve_j2_liste
@@ -325,14 +324,32 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
             resultat["succes"] = True
             return resultat
         else:
-            from pieces_generator import generer_piece
-            nouvelles = [generer_piece() for _ in range(5)]
+            from pieces_generator import generer_piece, generer_paire_enlevement
+            # RÉGÉNÉRATION AVEC PIÈCES ELMAAS (diamant)
+            # Règles : 5 pièces total, dont 2 ELMAAS
+            # Somme(tailles ELMAAS) < 1/2 × Somme(tailles normales)
+            elmaas1, elmaas2 = generer_paire_enlevement()
+            normales = [generer_piece() for _ in range(3)]
+
+            # Vérifier la contrainte de taille ELMAAS
+            taille_elmaas = len(elmaas1["cellules"]) + len(elmaas2["cellules"])
+            taille_normales = sum(len(p["cellules"]) for p in normales)
+            if taille_elmaas >= taille_normales // 2:
+                # Regénérer les ELMAAS plus petites
+                for _ in range(10):
+                    elmaas1, elmaas2 = generer_paire_enlevement()
+                    taille_elmaas = len(elmaas1["cellules"]) + len(elmaas2["cellules"])
+                    if taille_elmaas < taille_normales // 2:
+                        break
+
+            nouvelles = [elmaas1, elmaas2] + normales
+            random.shuffle(nouvelles)
             joueur.reserve = nouvelles
             joueur.piocher()
             joueur.nb_pieces_posees_depuis_regen = 0
             joueur.puzzles_completes_depuis_regen = 0
             joueur.seuil_regen_actuel = len(nouvelles)
-            resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5}
+            resultat["regeneration"] = {"nouveau_seuil": 5, "nb_pieces": 5, "elmaas": 2}
 
     resultat["succes"] = True
     etat.historique_actions.append({
