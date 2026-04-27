@@ -244,7 +244,7 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
   const [niveauIA, setNiveauIA] = useState(2);
   const [timerSec, setTimerSec] = useState(30);
   const [showCheesy, setShowCheesy] = useState(false);
-  const tailleFin = Math.max(10, Math.min(20, prop1 % 2 === 0 ? prop1 : prop1 - 1));
+  const tailleFin = Math.max(16, Math.min(20, prop1 % 2 === 0 ? prop1 : prop1 - 1));
 
   const selectTimer = (v) => {
     if (v === 300) { setShowCheesy(true); return; }
@@ -263,7 +263,7 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
       <div className="taille-inputs">
         <div className="taille-joueur">
           <label>{t("tailleDuPlateau", L)}</label>
-          <input type="range" min="10" max="20" step="2" value={prop1} onChange={e => setProp1(Number(e.target.value))} />
+          <input type="range" min="16" max="20" step="2" value={prop1} onChange={e => setProp1(Number(e.target.value))} />
           <span className="taille-val">{prop1}</span>
         </div>
         <div className="taille-result">
@@ -1386,28 +1386,7 @@ export default function App() {
     </div>
   );
 
-  // ══════════════════════════════════════════════════════════
-  // ÉCRAN ANALYSE (affiché par-dessus tout si actif)
-  // ══════════════════════════════════════════════════════════
-  if (showAnalyse) {
-    return (
-      <div className="app">
-        <EcranAnalyse
-          partieId={partieId}
-          couleurJoueur={monRole === "joueur2" ? "noir" : "rouge"}
-          mode={modeAnalyse}
-          pixelsPhoto={pixelsPhoto}
-          taille={taille}
-          L={L}
-          onFermer={() => setShowAnalyse(false)}
-        />
-      </div>
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════
-  // JEU PRINCIPAL
-  // ══════════════════════════════════════════════════════════
+  // Jeu
   return (
     <div className="app jeu">
       {popupParams}
