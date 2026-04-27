@@ -753,8 +753,9 @@ def coup_ia(partie_id: str):
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
         joueur_ia = etat.joueur_actif()
         adverse = etat.joueur_adverse()
+
+        # NIVEAU 4 : choix intelligent du pouvoir
         if niveau >= 4:
-            # NIVEAU 4 : choix intelligent du pouvoir
             from ai_player import choisir_pouvoir_niveau_4
             pouvoir_choisi, cible = choisir_pouvoir_niveau_4(etat, joueur_ia, resultat.get("puzzles_completes", []))
             if pouvoir_choisi == "extraire" and cible:
@@ -769,13 +770,17 @@ def coup_ia(partie_id: str):
             else:
                 from game_engine import appliquer_pouvoir
                 appliquer_pouvoir(etat, "rien")
+
+        # NIVEAU 2-3 : échanger une pièce adverse
         elif niveau >= 2 and adverse.main_active:
             piece_prise = adverse.main_active.pop(0)
             if joueur_ia.main_active:
                 piece_donnee = joueur_ia.main_active.pop(-1)
                 adverse.main_active.append(piece_donnee)
             joueur_ia.main_active.append(piece_prise)
-        etat.passer_tour()  # Met à jour le timestamp
+
+        # ✅ TOUJOURS passer le tour après le pouvoir
+        etat.passer_tour()
 
     # FIX CRITIQUE : s'assurer que le timestamp est bien à MAINTENANT après le tour IA
     etat.timestamp_debut_tour = time.time()
