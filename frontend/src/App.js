@@ -244,7 +244,7 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
   const [niveauIA, setNiveauIA] = useState(2);
   const [timerSec, setTimerSec] = useState(30);
   const [showCheesy, setShowCheesy] = useState(false);
-  const tailleFin = Math.max(16, Math.min(20, prop1 % 2 === 0 ? prop1 : prop1 - 1));
+  const tailleFin = Math.max(10, Math.min(20, prop1 % 2 === 0 ? prop1 : prop1 - 1));
 
   const selectTimer = (v) => {
     if (v === 300) { setShowCheesy(true); return; }
@@ -263,7 +263,7 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
       <div className="taille-inputs">
         <div className="taille-joueur">
           <label>{t("tailleDuPlateau", L)}</label>
-          <input type="range" min="16" max="20" step="2" value={prop1} onChange={e => setProp1(Number(e.target.value))} />
+          <input type="range" min="10" max="20" step="2" value={prop1} onChange={e => setProp1(Number(e.target.value))} />
           <span className="taille-val">{prop1}</span>
         </div>
         <div className="taille-result">
@@ -1554,7 +1554,7 @@ export default function App() {
         <div className="header-gauche">
           <h1 className="titre-jeu-petit">ELMAAS</h1>
           <div className="pseudo-joueur rouge">
-            <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS") : (utilisateur?.pseudo || "Joueur 1")}</span>
+            <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : (utilisateur?.pseudo || "Joueur 1")}</span>
             <span className="pseudo-score">{etat?.scores?.rouge ?? 0}</span>
           </div>
         </div>
@@ -1573,7 +1573,7 @@ export default function App() {
 
         <div className="header-droite">
           <div className="pseudo-joueur noir">
-            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}</span>
+            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : pseudoAdverse}</span>
             <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
           </div>
           <div className="tour-info">
