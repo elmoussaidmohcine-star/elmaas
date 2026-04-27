@@ -516,22 +516,78 @@ def lancer_analyse(partie_id: str):
     mode = data.get("mode", "rapide")
     profondeur = 1 if mode == "rapide" else 2
 
-    # Reconstruire EtatJeu depuis le dict initial
+    # Reconstruire EtatJeu depuis le snapshot initial
+    def deserialiser_etat_local(d: dict) -> EtatJeu:
+        """Reconstruit un EtatJeu depuis un dict sérialisé par serialiser_etat."""
+        from puzzle_generator import Plateau, Puzzle
+        import numpy as np
+        from game_engine import EtatJeu
+
+        # Reconstruire plateau
+        taille = len(d["plateau"]["grille_bicolore"])
+        grille = np.array(d["plateau"]["grille_bicolore"], dtype=int)
+        puzzles = {}
+        for pid, pdata in d["plateau"]["puzzles"].items():
+            puzzle = Puzzle(
+                id=pdata["id"],
+                cellules=set(tuple(c) for c in pdata["cellules"]),
+                type_couleur=pdata["type_couleur"],
+            )
+            puzzle.complete_par = pdata.get("complete_par")
+            puzzle.brise = pdata.get("brise", False)
+            puzzle.protege = pdata.get("protege", False)
+            puzzles[pid] = puzzle
+        plateau = Plateau(
+            grille_bicolore=grille,
+            puzzles=puzzles,
+            pieces={k: v for k, v in d["plateau"]["pieces"].items() if v is not None},
+            cellules_actives=set(tuple(c.split(",")) and (int(c.split(",")[0]), int(c.split(",")[1])) for c in d["plateau"].get("cellules_actives", [])),
+            cellules_libres=[tuple(c) for c in d["plateau"].get("cellules_libres", [])],
+        )
+
+        from game_engine import Joueur
+        def deserialiser_joueur(jd):
+            j = Joueur(couleur=jd["couleur"])
+            j.main_active = jd.get("main_active", [])
+            j.reserve = jd.get("reserve", [])
+            j.nb_pieces_posees_depuis_regen = jd.get("nb_pieces_posees_depuis_regen", 0)
+            j.seuil_regen_actuel = jd.get("seuil_regen_actuel", 5)
+            j.serie_actuelle = jd.get("serie_actuelle", 0)
+            j.pieces_protegees = set(jd.get("pieces_protegees", []))
+            return j
+
+        etat = EtatJeu(plateau=plateau)
+        etat.joueur1 = deserialiser_joueur(d["joueur1"])
+        etat.joueur2 = deserialiser_joueur(d["joueur2"])
+        etat.tour_actuel = d.get("tour_actuel", 0)
+        etat.numero_tour = d.get("numero_tour", 0)
+        etat.manche_terminee = d.get("manche_terminee", False)
+        etat.gagnant = d.get("gagnant")
+        return etat
+
     try:
         import copy as _copy
-        etat_initial = parties.get(partie_id)  # fallback
+        etat_initial = None
+
         if etat_init_dict:
             try:
-                from game_engine import deserialiser_etat
-                etat_initial = deserialiser_etat(etat_init_dict)
+                etat_initial = deserialiser_etat_local(etat_init_dict)
             except Exception as e_deser:
-                print(f"[analyse] Impossible de désérialiser etat_initial : {e_deser}")
+                print(f"[analyse] Erreur désérialisation etat_initial : {e_deser}")
+                import traceback; traceback.print_exc()
+
+        # Fallback sur l'état courant en RAM
+        if etat_initial is None:
+            etat_initial = parties.get(partie_id)
+
+        if etat_initial is None:
+            return jsonify({"erreur": "Impossible de reconstruire l'état initial"}), 500
 
         # Analyser TOUTES les couleurs — le frontend filtre lui-même
         resultat = analyser_partie_complete(
             coups_historique=historique,
             etat_initial=etat_initial,
-            couleur_joueur=None,   # None = analyser les deux joueurs
+            couleur_joueur=None,
             profondeur=profondeur
         )
 

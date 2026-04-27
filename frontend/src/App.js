@@ -975,15 +975,27 @@ export default function App() {
   const joueurActif = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
   const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
 
-  // En mode IA, le panneau gauche doit TOUJOURS afficher le joueur humain,
-  // même quand c'est le tour de l'IA (sinon on voit les pièces de l'IA à gauche).
+  // Panneaux joueurs — jamais de swap :
+  // Mode IA       → toujours basé sur couleurHumain
+  // Mode 2 joueurs → toujours basé sur monRole
+  // Mode local solo → suit tour_actuel (les 2 joueurs sur le même écran)
   const couleurHumain = modeIA === "j2" ? "rouge" : modeIA === "j1" ? "noir" : null;
-  const joueurAffiche = modeIA !== "aucune" && etat
-    ? (couleurHumain === "rouge" ? etat.joueur1 : etat.joueur2)
-    : joueurActif;
-  const joueurAdverseAffiche = modeIA !== "aucune" && etat
-    ? (couleurHumain === "rouge" ? etat.joueur2 : etat.joueur1)
-    : joueurAdverse;
+
+  let joueurAffiche, joueurAdverseAffiche;
+  if (modeIA !== "aucune" && etat) {
+    joueurAffiche        = couleurHumain === "rouge" ? etat.joueur1 : etat.joueur2;
+    joueurAdverseAffiche = couleurHumain === "rouge" ? etat.joueur2 : etat.joueur1;
+  } else if (modeMultijoueur && monRole && etat) {
+    // Mode 2 joueurs en ligne : mes pièces toujours à gauche
+    const monJoueur = monRole === "joueur1" ? etat.joueur1 : etat.joueur2;
+    const adversaire = monRole === "joueur1" ? etat.joueur2 : etat.joueur1;
+    joueurAffiche        = monJoueur;
+    joueurAdverseAffiche = adversaire;
+  } else {
+    // Mode solo local : suit le tour actuel
+    joueurAffiche        = joueurActif;
+    joueurAdverseAffiche = joueurAdverse;
+  }
   const estTourIA = etat && modeIA !== "aucune" &&
     ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
   const estMonTour = modeIA !== "aucune"
