@@ -18,7 +18,7 @@ from PIL import Image
 from image_processor import traiter_photo
 from puzzle_generator import generer_puzzles, Plateau, Puzzle
 from pieces_generator import serialiser_piece
-from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, calculer_score_cellules, reinitialiser_plateau, appliquer_pouvoir
+from game_engine import initialiser_jeu, jouer_tour, calculer_scores, EtatJeu, calculer_score_cellules, reinitialiser_plateau
 from ai_player import jouer_ia
 from config import DEBUG
 from models import db, Utilisateur, calculer_elo, PartieDB
@@ -104,23 +104,13 @@ with app.app_context():
     
     try:
         db.create_all()
+        # Log quelles tables existent maintenant
         from sqlalchemy import inspect
         tables = inspect(db.engine).get_table_names()
         print(f"[migration] Tables après create_all : {tables}")
     except Exception as e:
         print(f"[migration] Erreur create_all : {e}")
         import traceback; traceback.print_exc()
-
-    # Migrations post create_all
-    try:
-        db.session.execute(db.text("ALTER TABLE file_attente ADD COLUMN IF NOT EXISTS ma_couleur VARCHAR(10)"))
-        db.session.execute(db.text("ALTER TABLE parties ADD COLUMN IF NOT EXISTS historique_json TEXT"))
-        db.session.execute(db.text("ALTER TABLE parties ADD COLUMN IF NOT EXISTS etat_initial_json TEXT"))
-        db.session.commit()
-        print("[migration] Colonnes ma_couleur + historique_json + etat_initial_json OK")
-    except Exception as e:
-        print(f"[migration] Erreur colonnes post create_all : {e}")
-        db.session.rollback()
 
 # Cache mémoire
 parties: dict[str, EtatJeu] = {}
@@ -133,23 +123,9 @@ demandes_pause: dict[str, str] = {}
 pause_active: dict[str, bool] = {}
 scores_manches: dict[str, dict] = {}
 timer_par_partie: dict[str, int] = {}
-historique_coups: dict[str, list] = {}
-etats_initiaux: dict[str, dict] = {}
-analyses_quotidiennes: dict[int, dict] = {}
-
-# Recharger les historiques depuis la DB au démarrage
-with app.app_context():
-    try:
-        parties_db = PartieDB.query.all()
-        for p in parties_db:
-            if p.historique_json:
-                historique_coups[p.id] = _json.loads(p.historique_json)
-            if p.etat_initial_json:
-                etats_initiaux[p.id] = _json.loads(p.etat_initial_json)
-        if parties_db:
-            print(f"[startup] {len(parties_db)} historiques rechargés depuis la DB")
-    except Exception as e:
-        print(f"[startup] Erreur rechargement historiques : {e}")
+historique_coups: dict[str, list] = {}    # partie_id -> liste de coups
+etats_initiaux: dict[str, dict] = {}      # partie_id -> etat sérialisé initial
+analyses_quotidiennes: dict[int, dict] = {}  # user_id -> {"date": date, "count": int
 
 
 def sauvegarder_partie(partie_id: str):
@@ -169,13 +145,6 @@ def sauvegarder_partie(partie_id: str):
         partie_db.recon_tentee = reconnaissance_tentee.get(partie_id, False)
         partie_db.timer_sec = timer_par_partie.get(partie_id, 30)
         partie_db.scores_manches_json = _json.dumps(scores_manches.get(partie_id, {"rouge": 0, "noir": 0}))
-        # Persister l'historique des coups (pour l'analyse post-partie)
-        hist = historique_coups.get(partie_id, [])
-        partie_db.historique_json = _json.dumps(hist)
-        # Persister l'état initial (snapshot pour rejouer depuis le début)
-        etat_init = etats_initiaux.get(partie_id)
-        if etat_init:
-            partie_db.etat_initial_json = _json.dumps(etat_init)
         db.session.commit()
     except Exception as e:
         if DEBUG:
@@ -465,65 +434,54 @@ def quota_analyse():
     })
 @app.route("/analyse/<partie_id>", methods=["POST"])
 def lancer_analyse(partie_id: str):
-    # Vérif existence partie
-    etat = parties.get(partie_id)
+    # Récupérer historique + etat_initial depuis RAM ou DB
     historique = historique_coups.get(partie_id, [])
     etat_init_dict = etats_initiaux.get(partie_id)
 
-    # Recharger depuis DB si nécessaire (après redémarrage Render)
     if not historique or not etat_init_dict:
         from models import PartieDB
         partie_db = PartieDB.query.get(partie_id)
         if partie_db:
             if not historique and partie_db.historique_json:
-                import json as _json2
-                historique = _json2.loads(partie_db.historique_json)
+                historique = _json.loads(partie_db.historique_json)
                 historique_coups[partie_id] = historique
             if not etat_init_dict and partie_db.etat_initial_json:
-                import json as _json2
-                etat_init_dict = _json2.loads(partie_db.etat_initial_json)
+                etat_init_dict = _json.loads(partie_db.etat_initial_json)
                 etats_initiaux[partie_id] = etat_init_dict
 
     if not historique or not etat_init_dict:
         return jsonify({"erreur": "Partie introuvable ou historique manquant"}), 404
- 
+
     # Vérif authentification + quotas
     from auth import get_user_from_request
     user = get_user_from_request()
     if not user:
         return jsonify({"erreur": "Connexion requise pour analyser une partie"}), 401
- 
-    # Quotas : gratuit=1/jour, ELMAASYON=3/jour, ELMAAS=illimité
+
     aujourd_hui = datetime.now(timezone.utc).date()
     quota_user = analyses_quotidiennes.get(user.id)
     if not quota_user or quota_user["date"] != aujourd_hui:
         analyses_quotidiennes[user.id] = {"date": aujourd_hui, "count": 0}
         quota_user = analyses_quotidiennes[user.id]
- 
+
     plan = getattr(user, "plan", None)
     limite = float("inf") if plan == "elmaas" else (3 if plan == "elmaasyon" else 1)
- 
+
     if quota_user["count"] >= limite:
         return jsonify({
             "erreur": "Quota d'analyse atteint pour aujourd'hui",
             "code": "QUOTA_REACHED",
             "plan_actuel": plan or "gratuit"
         }), 429
- 
-    # Déterminer couleur du joueur (par défaut rouge = J1)
+
     data = request.get_json() or {}
-    couleur_joueur = data.get("couleur", "rouge")
     mode = data.get("mode", "rapide")
     profondeur = 1 if mode == "rapide" else 2
 
     # Reconstruire EtatJeu depuis le snapshot initial
-    def deserialiser_etat_local(d: dict) -> EtatJeu:
-        """Reconstruit un EtatJeu depuis un dict sérialisé par serialiser_etat."""
+    def deserialiser_etat_local(d):
         from puzzle_generator import Plateau, Puzzle
         import numpy as np
-        from game_engine import EtatJeu
-
-        # Reconstruire plateau
         taille = len(d["plateau"]["grille_bicolore"])
         grille = np.array(d["plateau"]["grille_bicolore"], dtype=int)
         puzzles = {}
@@ -537,16 +495,24 @@ def lancer_analyse(partie_id: str):
             puzzle.brise = pdata.get("brise", False)
             puzzle.protege = pdata.get("protege", False)
             puzzles[pid] = puzzle
+        pieces_raw = d["plateau"].get("pieces", {})
+        pieces = {k: v for k, v in pieces_raw.items() if v is not None}
+        cellules_actives = set()
+        for c in d["plateau"].get("cellules_actives", []):
+            if isinstance(c, str):
+                parts = c.split(",")
+                cellules_actives.add((int(parts[0]), int(parts[1])))
+            else:
+                cellules_actives.add(tuple(c))
         plateau = Plateau(
             grille_bicolore=grille,
             puzzles=puzzles,
-            pieces={k: v for k, v in d["plateau"]["pieces"].items() if v is not None},
-            cellules_actives=set(tuple(c.split(",")) and (int(c.split(",")[0]), int(c.split(",")[1])) for c in d["plateau"].get("cellules_actives", [])),
+            pieces=pieces,
+            cellules_actives=cellules_actives,
             cellules_libres=[tuple(c) for c in d["plateau"].get("cellules_libres", [])],
         )
-
         from game_engine import Joueur
-        def deserialiser_joueur(jd):
+        def deser_joueur(jd):
             j = Joueur(couleur=jd["couleur"])
             j.main_active = jd.get("main_active", [])
             j.reserve = jd.get("reserve", [])
@@ -555,10 +521,9 @@ def lancer_analyse(partie_id: str):
             j.serie_actuelle = jd.get("serie_actuelle", 0)
             j.pieces_protegees = set(jd.get("pieces_protegees", []))
             return j
-
         etat = EtatJeu(plateau=plateau)
-        etat.joueur1 = deserialiser_joueur(d["joueur1"])
-        etat.joueur2 = deserialiser_joueur(d["joueur2"])
+        etat.joueur1 = deser_joueur(d["joueur1"])
+        etat.joueur2 = deser_joueur(d["joueur2"])
         etat.tour_actuel = d.get("tour_actuel", 0)
         etat.numero_tour = d.get("numero_tour", 0)
         etat.manche_terminee = d.get("manche_terminee", False)
@@ -566,24 +531,17 @@ def lancer_analyse(partie_id: str):
         return etat
 
     try:
-        import copy as _copy
         etat_initial = None
-
-        if etat_init_dict:
-            try:
-                etat_initial = deserialiser_etat_local(etat_init_dict)
-            except Exception as e_deser:
-                print(f"[analyse] Erreur désérialisation etat_initial : {e_deser}")
-                import traceback; traceback.print_exc()
-
-        # Fallback sur l'état courant en RAM
-        if etat_initial is None:
+        try:
+            etat_initial = deserialiser_etat_local(etat_init_dict)
+        except Exception as e_deser:
+            import traceback; traceback.print_exc()
+            print(f"[analyse] Erreur désérialisation : {e_deser}")
             etat_initial = parties.get(partie_id)
 
         if etat_initial is None:
-            return jsonify({"erreur": "Impossible de reconstruire l'état initial"}), 500
+            return jsonify({"erreur": "Impossible de reconstruire l'état initial de la partie"}), 500
 
-        # Analyser TOUTES les couleurs — le frontend filtre lui-même
         resultat = analyser_partie_complete(
             coups_historique=historique,
             etat_initial=etat_initial,
@@ -622,15 +580,9 @@ def jouer(partie_id: str):
             "couleur": etat.joueur_actif().couleur,
         }
         if action == "poser":
-            piece_idx = int(data.get("piece_index", 0))
-            coup_enregistre["piece_index"] = piece_idx
+            coup_enregistre["piece_index"] = int(data.get("piece_index", 0))
             coup_enregistre["origine"] = list(data.get("origine", [0, 0]))
             coup_enregistre["pouvoir"] = data.get("pouvoir", "rien")
-            # Stocker la pièce entière pour un rejeu fidèle
-            joueur = etat.joueur_actif()
-            if 0 <= piece_idx < len(joueur.main_active):
-                from pieces_generator import serialiser_piece
-                coup_enregistre["piece_data"] = serialiser_piece(joueur.main_active[piece_idx])
         if partie_id not in historique_coups:
             historique_coups[partie_id] = []
         historique_coups[partie_id].append(coup_enregistre)
@@ -795,106 +747,19 @@ def coup_ia(partie_id: str):
         return jsonify({"succes": True, "action": "repiocher", "etat": etat_serialise})
 
     piece_index, origine = coup
-
-    # Enregistrer le coup IA dans l'historique (nécessaire pour l'analyse)
-    if partie_id not in historique_coups:
-        historique_coups[partie_id] = []
-    from pieces_generator import serialiser_piece
-    piece_data = serialiser_piece(joueur.main_active[piece_index]) if 0 <= piece_index < len(joueur.main_active) else None
-    historique_coups[partie_id].append({
-        "type": "poser",
-        "numero_tour": etat.numero_tour,
-        "couleur": joueur.couleur,
-        "piece_index": int(piece_index),
-        "origine": list(origine),
-        "pouvoir": "rien",
-        "piece_data": piece_data,
-    })
-
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
 
-    # Si l'IA a complété des puzzles → choisir un pouvoir intelligemment
+    # Si l'IA a complété des puzzles → appliquer pouvoir automatiquement
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
-        pouvoir_ia = "rien"
-        infos_pouvoir_ia = {}  # Détails pour affichage frontend
-
-        try:
-            # Stratégie de choix du pouvoir :
-            # 1. Si l'adversaire a des cases non protégées dans des puzzles quasi-complets → échanger
-            # 2. Si j'ai des cases dans des puzzles que je veux protéger → protéger
-            # 3. Sinon → rien
-            pieces_plateau = etat.plateau.pieces
-            puzzles = etat.plateau.puzzles
-            couleur_adv = "noir" if joueur.couleur == "rouge" else "rouge"
-
-            # Chercher la meilleure case adverse à échanger
-            meilleur_echange = None
-            meilleur_score_ech = 0
-            for puzzle in puzzles.values():
-                if puzzle.complete_par or puzzle.brise:
-                    continue
-                if puzzle.type_couleur not in (f"mono_{joueur.couleur}", "mixte"):
-                    continue
-                for r, c in puzzle.cellules:
-                    cle = f"{r},{c}"
-                    if pieces_plateau.get(cle) == couleur_adv:
-                        if cle not in (etat.joueur_adverse().pieces_protegees or set()):
-                            nb_adv = sum(1 for rr, cc in puzzle.cellules
-                                         if pieces_plateau.get(f"{rr},{cc}") == couleur_adv)
-                            if nb_adv > meilleur_score_ech:
-                                meilleur_score_ech = nb_adv
-                                meilleur_echange = (r, c)
-
-            # Chercher la meilleure case à protéger
-            meilleur_protection = None
-            meilleur_score_prot = 0
-            for puzzle in puzzles.values():
-                if puzzle.complete_par or puzzle.brise:
-                    continue
-                for r, c in puzzle.cellules:
-                    cle = f"{r},{c}"
-                    if pieces_plateau.get(cle) == joueur.couleur:
-                        nb_moi = sum(1 for rr, cc in puzzle.cellules
-                                     if pieces_plateau.get(f"{rr},{cc}") == joueur.couleur)
-                        if nb_moi > meilleur_score_prot:
-                            meilleur_score_prot = nb_moi
-                            meilleur_protection = (r, c)
-
-            if meilleur_echange and meilleur_score_ech >= 2:
-                # Échanger une case adverse dans un puzzle favorable
-                r_ech = appliquer_pouvoir(etat, "echanger", meilleur_echange)
-                if r_ech.get("succes"):
-                    pouvoir_ia = "echanger"
-                    infos_pouvoir_ia = {"case": list(meilleur_echange), "couleur_avant": couleur_adv}
-                    resultat.update(r_ech)
-            elif meilleur_protection and niveau >= 2:
-                # Protéger une case importante
-                r_prot = appliquer_pouvoir(etat, "proteger", meilleur_protection)
-                if r_prot.get("succes"):
-                    pouvoir_ia = "proteger"
-                    infos_pouvoir_ia = {"case": list(meilleur_protection)}
-                    resultat.update(r_prot)
-            else:
-                bonus = appliquer_pouvoir(etat, "rien")
-                resultat.update(bonus)
-
-        except Exception as e_pouvoir:
-            print(f"[ia] Erreur pouvoir auto : {e_pouvoir}")
-            try:
-                appliquer_pouvoir(etat, "rien")
-            except:
-                pass
-
-        # Passer le tour (jouer_tour ne l'a pas fait car attente_pouvoir=True)
-        try:
-            if not etat.manche_terminee:
-                etat.passer_tour()
-        except Exception as e_tour:
-            print(f"[ia] Erreur passer_tour : {e_tour}")
-
-        resultat["attente_pouvoir"] = False
-        resultat["pouvoir_ia"] = pouvoir_ia
-        resultat["infos_pouvoir_ia"] = infos_pouvoir_ia
+        joueur_ia = etat.joueur_actif()
+        adverse = etat.joueur_adverse()
+        if niveau >= 2 and adverse.main_active:
+            piece_prise = adverse.main_active.pop(0)
+            if joueur_ia.main_active:
+                piece_donnee = joueur_ia.main_active.pop(-1)
+                adverse.main_active.append(piece_donnee)
+            joueur_ia.main_active.append(piece_prise)
+        etat.passer_tour()  # Met à jour le timestamp
 
     # FIX CRITIQUE : s'assurer que le timestamp est bien à MAINTENANT après le tour IA
     # (le passer_tour a déjà été appelé dans jouer_tour si pas d'attente_pouvoir)

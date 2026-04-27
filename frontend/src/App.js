@@ -322,41 +322,31 @@ function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }
   const [citation, setCitation] = useState(getCitationAttente(0));
   const [echec, setEchec] = useState(false);
   const [tolerance, setTolerance] = useState(100);
-
-  // Garde le callback à jour sans relancer le polling à chaque render parent
-  const onMatchTrouveRef = useRef(onMatchTrouve);
-  useEffect(() => { onMatchTrouveRef.current = onMatchTrouve; }, [onMatchTrouve]);
-
+ 
   useEffect(() => {
     const i = setInterval(() => setTempsEcoule(t => t + 1), 1000);
     const c = setInterval(() => setCitation(getCitationAttente(0)), 8000);
     return () => { clearInterval(i); clearInterval(c); };
   }, []);
-
+ 
   useEffect(() => {
     let actif = true;
-    let pollId = null;
-    let dejaTraite = false;  // CRITIQUE : empêche les doubles dispatches
     const token = localStorage.getItem("elmaas_token");
-
+ 
     const verifier = async () => {
-      if (!actif || dejaTraite) return;
+      if (!actif) return;
       try {
         const r = await axios.get(`${API}/matchmaking/verifier`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (!actif || dejaTraite) return;
-
+        if (!actif) return;
+ 
         if (r.data.status === "match") {
-          dejaTraite = true;
-          if (pollId) { clearInterval(pollId); pollId = null; }
-          actif = false;
-          onMatchTrouveRef.current(r.data);
+          onMatchTrouve(r.data);
           return;
         }
         if (r.data.status === "timeout") {
           setEchec(true);
-          if (pollId) { clearInterval(pollId); pollId = null; }
           return;
         }
         if (r.data.tolerance) setTolerance(r.data.tolerance);
@@ -364,15 +354,12 @@ function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }
         console.error("Poll match:", e);
       }
     };
-
+ 
     verifier();
-    pollId = setInterval(verifier, 3000);
-    return () => {
-      actif = false;
-      if (pollId) clearInterval(pollId);
-    };
-  }, []);  // PAS de dépendance sur onMatchTrouve : on utilise la ref
-
+    const poll = setInterval(verifier, 3000);
+    return () => { actif = false; clearInterval(poll); };
+  }, [onMatchTrouve]);
+ 
   const handleAnnuler = async () => {
     const token = localStorage.getItem("elmaas_token");
     try {
@@ -422,10 +409,7 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
   const [apercu, setApercu] = useState(null);
 
   const peutUploader = !utilisateur ? false : utilisateur.premium || !utilisateur.photo_perso_utilisee;
-  // Le nom de photo n'est utile qu'en mode "ami par code" (reconnaissance par J2).
-  // En mode IA et en matchmaking, on ne demande pas de nom.
-  const modeAmiCode = modeIA === "aucune" && !partieIdMatch;
-  const nomValide = !modeAmiCode || nomPhoto.trim().length >= 3;
+  const nomValide = modeIA !== "aucune" || nomPhoto.trim().length >= 3;
 
   useEffect(() => {
     axios.get(`${API}/photos_fixes`).then(res => setPhotosFixees(res.data.photos));
@@ -637,39 +621,18 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   const maxR = Math.max(0, ...cells.map(([r]) => r));
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
   const S = 10;
-  const estEnlevement = piece.enlevement === true;
-  const coul = estEnlevement ? null : (couleur === "rouge" ? "#cc2200" : "#444455");
-  const coulClair = estEnlevement ? "#c084fc" : (couleur === "rouge" ? "#ff4422" : "#888888");
-  const fondSel = estEnlevement ? "#c084fc22" : `${coul}33`;
-  const fondNormal = estEnlevement ? "#0a0a1a" : "#111122";
-
-  const celluleStyle = estEnlevement
-    ? {
-        position: "absolute",
-        borderRadius: 2,
-        background: "linear-gradient(135deg,#ffffff,#b8eeff,#4fc3f7,#0288d1,#b8eeff,#ffffff)",
-        backgroundSize: "300% 300%",
-        animation: "diamant-shimmer 3s ease-in-out infinite",
-        boxShadow: "inset 0 0 4px #ffffffcc, 0 0 8px #4fc3f766",
-        border: "1px solid #b8eeffaa",
-      }
-    : {
-        position: "absolute",
-        borderRadius: 2,
-        background: coul,
-        boxShadow: `0 0 4px ${coul}88`,
-      };
+  const coul = couleur === "rouge" ? "#cc2200" : "#444444";
+  const coulClair = couleur === "rouge" ? "#ff4422" : "#888888";
   return (
-    <div onClick={onClick} className={`mini-piece ${estSelectionnee ? "sel" : ""} ${estEnlevement ? "enlevement" : ""}`}
+    <div onClick={onClick} className={`mini-piece ${estSelectionnee ? "sel" : ""}`}
       style={{ position: "relative", width: (maxC+1)*S+10, height: (maxR+1)*S+10, padding: 5,
         borderRadius: 6, cursor: "pointer", flexShrink: 0,
-        border: `2px solid ${estSelectionnee ? coulClair : (estEnlevement ? "#ffd70066" : "#2a2a4a")}`,
-        background: estSelectionnee ? fondSel : fondNormal,
-        boxShadow: estEnlevement ? "0 0 8px #ffd70044" : "none",
-        transition: "all 0.15s" }}
-      title={estEnlevement ? `${piece.forme} (ELMAAS)` : piece.forme}>
+        border: `2px solid ${estSelectionnee ? coulClair : "#2a2a4a"}`,
+        background: estSelectionnee ? `${coul}33` : "#111122", transition: "all 0.15s" }}
+      title={piece.forme}>
       {cells.map(([r, c], i) => (
-        <div key={i} style={{ ...celluleStyle, top: r*S+5, left: c*S+5, width: S-2, height: S-2 }} />
+        <div key={i} style={{ position: "absolute", top: r*S+5, left: c*S+5,
+          width: S-2, height: S-2, borderRadius: 2, background: coul, boxShadow: `0 0 4px ${coul}88` }} />
       ))}
     </div>
   );
@@ -704,41 +667,6 @@ function PopupPouvoir({ onChoisir, serie, L }) {
   );
 }
 
-function PopupIAPouvoir({ pouvoir, infos, couleurIA, onFermer, L }) {
-  const couleurLabel = couleurIA === "rouge" ? "Rouge" : "Noir";
-  return (
-    <div className="popup-overlay" onClick={onFermer}>
-      <div className="popup-pouvoir" onClick={e => e.stopPropagation()} style={{ gap: 14, minWidth: 300 }}>
-        <div className="popup-titre" style={{ color: "var(--accent)" }}>
-          {pouvoir === "echanger" ? "Echange IA" : "Protection IA"}
-        </div>
-        <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
-          {couleurLabel} a utilise son pouvoir
-        </div>
-        {pouvoir === "echanger" && infos.case && (
-          <div style={{ fontSize: 13, textAlign: "center", padding: "8px 12px",
-            background: "var(--bg2)", borderRadius: 8, border: "1px solid var(--bord)" }}>
-            Case echangee : ({infos.case[0]}, {infos.case[1]})<br/>
-            <span style={{ color: infos.couleur_avant === "rouge" ? "#ff4422" : "#4488ff", fontWeight: 700 }}>
-              {infos.couleur_avant}
-            </span>
-            {" → "}
-            <span style={{ color: couleurIA === "rouge" ? "#ff4422" : "#4488ff", fontWeight: 700 }}>
-              {couleurIA}
-            </span>
-          </div>
-        )}
-        {pouvoir === "proteger" && infos.case && (
-          <div style={{ fontSize: 13, textAlign: "center", padding: "8px 12px",
-            background: "var(--bg2)", borderRadius: 8, border: "1px solid var(--bord)" }}>
-            Case protegee : ({infos.case[0]}, {infos.case[1]})
-          </div>
-        )}
-        <button className="popup-btn" onClick={onFermer}>OK</button>
-      </div>
-    </div>
-  );
-}
 function PopupScout({ pieces, couleur, echanges, onFermer, L }) {
   return (
     <div className="popup-overlay">
@@ -890,7 +818,6 @@ export default function App() {
   const [extractionsEnCours, setExtractionsEnCours] = useState([]);
   const [pieceADonner, setPieceADonner] = useState(null);
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
-  const [popupIAPouvoir, setPopupIAPouvoir] = useState(null); // { type: "proteger"|"echanger", details }
   const [scoutEchanges, setScoutEchanges] = useState([]);
   const [matchmakingActif, setMatchmakingActif] = useState(false);
   const [modeAnalyse, setModeAnalyse] = useState("rapide");
@@ -908,9 +835,7 @@ export default function App() {
     if (!mancheTermineeInfo) return;
     const g = mancheTermineeInfo.gagnant;
     if (g && g !== "egalite" && pseudoAdverse) {
-      const maCouleur = modeIA !== "aucune"
-        ? (couleurHumain || "rouge")
-        : (monRole === "joueur2" ? "noir" : "rouge");
+      const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
       const jaiGagne = g === maCouleur;
       const nouveauScore = {
         moi: scoresCumules.moi + (jaiGagne ? 1 : 0),
@@ -975,24 +900,19 @@ export default function App() {
   const joueurActif = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
   const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
 
-  // Panneaux joueurs — jamais de swap :
-  // Mode IA       → toujours basé sur couleurHumain
-  // Mode 2 joueurs → toujours basé sur monRole
-  // Mode local solo → suit tour_actuel (les 2 joueurs sur le même écran)
+  // Panneaux joueurs — jamais de swap pendant la partie
+  // Mode IA       : toujours le joueur humain à gauche
+  // Mode 2 joueurs: toujours basé sur monRole
+  // Mode local    : suit le tour actuel
   const couleurHumain = modeIA === "j2" ? "rouge" : modeIA === "j1" ? "noir" : null;
-
   let joueurAffiche, joueurAdverseAffiche;
   if (modeIA !== "aucune" && etat) {
     joueurAffiche        = couleurHumain === "rouge" ? etat.joueur1 : etat.joueur2;
     joueurAdverseAffiche = couleurHumain === "rouge" ? etat.joueur2 : etat.joueur1;
   } else if (modeMultijoueur && monRole && etat) {
-    // Mode 2 joueurs en ligne : mes pièces toujours à gauche
-    const monJoueur = monRole === "joueur1" ? etat.joueur1 : etat.joueur2;
-    const adversaire = monRole === "joueur1" ? etat.joueur2 : etat.joueur1;
-    joueurAffiche        = monJoueur;
-    joueurAdverseAffiche = adversaire;
+    joueurAffiche        = monRole === "joueur1" ? etat.joueur1 : etat.joueur2;
+    joueurAdverseAffiche = monRole === "joueur1" ? etat.joueur2 : etat.joueur1;
   } else {
-    // Mode solo local : suit le tour actuel
     joueurAffiche        = joueurActif;
     joueurAdverseAffiche = joueurAdverse;
   }
@@ -1027,25 +947,15 @@ export default function App() {
         setTimerRouge(restant);
         if (restant <= 0) {
           clearInterval(timerRef.current);
-          // Noir gagne — mettre à jour scoresManches ET déclencher la popup de fin normale
-          setScoresManches(prev => {
-            const nouveau = { ...prev, noir: (prev.noir ?? 0) + 1 };
-            return nouveau;
-          });
-          const scores = calculer_scores_locaux(etat);
-          setMancheTermineeInfo({ gagnant: "noir", scores, motif: "timeout" });
+          setPopup({ type: "temps_ecoule", titre: t("tempsEcoule", L),
+            message: t("rougeNonJoue", L), gagnant: t("noir", L), couleurGagnant: "noir" });
         }
       } else {
         setTimerNoir(restant);
         if (restant <= 0) {
           clearInterval(timerRef.current);
-          // Rouge gagne — mettre à jour scoresManches ET déclencher la popup de fin normale
-          setScoresManches(prev => {
-            const nouveau = { ...prev, rouge: (prev.rouge ?? 0) + 1 };
-            return nouveau;
-          });
-          const scores = calculer_scores_locaux(etat);
-          setMancheTermineeInfo({ gagnant: "rouge", scores, motif: "timeout" });
+          setPopup({ type: "temps_ecoule", titre: t("tempsEcoule", L),
+            message: t("noirNonJoue", L), gagnant: t("rouge", L), couleurGagnant: "rouge" });
         }
       }
     }, 200);
@@ -1053,9 +963,6 @@ export default function App() {
   }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, modeMultijoueur, statutConnexion, timerChoisi, estTourIA, iaEnCours, L, pauseIAActive]);
 
   // WebSocket
-  const monRoleRef = useRef(null);
-  useEffect(() => { monRoleRef.current = monRole; }, [monRole]);
-
   useEffect(() => {
     const socket = io(API, { transports: ["polling", "websocket"] });
     socketRef.current = socket;
@@ -1078,13 +985,11 @@ export default function App() {
     socket.on("pause_terminee", (data) => { setPauseActive(false); if (data?.etat) setEtat(data.etat); });
     socket.on("pause_refusee", () => { setDemandePauseRecue(null); });
     socket.on("message_recu", (data) => {
-      const role = monRoleRef.current;
-      const maCouleur = role === "joueur1" ? "rouge" : "noir";
       const id = Date.now() + Math.random();
       setBullesActives(b => [...b, {
         id, texte: data.texte,
         couleur: data.couleur,
-        position: data.couleur === maCouleur ? "bottom" : "top"
+        position: data.couleur === (monRole === "joueur1" ? "rouge" : "noir") ? "bottom" : "top"
       }]);
     });
     return () => socket.disconnect();
@@ -1205,59 +1110,20 @@ export default function App() {
     const tourIA = mode === "j1" ? 0 : 1;
     if (etatCourant.tour_actuel !== tourIA || etatCourant.manche_terminee) return;
     setIaEnCours(true);
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 800));
     try {
       const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
-      const nouvelEtat = res.data.etat;
-      setEtat(nouvelEtat);
-
-      // Afficher popup si l'IA a utilisé un pouvoir
-      if (res.data.pouvoir_ia && res.data.pouvoir_ia !== "rien") {
-        setPopupIAPouvoir({
-          type: res.data.pouvoir_ia,
-          infos: res.data.infos_pouvoir_ia || {},
-          couleurIA: modeIA === "j1" ? "rouge" : "noir",
-        });
-      }
-
-      // Si la manche est terminée, afficher le résultat
-      if (nouvelEtat?.manche_terminee && nouvelEtat?.gagnant) {
-        const scores = calculer_scores_locaux(nouvelEtat);
-        setMancheTermineeInfo({ gagnant: nouvelEtat.gagnant, scores });
-        return;
-      }
-
-      // Si c'est encore le tour de l'IA (double tour, série…), relancer immédiatement
-      if (nouvelEtat && nouvelEtat.tour_actuel === tourIA && !nouvelEtat.manche_terminee) {
-        // Petit délai pour laisser React mettre à jour l'affichage
-        await new Promise(r => setTimeout(r, 400));
-        setIaEnCours(false);
-        // Le useEffect va se redéclencher grâce à setEtat ci-dessus.
-        // Si tour_actuel n'a pas changé, on force manuellement.
-        await declencherIA(nouvelEtat, partieIdCourant, mode, niveau);
-        return;
-      }
-    } catch (err) {
-      console.error("Erreur IA:", err);
-      gererErreur404(err);
-    } finally {
-      setIaEnCours(false);
-    }
+      setEtat(res.data.etat);
+    } catch (err) { console.error("Erreur IA:", err); gererErreur404(err); }
+    finally { setIaEnCours(false); }
   }, [gererErreur404]);
 
   useEffect(() => {
-    if (etape === "jeu" && etat && partieId && modeIA !== "aucune" && !iaEnCours && !pauseIAActive) {
+    if (etape === "jeu" && etat && partieId && modeIA !== "aucune" && !iaEnCours && !attenteChoixPouvoir && !pauseIAActive) {
       const tourIA = modeIA === "j1" ? 0 : 1;
-      if (etat.tour_actuel === tourIA && !etat.manche_terminee) {
-        // Si attenteChoixPouvoir est bloqué côté IA, on le reset — l'IA gère ses pouvoirs seule
-        if (attenteChoixPouvoir) {
-          setAttenteChoixPouvoir(false);
-          setPopup(null);
-        }
-        declencherIA(etat, partieId, modeIA, niveauIA);
-      }
+      if (etat.tour_actuel === tourIA && !etat.manche_terminee) declencherIA(etat, partieId, modeIA, niveauIA);
     }
-  }, [etat?.tour_actuel, etat?.manche_terminee, etape, partieId, attenteChoixPouvoir, pauseIAActive]);
+  }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir, pauseIAActive]);
 
   const envoyerPouvoir = useCallback(async (body) => {
     try {
@@ -1304,20 +1170,9 @@ export default function App() {
   const handlePouvoir = useCallback((choix) => {
     setPopup(null);
     if (choix === "rien") envoyerPouvoir({ pouvoir: "rien" });
-    else if (choix === "proteger") {
-      setAttenteChoixPouvoir(true);
-      setPopup({ type: "attente_cible", pouvoir: "proteger", message: t("cliquerTienne", L) });
-    }
-    else if (choix === "echanger") {
-      setPieceADonner(null);
-      setAttenteChoixPouvoir(true);
-      setPopup({ type: "attente_cible", pouvoir: "echanger", message: t("cliquerAdversaire", L) });
-    }
-    else if (choix === "extraire") {
-      setExtractionsEnCours([]);
-      setAttenteChoixPouvoir(true);
-      setPopup({ type: "attente_extraire", message: t("cliquer1ou2", L) });
-    }
+    else if (choix === "proteger") { setAttenteChoixPouvoir(true); setPopup({ type: "attente_cible", pouvoir: "proteger", message: t("cliquerTienne", L) }); }
+    else if (choix === "echanger") { setPieceADonner(null); setAttenteChoixPouvoir(true); setPopup({ type: "attente_cible", pouvoir: "echanger", message: t("cliquerDonnerPrendre", L) }); }
+    else if (choix === "extraire") { setExtractionsEnCours([]); setAttenteChoixPouvoir(true); setPopup({ type: "attente_extraire", message: t("cliquer1ou2", L) }); }
   }, [envoyerPouvoir, L]);
 
   const handleCiblePouvoir = useCallback(async (position) => {
@@ -1342,8 +1197,7 @@ export default function App() {
       return;
     }
     if (p.type === "attente_cible") {
-      const pouvoir = p.pouvoir;
-      setAttenteChoixPouvoir(false);
+      const pouvoir = p.pouvoir; 
       setPopup(null);
       await envoyerPouvoir({ pouvoir, cible_pouvoir: position });
     }
@@ -1387,8 +1241,6 @@ export default function App() {
     setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null);
     setMancheTermineeInfo(null); setPauseActive(false); setPauseIAActive(false); setDemandePauseRecue(null);
     setIaEnCours(false);
-    setShowAnalyse(false); setDernierCoupClassif(null);
-    setBullesActives([]); setMessageChat("");
     setEtape(utilisateur?.pseudo ? "taille" : (utilisateur ? "pseudo" : "auth"));
   };
 
@@ -1456,62 +1308,43 @@ export default function App() {
         <PopupMatchmaking L={L} timerSec={timerChoisi} utilisateur={utilisateur}
           onAnnuler={() => setMatchmakingActif(false)}
           onMatchTrouve={(data) => {
-            console.log("[matchmaking] onMatchTrouve reçu:", data);
-            // Garde-fou : si déjà traité (race condition), on ignore
-            if (!matchmakingActif) {
-              console.log("[matchmaking] Déjà traité, ignoré");
-              return;
-            }
             setMatchmakingActif(false);
             setPartieIdMatch(data.partie_id);
             setPseudoAdversaireMatch(data.adversaire_pseudo);
             setModeMultijoueur(true);
-
+            
             if (data.ma_couleur === "rouge") {
-              console.log("[matchmaking] Je suis ROUGE, vais à l'écran photo");
               setMonRole("joueur1");
               setEtape("photo");
             } else {
-              console.log("[matchmaking] Je suis NOIR, vais au lobby et j'attends");
-              // J2 : on va au lobby et on attend que Rouge crée la partie côté backend.
-              // On NE peut PAS émettre rejoindre_partie tant que la partie n'existe pas
-              // dans parties[partie_id] côté serveur (sinon emit "erreur" silencieux).
+              // 🔥 JOUEUR 2 : rejoindre IMMÉDIATEMENT la room WebSocket
               setMonRole("joueur2");
               setPartieId(data.partie_id);
               setEtape("lobby");
-
-              let aRejoint = false;
+              
+              // CRITIQUE : rejoindre tout de suite
+              socketRef.current.emit("rejoindre_partie", {
+                partie_id: data.partie_id,
+                joueur: "joueur2"
+              });
+              
+              // Récupérer les pixels en arrière-plan
               const pollerPartie = async () => {
                 try {
                   const res = await axios.get(`${API}/pixels/${data.partie_id}`);
-                  if (res.data && res.data.pixels_photo && res.data.etat) {
-                    // La partie existe enfin côté serveur
+                  if (res.data && res.data.pixels_photo) {
                     setPixelsPhoto(res.data.pixels_photo);
                     setTaille(res.data.taille);
-                    setEtat(res.data.etat);
+                    if (res.data.etat) setEtat(res.data.etat);
                     if (res.data.indice) setIndiceReconnaissance(res.data.indice);
                     if (res.data.timer_sec) {
                       setTimerChoisi(res.data.timer_sec);
                       setTimerRouge(res.data.timer_sec);
                       setTimerNoir(res.data.timer_sec);
                     }
-                    // MAINTENANT seulement on rejoint la room
-                    if (!aRejoint && socketRef.current?.connected) {
-                      aRejoint = true;
-                      socketRef.current.emit("rejoindre_partie", {
-                        partie_id: data.partie_id,
-                        joueur: "joueur2"
-                      });
-                      // Le passage à "jeu" se fera via partie_prete
-                    } else if (!aRejoint) {
-                      // Socket pas encore connecté : on retentera
-                      setTimeout(pollerPartie, 1000);
-                    }
                     return;
                   }
-                } catch (e) {
-                  // 404 attendu tant que Rouge n'a pas créé la partie
-                }
+                } catch (e) {}
                 setTimeout(pollerPartie, 2000);
               };
               pollerPartie();
@@ -1549,33 +1382,11 @@ export default function App() {
         statutConnexion={statutConnexion}
         onRejoindreManuellement={handleRejoindreManuellement} 
         L={L}
-        dejaMatche={!!partieIdMatch && monRole === "joueur2"}
+        dejaMatche={modeMultijoueur && monRole === "joueur2" && !!partieId && !etat}
         onPartiePrete={() => setEtape("jeu")}
       />
     </div>
   );
-
-  // Écran d'analyse (s'affiche par dessus le jeu après une manche terminée)
-  if (showAnalyse) {
-    // En mode IA, la couleur analysée = couleur du joueur humain (pas monRole qui est toujours joueur1)
-    const couleurMoi = modeIA !== "aucune"
-      ? (couleurHumain || "rouge")
-      : (monRole === "joueur2" ? "noir" : "rouge");
-    return (
-      <div className="app">
-        {popupParams}
-        <EcranAnalyse
-          partieId={partieId}
-          couleurJoueur={couleurMoi}
-          mode={modeAnalyse}
-          pixelsPhoto={pixelsPhoto}
-          taille={taille}
-          L={L}
-          onFermer={() => { setShowAnalyse(false); handleReset(); }}
-        />
-      </div>
-    );
-  }
 
   // Jeu
   return (
@@ -1592,11 +1403,7 @@ export default function App() {
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
             {(() => {
               const g = mancheTermineeInfo.gagnant;
-              // En mode IA, la couleur du joueur humain est couleurHumain.
-              // En mode 2 joueurs, on se base sur monRole.
-              const maCouleur = modeIA !== "aucune"
-                ? (couleurHumain || "rouge")
-                : (monRole === "joueur2" ? "noir" : "rouge");
+              const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
               const jaiGagne = g === maCouleur;
               const egalite = g === "egalite";
               return (
@@ -1608,15 +1415,7 @@ export default function App() {
                     {egalite ? t("egalite", L) : jaiGagne ? t("victoire", L) : t("defaite", L)}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                    {mancheTermineeInfo.motif === "timeout"
-                      ? `⏱ ${t("tempsEcoule", L)} — ${trCouleur(g)} ${t("remporteManche", L)}`
-                      : egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
-                  </div>
-                  {/* Score des manches */}
-                  <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", fontSize: 20, fontFamily: "var(--brush)", marginTop: 4 }}>
-                    <span style={{ color: "var(--rouge-c)", fontWeight: 700 }}>{scoresManches.rouge ?? 0}</span>
-                    <span style={{ color: "var(--muted)", fontSize: 14 }}>manches</span>
-                    <span style={{ color: "#aaaaaa", fontWeight: 700 }}>{scoresManches.noir ?? 0}</span>
+                    {egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
                   </div>
                 </>
               );
@@ -1696,17 +1495,7 @@ export default function App() {
       )}
 
       {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} L={L} />}
-
-      {popupIAPouvoir && (
-        <PopupIAPouvoir
-          pouvoir={popupIAPouvoir.type}
-          infos={popupIAPouvoir.infos}
-          couleurIA={popupIAPouvoir.couleurIA}
-          onFermer={() => setPopupIAPouvoir(null)}
-          L={L}
-        />
-      )}
-      {popup?.type === "scout" && <PopupScout pieces={scoutPieces} couleur={joueurActif?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
+      {popup?.type === "scout" && <PopupScout pieces={scoutPieces} couleur={joueurAffiche?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
       {popup?.type === "manuel" && <PopupManuel onFermer={() => setPopup(null)} L={L} />}
       {popup?.type === "reconnaissance" && (
         <PopupReconnaissance indice={indiceReconnaissance} tenteeDejaFaite={reconnaissanceTentee}
@@ -1764,22 +1553,12 @@ export default function App() {
             <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS") : (utilisateur?.pseudo || "Joueur 1")}</span>
             <span className="pseudo-score">{etat?.scores?.rouge ?? 0}</span>
           </div>
-          <div className="score-manches-label">
-            <span className="score-manches-val rouge">{scoresManches.rouge ?? 0}</span>
-            <span className="score-manches-sep">manche{(scoresManches.rouge ?? 0) > 1 ? "s" : ""}</span>
-          </div>
         </div>
 
         <div className="header-centre">
           <div className="timers">
             {modeIA !== "j1" && <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !popup && !pauseIAActive} L={L} />}
             {modeIA !== "j2" && <TimerBloc secondes={timerNoir} couleur="noir" actif={etat?.tour_actuel === 1 && !popup && !pauseIAActive} L={L} />}
-          </div>
-          {/* Score manches centré */}
-          <div className="score-manches-centre">
-            <span className="score-manches-rouge">{scoresManches.rouge ?? 0}</span>
-            <span className="score-manches-tiret"> — </span>
-            <span className="score-manches-noir">{scoresManches.noir ?? 0}</span>
           </div>
           {pseudoAdverse && (scoresCumules.moi > 0 || scoresCumules.lui > 0) && (
             <div className="score-cumule">
@@ -1793,10 +1572,6 @@ export default function App() {
             <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}</span>
             <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
           </div>
-          <div className="score-manches-label" style={{ alignItems: "flex-end" }}>
-            <span className="score-manches-val noir">{scoresManches.noir ?? 0}</span>
-            <span className="score-manches-sep">manche{(scoresManches.noir ?? 0) > 1 ? "s" : ""}</span>
-          </div>
           <div className="tour-info">
             {t("tour", L)} {etat?.numero_tour}
             {modeMultijoueur && (
@@ -1806,7 +1581,7 @@ export default function App() {
             )}
             {bonusDoubleActif && <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>{t("doubleTourActif", L)}</span>}
             {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
-            {joueurActif?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurActif.serie_actuelle}</span>}
+            {joueurAffiche?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurAffiche.serie_actuelle}</span>}
           </div>
           {dernierCoupClassif && (
             <span className="badge-classif" style={{
