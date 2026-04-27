@@ -1386,7 +1386,28 @@ export default function App() {
     </div>
   );
 
-  // Jeu
+  // ══════════════════════════════════════════════════════════
+  // ÉCRAN ANALYSE (affiché par-dessus tout si actif)
+  // ══════════════════════════════════════════════════════════
+  if (showAnalyse) {
+    return (
+      <div className="app">
+        <EcranAnalyse
+          partieId={partieId}
+          couleurJoueur={monRole === "joueur2" ? "noir" : "rouge"}
+          mode={modeAnalyse}
+          pixelsPhoto={pixelsPhoto}
+          taille={taille}
+          L={L}
+          onFermer={() => setShowAnalyse(false)}
+        />
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // JEU PRINCIPAL
+  // ══════════════════════════════════════════════════════════
   return (
     <div className="app jeu">
       {popupParams}

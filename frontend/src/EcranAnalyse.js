@@ -1,13 +1,12 @@
-// ELMAAS — EcranAnalyse.js
+// ELMAAS — EcranAnalyse.js (CORRIGÉ)
 // Écran qui rejoue la partie coup par coup avec classifications
-// Place ce fichier dans frontend/src/EcranAnalyse.js
 
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Board from "./Board";
 import { t, getSloganAnalyse } from "./translations";
 
-const API = "https://elmaas.up.railway.app";
+const API = "https://elmaas-backend.onrender.com";
 const COULEURS_CLASSE = {
   ELMAAS:    "#ffd700",
   ELMAASYON: "#88ff88",
@@ -17,7 +16,7 @@ const COULEURS_CLASSE = {
   CHESS:     "#ff4422",
 };
 
-export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhoto, taille, onFermer, L }) {
+export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhoto, taille, onFermer, L }) {
   const [analyse, setAnalyse] = useState(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState(null);
@@ -53,7 +52,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhot
       }
     };
     fetchAnalyse();
-  }, [partieId, couleurJoueur]);
+  }, [partieId, couleurJoueur, mode]);
 
   useEffect(() => {
     if (analyse && analyse.coups[indexCoup]) {
@@ -109,18 +108,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhot
 
   const classification = coupActuel?.evaluation?.classification;
   const couleurClasse = COULEURS_CLASSE[classification] || "var(--muted)";
-  if (showAnalyse) {
-      return (
-        <EcranAnalyse
-          partieId={partieId}
-          couleurJoueur={monRole === "joueur2" ? "noir" : "rouge"}
-          pixelsPhoto={pixelsPhoto}
-          taille={taille}
-          L={L}
-          onFermer={() => setShowAnalyse(false)}
-        />
-      );
-    }
+
   return (
     <div className="ecran-analyse-overlay">
       <div className="ecran-analyse">
@@ -211,8 +199,6 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode ,pixelsPhot
               <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
                 <button className="popup-btn popup-btn-revanche" style={{ flex: 1 }}
                   onClick={() => {
-                    // TODO : endpoint backend pour recréer partie à ce point
-                    // Pour l'instant : placeholder
                     alert("Fonctionnalité en cours d'implémentation — le frontend est prêt.");
                     setModeRetenter(false);
                   }}>
