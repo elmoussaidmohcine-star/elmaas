@@ -85,6 +85,7 @@ class EtatJeu:
 # ── Initialisation du jeu ────────────────────────────────────
 
 def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
+    """Ancienne fonction — gardée pour compatibilité tests."""
     from pieces_generator import generer_piece, FORMES
     couleur_mono = "mono_rouge" if couleur == COULEUR_JOUEUR_1 else "mono_noir"
 
@@ -99,13 +100,12 @@ def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
     cible = cellules_couleur + cellules_mixtes // 2
     cible = max(cible, 10)
 
-    # Pièces "grosses" = 4 cellules ou plus (I4, L, J, T, S, Z, O)
     GROSSES = {n for n, f in FORMES.items() if len(f) >= 4}
     pieces = []
     total = 0
     nb_solo = 0
     nb_grosses = 0
-    nb_petites = 0  # I2=2, I3=3, 1=1
+    nb_petites = 0
     while total < cible:
         piece = generer_piece()
         if piece["forme"] == "1":
@@ -114,9 +114,50 @@ def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
             nb_solo += 1
         taille_p = len(piece["cellules"])
         est_grosse = piece["forme"] in GROSSES
-        # Contrainte : somme des grosses < 2 × somme des petites
         if est_grosse and nb_petites > 0 and nb_grosses >= nb_petites * 2:
-            continue  # trop de grosses pièces, on regenere
+            continue
+        pieces.append(piece)
+        total += taille_p
+        if est_grosse:
+            nb_grosses += 1
+        else:
+            nb_petites += 1
+    return pieces
+
+
+def calculer_pieces_initiales_equilibrees(plateau: Plateau) -> list:
+    """
+    NOUVEAU : calcule le même nombre de pièces pour les deux joueurs.
+    Basé sur la moyenne des cellules du plateau, pas sur la couleur.
+    Élimine l'avantage photo-dépendant.
+    """
+    from pieces_generator import generer_piece, FORMES
+
+    cellules_rouge = sum(len(p.cellules) for p in plateau.puzzles.values() if p.type_couleur == "mono_rouge")
+    cellules_noir = sum(len(p.cellules) for p in plateau.puzzles.values() if p.type_couleur == "mono_noir")
+    cellules_mixtes = sum(len(p.cellules) for p in plateau.puzzles.values() if p.type_couleur == "mixte")
+
+    # Cible unique = moyenne des deux côtés + mixtes partagés
+    cible = (cellules_rouge + cellules_noir) // 2 + cellules_mixtes // 2
+    cible = max(cible, 14)   # minimum 14 pièces
+    cible = min(cible, 32)   # maximum 32 pièces
+
+    GROSSES = {n for n, f in FORMES.items() if len(f) >= 4}
+    pieces = []
+    total = 0
+    nb_solo = 0
+    nb_grosses = 0
+    nb_petites = 0
+    while total < cible:
+        piece = generer_piece()
+        if piece["forme"] == "1":
+            if nb_solo >= 1:
+                continue
+            nb_solo += 1
+        taille_p = len(piece["cellules"])
+        est_grosse = piece["forme"] in GROSSES
+        if est_grosse and nb_petites > 0 and nb_grosses >= nb_petites * 2:
+            continue
         pieces.append(piece)
         total += taille_p
         if est_grosse:
@@ -150,8 +191,10 @@ def reinitialiser_plateau(plateau: Plateau) -> Plateau:
 def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     from pieces_generator import generer_piece
 
-    reserve_j1_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_1)
-    reserve_j2_liste = calculer_pieces_initiales(plateau, COULEUR_JOUEUR_2)
+    # ÉQUILIBRAGE : même nombre de pièces initiales pour les deux joueurs
+    pieces_communes = calculer_pieces_initiales_equilibrees(plateau)
+    reserve_j1_liste = list(pieces_communes)
+    reserve_j2_liste = list(pieces_communes)
 
     piece_initiale = reserve_j1_liste.pop(0) if reserve_j1_liste else generer_piece()
     reserve_j1 = reserve_j1_liste
