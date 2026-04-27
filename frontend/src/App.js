@@ -292,9 +292,9 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
         {modeIA !== "aucune" && (
           <div className="ia-niveau">
             <span>{t("niveauIA", L)}</span>
-            {[1,2,3,4].map(n => (
+            {[1,2,3].map(n => (
               <button key={n} className={`ia-btn-niveau ${niveauIA === n ? "actif" : ""}`} onClick={() => setNiveauIA(n)}>
-                {n === 1 ? t("facile", L) : n === 2 ? t("moyen", L) : n === 3 ? t("expert", L) : "GM 2500+"}
+                {n === 1 ? t("facile", L) : n === 2 ? t("moyen", L) : t("expert", L)}
               </button>
             ))}
           </div>
@@ -621,19 +621,62 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   const maxR = Math.max(0, ...cells.map(([r]) => r));
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
   const S = 10;
-  const coul = couleur === "rouge" ? "#cc2200" : "#444444";
-  const coulClair = couleur === "rouge" ? "#ff4422" : "#888888";
+
+  // ✅ Détection ELMAAS (pièce d'enlèvement/diamant)
+  const estELMAAS = piece.enlevement === true || couleur === "diamant";
+
+  // Couleurs selon le type
+  let coul, coulClair, bgSel, bordure;
+  if (estELMAAS) {
+    // ELMAAS: bleu brillant
+    coul = "#00BFFF";
+    coulClair = "#80D8FF";
+    bordure = estSelectionnee ? "#00BFFF" : "#004488";
+    bgSel = "rgba(0, 191, 255, 0.2)";
+  } else if (couleur === "rouge") {
+    coul = "#8B0000";
+    coulClair = "#cc2200";
+    bordure = estSelectionnee ? coulClair : "#2a2a4a";
+    bgSel = `${coul}33`;
+  } else {
+    // noir
+    coul = "#0A0A0A";
+    coulClair = "#444444";
+    bordure = estSelectionnee ? coulClair : "#2a2a4a";
+    bgSel = `${coul}33`;
+  }
+
   return (
-    <div onClick={onClick} className={`mini-piece ${estSelectionnee ? "sel" : ""}`}
+    <div onClick={onClick} className={`mini-piece ${estSelectionnee ? "sel" : ""} ${estELMAAS ? "elmaas" : ""}`}
       style={{ position: "relative", width: (maxC+1)*S+10, height: (maxR+1)*S+10, padding: 5,
         borderRadius: 6, cursor: "pointer", flexShrink: 0,
-        border: `2px solid ${estSelectionnee ? coulClair : "#2a2a4a"}`,
-        background: estSelectionnee ? `${coul}33` : "#111122", transition: "all 0.15s" }}
-      title={piece.forme}>
+        border: `2px solid ${bordure}`,
+        background: estSelectionnee ? bgSel : "#111122", 
+        transition: "all 0.15s",
+        boxShadow: estELMAAS ? "0 0 8px rgba(0, 191, 255, 0.4)" : "none"
+      }}
+      title={estELMAAS ? `⚡ ELMAAS ${piece.forme}` : piece.forme}>
       {cells.map(([r, c], i) => (
         <div key={i} style={{ position: "absolute", top: r*S+5, left: c*S+5,
-          width: S-2, height: S-2, borderRadius: 2, background: coul, boxShadow: `0 0 4px ${coul}88` }} />
+          width: S-2, height: S-2, borderRadius: 2, 
+          background: coul, 
+          boxShadow: estELMAAS 
+            ? `0 0 6px ${coul}, inset 0 0 4px rgba(255,255,255,0.3)` 
+            : `0 0 4px ${coul}88` 
+        }} />
       ))}
+      {/* Badge ELMAAS */}
+      {estELMAAS && (
+        <div style={{
+          position: "absolute",
+          top: -4, right: -4,
+          width: 10, height: 10,
+          borderRadius: "50%",
+          background: "#00BFFF",
+          boxShadow: "0 0 6px #00BFFF",
+          zIndex: 10
+        }} />
+      )}
     </div>
   );
 }
@@ -825,7 +868,7 @@ export default function App() {
   const lastMsgTime = useRef(0);
   
   const pseudoAdverse = modeIA !== "aucune"
-    ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+")
+    ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS")
     : (etat?.pseudo_adversaire || "ADVERSAIRE");
 
   const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });

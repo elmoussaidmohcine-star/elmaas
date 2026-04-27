@@ -996,3 +996,25 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     order: 0;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   MINI-PIÈCES ELMAAS — Styles supplémentaires
+   ════════════════════════════════════════════════════════════ */
+
+.mini-piece.elmaas {
+  animation: mini-elmaas-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mini-elmaas-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(0, 191, 255, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 16px rgba(0, 191, 255, 0.6), 0 0 24px rgba(0, 191, 255, 0.2);
+  }
+}
+
+.mini-piece.elmaas .cellule-elmaas {
+  background: #00BFFF;
+  box-shadow: 0 0 6px #00BFFF, inset 0 0 4px rgba(255,255,255,0.3);
+}
