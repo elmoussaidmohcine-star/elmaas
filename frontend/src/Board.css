@@ -201,3 +201,93 @@
   color: #5555aa;
   letter-spacing: 0.08em;
 }
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE MOBILE — Board.css
+   ══════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .board-wrapper-v2 {
+    gap: 8px;
+    width: 100%;
+  }
+  .main-v2 {
+    padding: 8px 10px;
+    max-width: 100%;
+  }
+  .main-label-v2 {
+    font-size: 9px;
+  }
+  .main-pieces-v2 {
+    gap: 6px;
+    min-height: 36px;
+  }
+
+  /* Plateau : scrollable si trop grand */
+  .plateau-v2 {
+    max-width: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow:
+      0 0 0 1px #1e1e3a,
+      0 0 20px #00000088;
+  }
+  .plateau-v2.mode-placement {
+    box-shadow:
+      0 0 0 1px #c9a84c,
+      0 0 15px #c9a84c22;
+  }
+
+  /* Cellules plus petites mais tapables */
+  .cellule-v2 {
+    min-width: 18px;
+    min-height: 18px;
+  }
+
+  /* Pièces posées : quasi pleines pour visibilité */
+  .piece-posee-v2 {
+    inset: 0.5px;
+    border-radius: 1px;
+  }
+
+  /* Labels puzzle micro */
+  .puzzle-tag {
+    font-size: 6px;
+    padding: 0px 2px;
+    top: 1px;
+    left: 1px;
+  }
+
+  /* Légende compacte */
+  .legende-v2 {
+    gap: 12px;
+    padding: 0 8px;
+  }
+  .legende-item-v2 {
+    font-size: 9px;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cellule-v2 {
+    min-width: 14px;
+    min-height: 14px;
+  }
+  .piece-posee-v2 {
+    inset: 0.5px;
+  }
+  .puzzle-tag {
+    font-size: 5px;
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+}
+
+/* Mode paysage : plateau peut être plus grand */
+@media (max-width: 768px) and (orientation: landscape) {
+  .plateau-v2 {
+    max-height: calc(100dvh - 140px);
+  }
+}

@@ -515,36 +515,211 @@ html[dir="rtl"] .manuel-content { text-align: right; }
    Header compact / timers très visibles / plateau centré
    ══════════════════════════════════════════════════════════ */
 
+
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE MOBILE — Réécriture complète v2
+   ══════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
-  .app-header {
-    padding: 6px 8px;
-    gap: 4px;
-    flex-wrap: wrap;
-    min-height: auto;
+  /* ── Base ── */
+  .app.jeu {
+    padding: 0;
+    overflow: hidden;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
   }
-  .header-gauche { gap: 8px; order: 1; flex-basis: 100%; justify-content: space-between; }
-  .header-centre { order: 3; flex-basis: 100%; justify-content: center; padding: 4px 0; background: var(--bg); border-top: 1px solid var(--bord); border-bottom: 1px solid var(--bord); margin: 4px -8px 0; }
-  .header-droite { order: 2; gap: 6px; }
 
-  .titre-jeu-petit { font-size: 16px; }
-  .score-nb { font-size: 20px; }
-  .tour-info { font-size: 11px; }
-  .badge-ia, .badge-serie { font-size: 10px; padding: 1px 4px; }
+  /* ── Header ultra-compact ── */
+  .app-header {
+    padding: 4px 8px;
+    gap: 4px;
+    min-height: auto;
+    flex-wrap: nowrap;
+    border-bottom: 1px solid var(--bord);
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+  .header-gauche {
+    gap: 6px;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .header-centre {
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: 4px;
+    order: 0;
+    flex-basis: auto;
+    border: none;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+  .header-droite {
+    gap: 4px;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
 
-  .timers { gap: 4px; padding: 4px; background: transparent; border: none; }
-  .timer-bloc { padding: 4px 10px; min-width: 60px; }
-  .timer-val { font-size: 17px; }
-  .timer-label { font-size: 8px; }
+  .titre-jeu-petit {
+    font-size: 14px;
+    letter-spacing: 0.05em;
+  }
 
-  /* Zone de jeu : colonnes sur mobile */
+  /* ── Timers très visibles ── */
+  .timers {
+    gap: 4px;
+    padding: 2px 4px;
+    background: var(--bg3);
+    border-radius: 8px;
+    border: 1px solid var(--bord);
+  }
+  .timer-bloc {
+    padding: 3px 8px;
+    min-width: 56px;
+    border-radius: 6px;
+  }
+  .timer-val {
+    font-size: 18px;
+  }
+  .timer-label {
+    font-size: 8px;
+  }
+
+  /* ── Pseudos / Scores ── */
+  .pseudo-joueur {
+    padding: 2px 6px;
+    min-width: 60px;
+  }
+  .pseudo-nom {
+    font-size: 11px;
+    max-width: 70px;
+  }
+  .pseudo-score {
+    font-size: 18px;
+  }
+  .score-cumule {
+    font-size: 9px;
+    margin-top: 2px;
+  }
+
+  /* ── Tour info / badges ── */
+  .tour-info {
+    font-size: 10px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .badge-ia, .badge-serie, .badge-classif {
+    font-size: 9px;
+    padding: 1px 4px;
+    margin-left: 0;
+  }
+
+  /* ── Boutons header ── */
+  .btn-manuel {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .btn-reset {
+    font-size: 11px;
+    padding: 6px 10px;
+    min-height: 32px;
+  }
+
+  /* ── Zone adverse (compacte) ── */
+  .zone-adverse {
+    padding: 4px 8px;
+    gap: 6px;
+    flex-shrink: 0;
+    min-height: 36px;
+  }
+  .adverse-label {
+    font-size: 10px;
+  }
+  .piece-cachee {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* ── Zone jeu : colonne verticale ── */
   .zone-jeu {
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
   }
 
-  /* Panneaux latéraux → barres horizontales scrollables */
-  .panneau-main, .panneau-actions {
+  /* ── Panneau main (HAUT sur mobile) ── */
+  .panneau-main {
+    width: 100%;
+    min-width: unset;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    padding: 6px 8px;
+    gap: 6px;
+    border-right: none;
+    border-left: none;
+    border-bottom: 1px solid var(--bord);
+    max-height: 110px;
+    overflow-y: hidden;
+    overflow-x: auto;
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .panneau-titre {
+    width: auto;
+    margin-top: 0;
+    font-size: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    align-self: center;
+    padding-bottom: 0;
+    border-bottom: none;
+    opacity: 0.7;
+  }
+  .main-pieces-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 2px;
+    align-items: center;
+    -webkit-overflow-scrolling: touch;
+  }
+  .serie-info {
+    font-size: 11px;
+    white-space: nowrap;
+    align-self: center;
+  }
+
+  /* ── Mini-pièces : plus grosses pour le doigt ── */
+  .mini-piece {
+    min-width: 40px;
+    min-height: 40px;
+    transform: scale(1);
+  }
+  .mini-piece.sel {
+    transform: scale(1.12);
+  }
+
+  /* ── Plateau central ── */
+  .plateau-central {
+    padding: 8px;
+    flex: 1;
+    width: 100%;
+    overflow: auto;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Panneau actions (BAS sur mobile) ── */
+  .panneau-actions {
     width: 100%;
     min-width: unset;
     flex-direction: row;
@@ -553,303 +728,271 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     gap: 6px;
     border-right: none;
     border-left: none;
-    border-bottom: 1px solid var(--bord);
-    max-height: 140px;
-    overflow-y: auto;
-  }
-  .panneau-actions {
     border-top: 1px solid var(--bord);
     border-bottom: none;
-    max-height: 120px;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    max-height: none;
+    flex-shrink: 0;
     align-items: center;
-  }
-  .panneau-titre { width: 100%; margin-top: 0 !important; font-size: 11px; }
-  .main-pieces-list { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 2px; }
-  .serie-info { font-size: 12px; }
-
-  /* Plateau central : prend toute la largeur */
-  .plateau-central {
-    padding: 4px;
-    flex: unset;
-    width: 100%;
-    overflow: auto;
-    /* Centrer le plateau */
-    display: flex;
     justify-content: center;
-    align-items: flex-start;
   }
-
-  /* Pièces dans la main : plus grandes sur mobile pour les doigts */
-  .mini-piece { min-width: 36px; min-height: 36px; }
+  .panneau-actions .panneau-titre {
+    display: none; /* On cache le titre pour gagner de la place */
+  }
 
   .btn-action {
     padding: 10px 14px;
     font-size: 14px;
-    min-height: 44px; /* zone de tap minimale */
+    min-height: 44px;
     flex: 1 1 auto;
+    min-width: 80px;
+    text-align: center;
+    justify-content: center;
   }
-  .hint-action { font-size: 11px; }
+  .hint-action {
+    font-size: 11px;
+    width: 100%;
+    text-align: center;
+    padding: 6px;
+  }
 
-  .zone-adverse { padding: 4px 8px; gap: 6px; }
-  .adverse-label { font-size: 11px; }
-  .piece-cachee { width: 16px; height: 16px; }
+  /* ── Chat ── */
+  .chat-zone {
+    width: 100%;
+    order: 99;
+  }
+  .chat-zone input {
+    font-size: 16px; /* évite zoom iOS */
+    padding: 8px;
+  }
+  .chat-zone button {
+    min-height: 36px;
+    min-width: 36px;
+  }
 
-  /* Écrans lobby / taille */
-  .ecran-taille { padding: 24px 16px; gap: 16px; }
-  .ecran-taille h1 { font-size: clamp(28px, 10vw, 48px); }
-  .taille-inputs { gap: 16px; flex-wrap: wrap; justify-content: center; }
-  .taille-final { font-size: 48px; }
-  .lobby-card { padding: 24px 16px; min-width: unset; width: calc(100% - 32px); max-width: 420px; }
-  .lobby-code { font-size: 11px; letter-spacing: 2px; }
-  .lobby-input { font-size: 16px; } /* évite le zoom iOS */
-  input, select, textarea { font-size: 16px; } /* évite le zoom iOS sur focus */
-
-  /* Popups */
+  /* ── Popups : plein écran tactile ── */
   .popup-pouvoir, .popup-scout {
     min-width: unset;
-    width: 92vw;
+    width: 94vw;
     max-width: 420px;
     padding: 20px 16px;
+    gap: 14px;
+    max-height: 85vh;
+    overflow-y: auto;
   }
-  .popup-titre { font-size: 20px; }
+  .popup-titre {
+    font-size: 20px;
+  }
   .popup-btn {
     font-size: 15px;
     padding: 12px 14px;
     min-height: 48px;
   }
-  .popup-options { gap: 8px; }
-
-  /* Bandeau cible */
-  .bandeau-cible {
-    width: 90vw;
-    flex-wrap: wrap;
-    font-size: 13px;
-    padding: 10px 12px;
+  .popup-options {
     gap: 8px;
   }
+
+  /* ── Bandeau cible ── */
+  .bandeau-cible {
+    width: 94vw;
+    flex-wrap: wrap;
+    font-size: 13px;
+    padding: 8px 12px;
+    gap: 8px;
+    top: auto;
+    bottom: 80px;
+    left: 3vw;
+    transform: none;
+  }
   .bandeau-cible button {
-    min-height: 44px;
+    min-height: 40px;
     padding: 8px 14px;
-    font-size: 14px;
+    font-size: 13px;
   }
 
-  .btn-params-flottant { top: 8px; right: 8px; width: 40px; height: 40px; font-size: 16px; }
-  html[dir="rtl"] .btn-params-flottant { right: auto; left: 8px; }
+  /* ── Écran taille / lobby ── */
+  .ecran-taille {
+    padding: 20px 16px;
+    gap: 16px;
+  }
+  .ecran-taille h1 {
+    font-size: clamp(32px, 12vw, 56px);
+  }
+  .taille-inputs {
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .taille-final {
+    font-size: 48px;
+  }
+  .lobby-card {
+    padding: 24px 16px;
+    min-width: unset;
+    width: calc(100% - 32px);
+    max-width: 420px;
+  }
 
-  .scores { gap: 8px; }
-  .score-lbl { font-size: 9px; }
+  /* ── Écran analyse ── */
+  .ecran-analyse {
+    padding: 8px;
+    gap: 8px;
+  }
+  .analyse-header {
+    padding: 6px 10px;
+  }
+  .analyse-titre {
+    font-size: 18px;
+  }
+  .analyse-precision {
+    font-size: 22px;
+  }
+  .analyse-corps {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .analyse-panneau {
+    width: 100%;
+    min-width: unset;
+    gap: 10px;
+    padding: 10px;
+  }
+  .analyse-badge-classe {
+    font-size: 16px;
+    padding: 8px 12px;
+  }
 
-  /* Chat */
-  .chat-zone { width: 100%; }
-  .chat-zone input { font-size: 15px; flex: 1; }
+  /* ── Paramètres flottant ── */
+  .btn-params-flottant {
+    top: 8px;
+    right: 8px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+  html[dir="rtl"] .btn-params-flottant {
+    right: auto;
+    left: 8px;
+  }
 
-  /* Écran analyse */
-  .ecran-analyse { padding: 0; }
-  .analyse-corps { flex-direction: column; }
-  .analyse-plateau { width: 100%; }
-  .analyse-panneau { width: 100%; padding: 12px; }
+  /* ── Bulles messages ── */
+  .bulle-message {
+    width: 90vw;
+    text-align: center;
+    font-size: 14px;
+    padding: 10px 16px;
+  }
 }
 
+/* ══════════════════════════════════════════════════════════
+   TRÈS PETITS ÉCRANS (téléphones < 400px)
+   ══════════════════════════════════════════════════════════ */
 @media (max-width: 480px) {
-  .titre-jeu { font-size: clamp(30px, 11vw, 52px); }
-  .panneau-main, .panneau-actions { padding: 4px 6px; }
-  .btn-reset { font-size: 11px; padding: 6px 10px; min-height: 36px; }
-  /* Boutons header encore plus petits */
-  .btn-manuel { width: 32px; height: 32px; font-size: 14px; }
-  /* Timer plus compact */
-  .timer-val { font-size: 15px; }
-  .timer-label { font-size: 7px; }
+  .titre-jeu {
+    font-size: clamp(28px, 10vw, 44px);
+  }
+  .timer-val {
+    font-size: 16px;
+  }
+  .timer-label {
+    font-size: 7px;
+    letter-spacing: 0.1em;
+  }
+  .pseudo-score {
+    font-size: 16px;
+  }
+  .pseudo-nom {
+    font-size: 10px;
+    max-width: 60px;
+  }
+  .tour-info {
+    font-size: 9px;
+  }
+  .btn-manuel {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  .btn-reset {
+    font-size: 10px;
+    padding: 4px 8px;
+    min-height: 28px;
+  }
+  .mini-piece {
+    min-width: 36px;
+    min-height: 36px;
+  }
+  .panneau-main {
+    max-height: 90px;
+    padding: 4px 6px;
+  }
+  .popup-gagnant {
+    font-size: 20px;
+    padding: 10px 16px;
+  }
+  .popup-options-fin {
+    flex-direction: column;
+  }
+  .btn-action {
+    font-size: 13px;
+    padding: 8px 10px;
+    min-height: 40px;
+  }
+}
 
-  .btn-manuel { width: 26px; height: 26px; font-size: 12px; }
-  .popup-gagnant { font-size: 22px; padding: 10px 20px; }
-  .popup-options-fin { flex-direction: column; }
-}
-/* ── Pseudo dans header ── */
-.pseudo-joueur {
-  display: flex; flex-direction: column; gap: 1px;
-  padding: 4px 10px; border-radius: 6px; background: var(--bg3);
-  border: 2px solid transparent; min-width: 80px;
-}
-.pseudo-joueur.rouge { border-color: var(--rouge)44; }
-.pseudo-joueur.noir  { border-color: #44444444; }
-.pseudo-nom  { font-family: var(--brush); font-size: 13px; color: var(--texte); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
-.pseudo-score { font-family: var(--brush); font-size: 22px; font-weight: 700; }
-.pseudo-joueur.rouge .pseudo-score { color: var(--rouge-c); }
-.pseudo-joueur.noir .pseudo-score  { color: #cccccc; }
-
-/* ── Score cumulé ── */
-.score-cumule {
-  font-size: 11px; color: var(--muted); text-align: center; margin-top: 4px;
-  font-family: 'Rajdhani', sans-serif; letter-spacing: 0.1em;
-}
-
-/* ── Bulles messages chat ── */
-.bulle-message {
-  position: fixed; left: 50%; transform: translateX(-50%); z-index: 990;
-  background: var(--bg2); border: 2px solid; border-radius: 20px;
-  padding: 8px 18px; font-family: var(--brush); font-size: 15px;
-  color: var(--texte); box-shadow: 0 4px 20px #00000066;
-  animation: bulle-in 0.3s ease-out, bulle-out 0.3s ease-in 4.7s forwards;
-}
-@keyframes bulle-in  { from { opacity: 0; transform: translateX(-50%) scale(0.8); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
-@keyframes bulle-out { to { opacity: 0; transform: translateX(-50%) translateY(-20px); } }
-
-/* ── Zone chat dans panneau actions ── */
-.chat-zone {
-  display: flex; gap: 4px; margin-top: auto;
-  background: var(--bg3); border: 1px solid var(--bord);
-  border-radius: 6px; padding: 4px;
-}
-.chat-zone input {
-  flex: 1; background: transparent; border: none; outline: none;
-  color: var(--texte); font-family: var(--brush); font-size: 13px; padding: 4px 6px;
-}
-.chat-zone button {
-  background: var(--rouge); color: white; border: none;
-  border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px;
-}
-.chat-zone button:disabled { opacity: 0.3; cursor: not-allowed; }
-/* ── Icône classification dans header du jeu ── */
-.badge-classif {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  font-family: 'Rajdhani', sans-serif;
-  letter-spacing: 0.05em;
-  margin-left: 6px;
-  border: 1px solid;
-  animation: pop-classif 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes pop-classif {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
- 
-/* ── Écran d'analyse complet ── */
-.ecran-analyse-overlay {
-  position: fixed; inset: 0; z-index: 800;
-  background: var(--bg);
-  overflow: auto;
-}
-.ecran-analyse {
-  min-height: 100vh;
-  display: flex; flex-direction: column;
-  gap: 12px; padding: 12px;
-}
-.analyse-header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 16px;
-  background: var(--bg2);
-  border: 1px solid var(--bord);
-  border-radius: 10px;
-}
-.analyse-titre {
-  font-family: var(--titre);
-  font-size: 22px;
-  color: var(--accent-culture);
-}
-.analyse-precision {
-  font-family: var(--brush);
-  font-size: 28px;
-  color: #88ff88;
-  font-weight: 700;
-}
-.analyse-precision small {
-  font-size: 12px;
-  color: var(--muted);
-  display: block;
-  margin-top: -4px;
-}
-.analyse-stats {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-  padding: 8px;
-}
-.stat-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 14px;
-  border: 2px solid;
-  border-radius: 8px;
-  background: var(--bg3);
-}
-.stat-nb {
-  font-family: var(--brush);
-  font-size: 22px;
-  font-weight: 700;
-}
-.stat-label {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  opacity: 0.8;
-}
-.analyse-corps {
-  display: flex;
-  gap: 16px;
-  flex: 1;
-  min-height: 0;
-}
-.analyse-plateau {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg3);
-  border: 1px solid var(--bord);
-  border-radius: 10px;
-  padding: 16px;
-  overflow: auto;
-}
-.analyse-panneau {
-  width: 260px;
-  min-width: 260px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px;
-  background: var(--bg3);
-  border: 1px solid var(--bord);
-  border-radius: 10px;
-}
-.analyse-coup-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.analyse-badge-classe {
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 2px solid;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  text-align: center;
-  letter-spacing: 0.1em;
-}
-.analyse-navigation {
-  display: flex;
-  gap: 8px;
-  margin-top: auto;
-}
-.analyse-navigation .popup-btn {
-  flex: 1;
-  justify-content: center;
-}
- 
-@media (max-width: 768px) {
-  .analyse-corps { flex-direction: column; }
-  .analyse-panneau { width: 100%; min-width: unset; }
-  .analyse-precision { font-size: 20px; }
+/* ══════════════════════════════════════════════════════════
+   MODE PAYSAGE MOBILE — Header latéral, plateau max
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) and (orientation: landscape) {
+  .app.jeu {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .app-header {
+    width: 100%;
+    flex-shrink: 0;
+  }
+  .zone-jeu {
+    flex-direction: row;
+  }
+  .panneau-main {
+    width: 90px;
+    min-width: 90px;
+    flex-direction: column;
+    border-bottom: none;
+    border-right: 1px solid var(--bord);
+    max-height: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .main-pieces-list {
+    flex-wrap: wrap;
+    overflow-x: hidden;
+    overflow-y: auto;
+    gap: 6px;
+  }
+  .mini-piece {
+    min-width: 32px;
+    min-height: 32px;
+  }
+  .plateau-central {
+    flex: 1;
+    padding: 4px;
+  }
+  .panneau-actions {
+    width: 90px;
+    min-width: 90px;
+    flex-direction: column;
+    border-top: none;
+    border-left: 1px solid var(--bord);
+    justify-content: flex-start;
+  }
+  .btn-action {
+    font-size: 11px;
+    padding: 6px 4px;
+    min-height: 36px;
+    min-width: unset;
+  }
+  .chat-zone {
+    order: 0;
+  }
 }
