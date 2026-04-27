@@ -1388,6 +1388,27 @@ export default function App() {
     </div>
   );
 
+  // Écran d'analyse (s'affiche par dessus le jeu après une manche terminée)
+  if (showAnalyse) {
+    const couleurMoi = modeIA !== "aucune"
+      ? (couleurHumain || "rouge")
+      : (monRole === "joueur2" ? "noir" : "rouge");
+    return (
+      <div className="app">
+        {popupParams}
+        <EcranAnalyse
+          partieId={partieId}
+          couleurJoueur={couleurMoi}
+          mode={modeAnalyse}
+          pixelsPhoto={pixelsPhoto}
+          taille={taille}
+          L={L}
+          onFermer={() => { setShowAnalyse(false); handleReset(); }}
+        />
+      </div>
+    );
+  }
+
   // Jeu
   return (
     <div className="app jeu">
@@ -1622,8 +1643,7 @@ export default function App() {
                   <MiniPiece piece={piece} couleur={joueurAffiche?.couleur}
                     estSelectionnee={pieceIdx === i || estSelectPourDonner}
                     onClick={() => {
-                      if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
-                      else if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
+                      if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
                       else if (!enModeCible && !attenteChoixPouvoir && estMonTour) { setPieceIdx(pieceIdx === i ? null : i); }
                     }} />
                 </div>
