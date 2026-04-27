@@ -1113,6 +1113,11 @@ export default function App() {
     try {
       const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
       setEtat(res.data.etat);
+      // DÉTECTION FIN DE MANCHE EN MODE IA
+      if (res.data.manche_terminee || res.data.victoire_immediate) {
+        const scores = calculer_scores_locaux(res.data.etat);
+        setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
+      }
     } catch (err) { console.error("Erreur IA:", err); gererErreur404(err); }
     finally { setIaEnCours(false); }
   }, [gererErreur404]);
@@ -1387,14 +1392,14 @@ export default function App() {
   );
 
   // ══════════════════════════════════════════════════════════
-  // ÉCRAN ANALYSE (par-dessus tout)
+  // ÉCRAN ANALYSE
   // ══════════════════════════════════════════════════════════
   if (showAnalyse) {
     return (
       <div className="app">
         <EcranAnalyse
           partieId={partieId}
-          couleurJoueur={monRole === "joueur2" ? "noir" : "rouge"}
+          couleurJoueur={modeIA !== "aucune" ? (modeIA === "j1" ? "noir" : "rouge") : (monRole === "joueur2" ? "noir" : "rouge")}
           mode={modeAnalyse}
           pixelsPhoto={pixelsPhoto}
           taille={taille}
