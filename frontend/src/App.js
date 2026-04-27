@@ -9,7 +9,6 @@ import Board from "./Board";
 import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, getSloganVictoire, getSloganDefaite, getSloganAnalyse, CLASSIFICATION_COUP } from "./translations";
 import "./App.css";
 import EcranAnalyse from "./EcranAnalyse";
-import EcranIA4Agents from "./EcranIA4Agents";
 
 const API = "https://elmaas-backend.onrender.com";
 //const API = "http://localhost:3000/";
@@ -293,9 +292,9 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
         {modeIA !== "aucune" && (
           <div className="ia-niveau">
             <span>{t("niveauIA", L)}</span>
-            {[1,2,3].map(n => (
+            {[1,2,3,4].map(n => (
               <button key={n} className={`ia-btn-niveau ${niveauIA === n ? "actif" : ""}`} onClick={() => setNiveauIA(n)}>
-                {n === 1 ? t("facile", L) : n === 2 ? t("moyen", L) : t("expert", L)}
+                {n === 1 ? t("facile", L) : n === 2 ? t("moyen", L) : n === 3 ? t("expert", L) : "GM 2500+"}
               </button>
             ))}
           </div>
@@ -312,10 +311,6 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
             {t("jouerOnline", L)}
           </button>
         )}
-        <button className="btn-valider" style={{ background: "linear-gradient(135deg, #6644cc, #8866ff)" }}
-          onClick={() => window.dispatchEvent(new CustomEvent('showIA4Agents'))}>
-          🤖 4 Agents IA
-        </button>
       </div>
     </div>
   );
@@ -830,7 +825,7 @@ export default function App() {
   const lastMsgTime = useRef(0);
   
   const pseudoAdverse = modeIA !== "aucune"
-    ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : "ELMAAS")
+    ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+")
     : (etat?.pseudo_adversaire || "ADVERSAIRE");
 
   const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });
@@ -851,7 +846,6 @@ export default function App() {
   }, [mancheTermineeInfo]);
   
   const [showAnalyse, setShowAnalyse] = useState(false);
-  const [showIA4Agents, setShowIA4Agents] = useState(false);
   const [dernierCoupClassif, setDernierCoupClassif] = useState(null);
 
   const changerLangue = (idx) => {
@@ -968,12 +962,6 @@ export default function App() {
   }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, modeMultijoueur, statutConnexion, timerChoisi, estTourIA, iaEnCours, L, pauseIAActive]);
 
   // WebSocket
-  useEffect(() => {
-    const handler = () => setShowIA4Agents(true);
-    window.addEventListener('showIA4Agents', handler);
-    return () => window.removeEventListener('showIA4Agents', handler);
-  }, []);
-
   useEffect(() => {
     const socket = io(API, { transports: ["polling", "websocket"] });
     socketRef.current = socket;
@@ -1406,14 +1394,6 @@ export default function App() {
   // ══════════════════════════════════════════════════════════
   // ÉCRAN ANALYSE
   // ══════════════════════════════════════════════════════════
-  if (showIA4Agents) {
-    return (
-      <div className="app">
-        <EcranIA4Agents L={L} onFermer={() => setShowIA4Agents(false)} />
-      </div>
-    );
-  }
-
   if (showAnalyse) {
     return (
       <div className="app">

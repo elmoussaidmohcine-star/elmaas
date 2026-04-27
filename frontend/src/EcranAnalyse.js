@@ -1,5 +1,5 @@
-// ELMAAS — EcranAnalyse.js v2 CORRIGÉ
-// Analyse séquentielle avec reconstruction correcte du plateau
+// ELMAAS — EcranAnalyse.js v3 CORRIGÉ
+// Reconstruction séquentielle correcte du plateau
 
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
@@ -30,7 +30,6 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
       try {
         const token = localStorage.getItem("elmaas_token");
 
-        // Analyse MOI
         const resMoi = await axios.post(
           `${API}/analyse/${partieId}`,
           { couleur: couleurJoueur, mode: mode || "rapide" },
@@ -38,7 +37,6 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         );
         setAnalyseMoi(resMoi.data.analyse);
 
-        // Analyse ADVERSAIRE (couleur opposée)
         const couleurAdv = couleurJoueur === "rouge" ? "noir" : "rouge";
         const resAdv = await axios.post(
           `${API}/analyse/${partieId}`,
@@ -70,37 +68,37 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
   // ✅ CORRECTION: Reconstruction séquentielle du plateau
-  // On applique tous les coups jusqu'à indexCoup pour reconstruire l'état
+  // On part du plateau_avant du premier coup et on applique tous les coups jusqu'à indexCoup
   const etatPlateau = useMemo(() => {
     if (!analyseCourante?.coups || analyseCourante.coups.length === 0) return null;
 
     const pieces = {};
-    const coupsJusquaIndex = analyseCourante.coups.slice(0, indexCoup + 1);
+    const coups = analyseCourante.coups;
 
-    // Reconstruire en appliquant chaque coup séquentiellement
-    for (const coup of coupsJusquaIndex) {
+    // Si le premier coup a un plateau_avant, on l'utilise comme base
+    if (coups[0]?.plateau_avant) {
+      Object.assign(pieces, coups[0].plateau_avant);
+    }
+
+    // Appliquer chaque coup jusqu'à indexCoup (inclus)
+    for (let i = 0; i <= indexCoup && i < coups.length; i++) {
+      const coup = coups[i];
       if (coup.type === "poser" && coup.piece_data && coup.origine) {
         const orig = coup.origine;
         for (const [dr, dc] of coup.piece_data.cellules || []) {
           const r = orig[0] + dr, c = orig[1] + dc;
           if (r >= 0 && r < taille && c >= 0 && c < taille) {
-            // Si c'est une pièce d'enlèvement (ELMAAS), on met "diamant"
-            // Sinon on met la couleur du joueur
             const valeur = coup.piece_data.enlevement ? "diamant" : coup.couleur;
             pieces[`${r},${c}`] = valeur;
           }
         }
-      } else if (coup.type === "repiocher") {
-        // Le repiocher ne change pas le plateau
       }
-      // Note: les pouvoirs (échange, extraction) sont appliqués côté serveur
-      // et reflétés dans les coups suivants
     }
 
     return {
       plateau: {
         pieces,
-        puzzles: {}, // simplifié - on ne reconstruit pas les puzzles pour l'affichage
+        puzzles: {},
         cellules_libres: [],
         cellules_actives: Object.keys(pieces),
         grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0))
@@ -109,8 +107,9 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   }, [analyseCourante, indexCoup, taille]);
 
   const coupActuel = analyseCourante?.coups?.[indexCoup];
-  const precedent = () => setIndexCoup(Math.max(0, indexCoup - 1));
-  const suivant = () => setIndexCoup(Math.min((analyseCourante?.coups.length || 1) - 1, indexCoup + 1));
+
+  const precedent = () => setIndexCoup(prev => Math.max(0, prev - 1));
+  const suivant = () => setIndexCoup(prev => Math.min((analyseCourante?.coups.length || 1) - 1, prev + 1));
 
   if (chargement) {
     return (
@@ -119,10 +118,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           <div className="popup-titre">{t("analyseTitre", L)}</div>
           <div className="spinner" style={{ margin: "20px auto" }} />
           <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
-            Analyse en cours... (peut prendre quelques minutes)
-          </div>
-          <div style={{ fontSize: 11, fontStyle: "italic", color: "var(--muted)", textAlign: "center", maxWidth: 280, lineHeight: 1.5 }}>
-            {getSloganAnalyse(L || 0)}
+            Analyse en cours...
           </div>
         </div>
       </div>
@@ -147,6 +143,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const stats = analyseCourante?.stats || {};
   const classification = coupActuel?.evaluation?.classification;
   const couleurClasse = COULEURS_CLASSE[classification] || "var(--muted)";
+  const totalCoups = analyseCourante?.coups?.length || 0;
 
   return (
     <div className="ecran-analyse-overlay">
@@ -188,7 +185,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           ))}
         </div>
 
-        {/* ✅ Zone de lecture - Plateau évolutif */}
+        {/* Zone de lecture */}
         <div className="analyse-corps">
           <div className="analyse-plateau">
             {etatPlateau ? (
@@ -199,62 +196,99 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                 onPoserPiece={null}
               />
             ) : (
-              <div style={{ color: "var(--muted)", textAlign: "center" }}>Chargement du plateau...</div>
+              <div style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>
+                Chargement du plateau...
+              </div>
             )}
           </div>
 
           <div className="analyse-panneau">
             <div className="analyse-coup-info">
               <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                Coup {indexCoup + 1} / {analyseCourante?.coups.length || 0}
+                Coup {indexCoup + 1} / {totalCoups}
               </div>
+
+              {/* Barre de progression */}
+              <div style={{ 
+                width: "100%", height: "4px", background: "var(--bord)", 
+                borderRadius: "2px", margin: "8px 0"
+              }}>
+                <div style={{
+                  width: `${totalCoups > 0 ? ((indexCoup + 1) / totalCoups) * 100 : 0}%`,
+                  height: "100%",
+                  background: couleurClasse,
+                  borderRadius: "2px",
+                  transition: "width 0.3s ease"
+                }} />
+              </div>
+
               <div className="analyse-badge-classe" style={{
                 background: couleurClasse + "22",
                 borderColor: couleurClasse,
-                color: couleurClasse
+                color: couleurClasse,
+                padding: "8px 16px",
+                borderRadius: "8px",
+                fontWeight: 700,
+                fontSize: 18,
+                textAlign: "center",
+                margin: "8px 0"
               }}>
                 {classification || "—"}
               </div>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                Tour {coupActuel?.numero_tour} — {coupActuel?.couleur}
+
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                Tour {coupActuel?.numero_tour} — Joueur: {coupActuel?.couleur}
               </div>
+
               {coupActuel?.evaluation?.rang > 1 && (
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                  Rang : {coupActuel.evaluation.rang}/{coupActuel.evaluation.total_coups}
-                </div>
-              )}
-              {coupActuel?.evaluation?.meilleur_coup && classification !== "ELMAAS" && classification !== "MASSY" && (
-                <div style={{ fontSize: 11, color: "#ffaa44" }}>
-                  Meilleur : pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1}
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                  Rang: {coupActuel.evaluation.rang} / {coupActuel.evaluation.total_coups} coups possibles
                 </div>
               )}
 
-              {/* ✅ Info sur la pièce jouée */}
+              {coupActuel?.evaluation?.meilleur_coup && classification !== "ELMAAS" && classification !== "MASSY" && (
+                <div style={{ fontSize: 11, color: "#ffaa44", marginTop: 4 }}>
+                  💡 Meilleur coup: pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1} @ [{coupActuel.evaluation.meilleur_coup.origine?.join(",")}]
+                </div>
+              )}
+
+              {/* Info pièce jouée */}
               {coupActuel?.piece_data && (
-                <div style={{ fontSize: 11, color: "var(--texte)", marginTop: 8, padding: "6px", background: "var(--bg3)", borderRadius: "4px" }}>
+                <div style={{ 
+                  fontSize: 12, color: "var(--texte)", marginTop: 12, 
+                  padding: "10px", background: "var(--bg3)", borderRadius: "6px",
+                  border: "1px solid var(--bord)"
+                }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Pièce jouée:</div>
                   <div>Forme: <strong>{coupActuel.piece_data.forme}</strong></div>
                   {coupActuel.piece_data.enlevement && (
-                    <div style={{ color: "#00BFFF" }}>⚡ ELMAAS (diamant)</div>
+                    <div style={{ color: "#00BFFF", fontWeight: 600 }}>⚡ ELMAAS (diamant)</div>
                   )}
                   <div>Origine: [{coupActuel.origine?.join(", ")}]</div>
+                  <div>Rotation: {coupActuel.piece_data.rotation}</div>
                 </div>
               )}
             </div>
 
-            <div className="analyse-navigation">
-              <button className="popup-btn" onClick={precedent} disabled={indexCoup === 0}>◄ Précédent</button>
-              <button className="popup-btn" onClick={suivant} disabled={indexCoup >= (analyseCourante?.coups.length || 1) - 1}>Suivant ►</button>
-            </div>
-
-            {/* ✅ Barre de progression */}
-            <div style={{ width: "100%", height: "4px", background: "var(--bord)", borderRadius: "2px", marginTop: "8px" }}>
-              <div style={{
-                width: `${((indexCoup + 1) / (analyseCourante?.coups.length || 1)) * 100}%`,
-                height: "100%",
-                background: couleurClasse,
-                borderRadius: "2px",
-                transition: "width 0.3s ease"
-              }} />
+            <div className="analyse-navigation" style={{ 
+              display: "flex", gap: 8, marginTop: 16 
+            }}>
+              <button 
+                className="popup-btn" 
+                onClick={precedent} 
+                disabled={indexCoup === 0}
+                style={{ flex: 1, opacity: indexCoup === 0 ? 0.4 : 1 }}
+              >
+                ◄ Précédent
+              </button>
+              <button 
+                className="popup-btn" 
+                onClick={suivant} 
+                disabled={indexCoup >= totalCoups - 1}
+                style={{ flex: 1, opacity: indexCoup >= totalCoups - 1 ? 0.4 : 1 }}
+              >
+                Suivant ►
+              </button>
             </div>
           </div>
         </div>
@@ -262,7 +296,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         {/* Quota */}
         {quotaInfo && (
           <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", padding: 8 }}>
-            Analyses restantes : {quotaInfo.restant === -1 ? "∞" : quotaInfo.restant}
+            Analyses restantes: {quotaInfo.restant === -1 ? "∞" : quotaInfo.restant}
           </div>
         )}
       </div>
