@@ -26,7 +26,7 @@ from config import (
 )
 
 
-# ── Structures de données ────────────────────────────────────
+#  Structures de données 
 
 @dataclass
 class Joueur:
@@ -82,7 +82,7 @@ class EtatJeu:
         self.timestamp_debut_tour = time.time()
 
 
-# ── Initialisation du jeu ────────────────────────────────────
+#  Initialisation du jeu 
 
 def calculer_pieces_initiales(plateau: Plateau, couleur: str) -> list:
     """Calcul asymétrique original — gardé pour compatibilité."""
@@ -238,7 +238,7 @@ def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     )
 
     if DEBUG:
-        print(f"[game_engine] ✅ Jeu initialisé avec tetrominos")
+        print(f"[game_engine] [OK] Jeu initialisé avec tetrominos")
         print(f"  Pièce initiale : {piece_initiale['forme']} en {centre} ({couleur_initiale})")
         print(f"  J1 main={[p['forme'] for p in joueur1.main_active]}, réserve={len(joueur1.reserve)}")
         print(f"  J2 main={[p['forme'] for p in joueur2.main_active]}, réserve={len(joueur2.reserve)}")
@@ -246,7 +246,7 @@ def initialiser_jeu(plateau: Plateau) -> EtatJeu:
     return etat
 
 
-# ── Actions du tour ──────────────────────────────────────────
+#  Actions du tour 
 
 def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
     joueur = etat.joueur_actif()
@@ -268,7 +268,9 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
     for pos in absolues:
         r, c = pos
         cle = f"{r},{c}"
-        etat.plateau.pieces[cle] = joueur.couleur
+        # CORRECTION: ELMAAS/diamant = couleur neutre, pas la couleur du joueur
+        valeur = "diamant" if piece.get("enlevement") else joueur.couleur
+        etat.plateau.pieces[cle] = valeur
         etat.plateau.cellules_actives.add((r, c))
         positions_posees.append((r, c))
 
@@ -308,9 +310,9 @@ def action_poser_piece(etat: EtatJeu, piece_index: int, origine: tuple) -> dict:
             resultat["victoire_immediate"] = True
             resultat["motif"] = "victoire_immediate"
             if DEBUG:
-                print(f"[game_engine] 🏆 VICTOIRE IMMÉDIATE — {joueur.couleur}")
+                print(f"[game_engine] [VICTOIRE] VICTOIRE IMMÉDIATE — {joueur.couleur}")
 
-    # ── Régénération de pièces ──
+    #  Régénération de pièces 
     if not joueur.reserve and not joueur.main_active:
         puzzles_completes_total = sum(
             1 for p in etat.plateau.puzzles.values()
@@ -438,7 +440,7 @@ def action_scout(etat: EtatJeu) -> dict:
     return resultat
 
 
-# ── Pouvoirs après complétion de puzzle ──────────────────────
+#  Pouvoirs après complétion de puzzle 
 
 def appliquer_pouvoir(etat: EtatJeu, pouvoir: str, cible: tuple = None) -> dict:
     joueur = etat.joueur_actif()
@@ -539,7 +541,7 @@ def recolorier_piece(etat: EtatJeu, position: tuple) -> dict:
     return resultat
 
 
-# ── Détection de complétion et brisure ──────────────────────
+#  Détection de complétion et brisure 
 
 def verifier_completion_puzzles(etat: EtatJeu, position_posee: tuple) -> list[Puzzle]:
     completes = []
@@ -584,17 +586,16 @@ def determiner_gagnant_puzzle(etat: EtatJeu, puzzle: Puzzle):
         for r, c in puzzle.cellules
         if etat.plateau.pieces.get(f"{r},{c}") is not None
     }
-    
-    # ✅ GESTION DU DIAMANT : s'il y a un diamant, le puzzle ne peut pas être complété
-    # par une couleur mono pure. Le diamant "bloque" la complétion.
+
+    # CORRECTION: Diamant = couleur neutre qui bloque les puzzles mono
     a_diamant = "diamant" in couleurs
-    couleurs_joueurs = couleurs - {"diamant"}  # Enlever le diamant pour les checks
-    
+    couleurs_joueurs = couleurs - {"diamant"}
+
     tout_rouge = couleurs_joueurs == {COULEUR_JOUEUR_1}
     tout_noir  = couleurs_joueurs == {COULEUR_JOUEUR_2}
 
     if puzzle.type_couleur == "mono_rouge":
-        # Si diamant présent : impossible de compléter (ni rouge ni noir ne gagne)
+        # Diamant bloque completement un puzzle mono
         if a_diamant:
             return None
         if tout_rouge: return COULEUR_JOUEUR_1
@@ -609,7 +610,7 @@ def determiner_gagnant_puzzle(etat: EtatJeu, puzzle: Puzzle):
         return None
 
     elif puzzle.type_couleur == "mixte":
-        # Mixte : diamant est neutre, il faut rouge ET noir (hors diamant)
+        # Mixte: diamant est neutre, il faut rouge ET noir (hors diamant)
         if COULEUR_JOUEUR_1 in couleurs_joueurs and COULEUR_JOUEUR_2 in couleurs_joueurs:
             return etat.joueur_actif().couleur
         return None
@@ -642,7 +643,7 @@ def verifier_brisure_depuis_completion(etat: EtatJeu, puzzle_complete: Puzzle, p
     if conflit:
         puzzle_cible.brise = True
         if DEBUG:
-            print(f"[game_engine] ⚠️  Puzzle {puzzle_cible.id} BRISÉ (conflit avec {puzzle_complete.id})")
+            print(f"[game_engine] [ATTENTION]  Puzzle {puzzle_cible.id} BRISÉ (conflit avec {puzzle_complete.id})")
 
 
 def verifier_brisure_puzzle(etat: EtatJeu, position: tuple):
@@ -683,13 +684,13 @@ def tenter_reparer_puzzle_brise(etat: EtatJeu, puzzle_id: int) -> dict:
         puzzle.brise = False
         resultat["succes"] = True
         if DEBUG:
-            print(f"[game_engine] 🔧 Puzzle {puzzle_id} réparé par {joueur.couleur}")
+            print(f"[game_engine] [REPARATION] Puzzle {puzzle_id} réparé par {joueur.couleur}")
         break
 
     return resultat
 
 
-# ── Fin de manche ────────────────────────────────────────────
+#  Fin de manche 
 
 def plateau_plein(etat: EtatJeu) -> bool:
     return all(v is not None for v in etat.plateau.pieces.values())
@@ -712,7 +713,7 @@ def terminer_manche(etat: EtatJeu):
         etat.gagnant = "egalite"
 
     if DEBUG:
-        print(f"\n[game_engine] 🏁 FIN DE MANCHE")
+        print(f"\n[game_engine] [FIN] FIN DE MANCHE")
         print(f"  Rouge : {score_rouge} puzzles")
         print(f"  Noir  : {score_noir} puzzles")
         print(f"  Gagnant : {etat.gagnant}")
@@ -742,7 +743,7 @@ def calculer_scores(etat: EtatJeu) -> dict:
     }
 
 
-# ── Interface principale ─────────────────────────────────────
+#  Interface principale 
 
 def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
     if etat.manche_terminee:
@@ -824,7 +825,7 @@ def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
     return resultat
 
 
-# ── Test rapide ──────────────────────────────────────────────
+#  Test rapide 
 
 if __name__ == "__main__":
     import sys

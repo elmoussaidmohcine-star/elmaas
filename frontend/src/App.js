@@ -55,14 +55,14 @@ function setScoresCumules(pseudoAdverse, scores) {
   } catch {}
 }
 
-// ── Bouton Paramètres flottant ──
+//  Bouton Paramètres flottant 
 function BtnParamsFlottant({ onClick, L }) {
   return (
-    <button className="btn-params-flottant" onClick={onClick} title={t("parametres", L)}>⚙</button>
+    <button className="btn-params-flottant" onClick={onClick} title={t("parametres", L)}></button>
   );
 }
 
-// ── Popup Paramètres ──
+//  Popup Paramètres 
 function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer, onDeconnecter, onPaiement }) {
   return (
     <div className="popup-overlay" onClick={onFermer}>
@@ -126,7 +126,7 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
   );
 }
 
-// ── Écran Auth (Google uniquement + sans compte) ──
+//  Écran Auth (Google uniquement + sans compte) 
 function EcranAuth({ onConnecte, L }) {
   const handleGoogleLogin = () => { window.location.href = `${API}/auth/google`; };
   return (
@@ -153,7 +153,7 @@ function EcranAuth({ onConnecte, L }) {
   );
 }
 
-// ── Écran Choix Pseudo ──
+//  Écran Choix Pseudo 
 function EcranPseudo({ onPseudoDefini, L }) {
   const [pseudo, setPseudo] = useState("");
   const [statut, setStatut] = useState(null);
@@ -214,7 +214,7 @@ function EcranPseudo({ onPseudoDefini, L }) {
   );
 }
 
-// ── Popup "5 min trop cheesy" ──
+//  Popup "5 min trop cheesy" 
 function PopupCheesy({ onChoisir, onFermer, L }) {
   const temps = [{v:10,l:"10 s"},{v:20,l:"20 s"},{v:30,l:"30 s"},{v:60,l:"1 min"},{v:120,l:"2 min"}];
   return (
@@ -232,7 +232,7 @@ function PopupCheesy({ onChoisir, onFermer, L }) {
   );
 }
 
-// ── Écran Taille ──
+//  Écran Taille 
 const TIMER_OPTIONS = [
   { label: "10 s", val: 10 }, { label: "20 s", val: 20 }, { label: "30 s", val: 30 },
   { label: "1 min", val: 60 }, { label: "2 min", val: 120 }, { label: "5 min", val: 300 },
@@ -316,7 +316,7 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
   );
 }
 
-// ── Popup Matchmaking ──
+//  Popup Matchmaking 
 function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }) {
   const [tempsEcoule, setTempsEcoule] = useState(0);
   const [citation, setCitation] = useState(() => getCitationAttente(getLangueInitiale()));
@@ -374,7 +374,7 @@ function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }
       <div className="popup-pouvoir" style={{ minWidth: 400, gap: 16 }}>
         {echec ? (
           <>
-            <div className="popup-titre">⚠</div>
+            <div className="popup-titre"></div>
             <div className="popup-sous-titre">{t("matchmakingEchec", L)}</div>
             <button className="popup-btn" onClick={handleAnnuler}>{t("fermer", L)}</button>
           </>
@@ -399,7 +399,7 @@ function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }
   );
 }
 
-// ── Écran Photo ──
+//  Écran Photo 
 function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatch, onPartieCreee, L }) {
   const [photosFixees, setPhotosFixees] = useState([]);
   const [photoSelectionnee, setPhotoSelectionnee] = useState(null);
@@ -622,7 +622,7 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
   const S = 10;
 
-  // ✅ ELMAAS = pièce d'enlèvement (diamant)
+  //  ELMAAS = pièce d'enlèvement (diamant)
   const estELMAAS = piece.enlevement === true;
 
   let coul, coulClair, bordure, bgSel;
@@ -644,7 +644,7 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
         border: `2px solid ${bordure}`,
         background: estSelectionnee ? bgSel : "#111122", transition: "all 0.15s",
         boxShadow: estELMAAS ? "0 0 8px rgba(0,191,255,0.4)" : "none" }}
-      title={estELMAAS ? `⚡ ELMAAS ${piece.forme}` : piece.forme}>
+      title={estELMAAS ? ` ELMAAS ${piece.forme}` : piece.forme}>
       {cells.map(([r, c], i) => (
         <div key={i} style={{ position: "absolute", top: r*S+5, left: c*S+5,
           width: S-2, height: S-2, borderRadius: 2, background: coul,
@@ -760,22 +760,22 @@ function PopupManuel({ onFermer, L }) {
         <div style={{ fontSize: 14, color: "var(--muted)", fontStyle: "italic", textAlign: "center" }}>{t("manuelIntro", L)}</div>
         <div className="manuel-content">
           <div className="manuel-section">
-            <div className="manuel-titre-section">✦ {t("objectif", L)}</div>
+            <div className="manuel-titre-section"> {t("objectif", L)}</div>
             <p>{t("objectifDesc", L)}</p>
           </div>
           <div className="manuel-section">
-            <div className="manuel-titre-section">✦ {t("actionsParTour", L)}</div>
+            <div className="manuel-titre-section"> {t("actionsParTour", L)}</div>
             <p>• {t("actionPoser", L)}</p>
             <p>• {t("actionRepiocher", L)}</p>
             <p>• {t("actionScout", L)}</p>
           </div>
           <div className="manuel-section">
-            <div className="manuel-titre-section">✦ {t("series", L)}</div>
+            <div className="manuel-titre-section"> {t("series", L)}</div>
             <p>• {t("serie3Desc", L)}</p>
             <p>• {t("serie5Desc", L)}</p>
           </div>
           <div className="manuel-section" style={{ borderColor: "var(--accent-culture)" }}>
-            <div className="manuel-titre-section">★ {t("astuceTitre", L)}</div>
+            <div className="manuel-titre-section"> {t("astuceTitre", L)}</div>
             <p style={{ fontStyle: "italic" }}>{t("astuceDesc", L)}</p>
           </div>
         </div>
@@ -785,7 +785,7 @@ function PopupManuel({ onFermer, L }) {
   );
 }
 
-// ── Bulle message (5s) ──
+//  Bulle message (5s) 
 function BulleMessage({ texte, couleur, position, onFermer }) {
   useEffect(() => {
     const t = setTimeout(onFermer, 5000);
@@ -798,7 +798,7 @@ function BulleMessage({ texte, couleur, position, onFermer }) {
   );
 }
 
-// ── App principale ──
+//  App principale 
 export default function App() {
   const [utilisateur, setUtilisateur] = useState(() => getUser());
   const [indexLangue, setIndexLangue] = useState(getLangueInitiale);
@@ -1076,7 +1076,7 @@ export default function App() {
       setMonRole("joueur1"); 
       setModeMultijoueur(true);
       
-      // 🔥 CRITIQUE: rejoindre la room WebSocket immédiatement
+      //  CRITIQUE: rejoindre la room WebSocket immédiatement
       socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1" });
       
       if (partieIdMatch) {
@@ -1094,7 +1094,7 @@ export default function App() {
     setModeMultijoueur(true); 
     setEtape("lobby");
     
-    // 🔥 CRITIQUE: rejoindre la room WebSocket immédiatement
+    //  CRITIQUE: rejoindre la room WebSocket immédiatement
     socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
     
     try {
@@ -1340,7 +1340,7 @@ export default function App() {
               setMonRole("joueur1");
               setEtape("photo");
             } else {
-              // 🔥 JOUEUR 2 : rejoindre IMMÉDIATEMENT la room WebSocket
+              //  JOUEUR 2 : rejoindre IMMÉDIATEMENT la room WebSocket
               setMonRole("joueur2");
               setPartieId(data.partie_id);
               setEtape("lobby");
@@ -1411,9 +1411,9 @@ export default function App() {
     </div>
   );
 
-  // ══════════════════════════════════════════════════════════
+  // 
   // ÉCRAN ANALYSE
-  // ══════════════════════════════════════════════════════════
+  // 
   if (showAnalyse) {
     return (
       <div className="app">
@@ -1430,9 +1430,9 @@ export default function App() {
     );
   }
 
-  // ══════════════════════════════════════════════════════════
+  // 
   // JEU PRINCIPAL
-  // ══════════════════════════════════════════════════════════
+  // 
   return (
     <div className="app jeu">
       {popupParams}
@@ -1617,44 +1617,44 @@ export default function App() {
           )}
         </div>
 
-    <div className="header-droite">
-      <div className="pseudo-joueur noir">
-        <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : pseudoAdverse}</span>
-        <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
-      </div>
-      <div className="tour-info">
-        {t("tour", L)} {etat?.numero_tour}
-        {modeMultijoueur && (
-          <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
-            {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
-          </span>
-        )}
-        {bonusDoubleActif && <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>{t("doubleTourActif", L)}</span>}
-        {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
-        {joueurAffiche?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurAffiche.serie_actuelle}</span>}
-      </div>
-      {dernierCoupClassif && (
-        <span className="badge-classif" style={{
-          background: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur + "22",
-          borderColor: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur,
-          color: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur
-        }}>
-          {dernierCoupClassif}
-        </span>
-      )}
-      {/* ✅ BOUTON ANALYSE - toujours visible pendant le jeu */}
-      <button 
-        className="btn-manuel" 
-        onClick={() => { setModeAnalyse("rapide"); setShowAnalyse(true); }}
-        title={t("analyseTitre", L)}
-        style={{ borderColor: "#ffaa44", color: "#ffaa44" }}
-      >
-        📊
-      </button>
-      <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>⚙</button>
-      <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
-      <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
-    </div>
+        <div className="header-droite">
+          <div className="pseudo-joueur noir">
+            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : pseudoAdverse}</span>
+            <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
+          </div>
+          {/* CORRECTION: Bouton Analyse toujours visible */}
+          <button 
+            className="btn-manuel" 
+            onClick={() => { setModeAnalyse("rapide"); setShowAnalyse(true); }}
+            title="Analyser la partie"
+            style={{ borderColor: "#ffaa44", color: "#ffaa44" }}
+          >
+            A
+          </button>
+          <div className="tour-info">
+            {t("tour", L)} {etat?.numero_tour}
+            {modeMultijoueur && (
+              <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
+                {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
+              </span>
+            )}
+            {bonusDoubleActif && <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>{t("doubleTourActif", L)}</span>}
+            {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
+            {joueurAffiche?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurAffiche.serie_actuelle}</span>}
+          </div>
+          {dernierCoupClassif && (
+            <span className="badge-classif" style={{
+              background: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur + "22",
+              borderColor: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur,
+              color: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur
+            }}>
+              {dernierCoupClassif}
+            </span>
+          )}
+          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}></button>
+          <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
+          <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
+        </div>
       </header>
 
       <div className="zone-adverse">
@@ -1763,7 +1763,7 @@ export default function App() {
               <input type="text" maxLength={30} placeholder={t("envoyerMessage", L)}
                 value={messageChat} onChange={e => setMessageChat(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && envoyerMessage()} />
-              <button onClick={envoyerMessage} disabled={!messageChat.trim()}>▸</button>
+              <button onClick={envoyerMessage} disabled={!messageChat.trim()}></button>
             </div>
           )}
 

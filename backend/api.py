@@ -38,9 +38,9 @@ except ImportError as e:
     GOOGLE_OAUTH_DISPO = False
 
 
-# ─────────────────────────────────────────────────────────
+# 
 # Flask app
-# ─────────────────────────────────────────────────────────
+# 
 app = Flask(__name__)
 
 # Session / sécurité
@@ -84,8 +84,8 @@ app.register_blueprint(matchmaking_bp)
 
 with app.app_context():
     db.create_all()
-# ── Migration ponctuelle Google OAuth ──
-# ── Migration ponctuelle ──
+#  Migration ponctuelle Google OAuth 
+#  Migration ponctuelle 
 with app.app_context():
     try:
         db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS google_id VARCHAR(100) UNIQUE"))
@@ -731,13 +731,19 @@ def coup_ia(partie_id: str):
 
     data = request.json or {}
     niveau = int(data.get("niveau", 2))
-    joueur = etat.joueur_actif()
-    coup = jouer_ia(etat, joueur, niveau)
+
+    # CORRECTION: Capturer le joueur IA AVANT de jouer le coup
+    # car jouer_tour() va changer le tour actuel
+    joueur_ia = etat.joueur_actif()
+    adverse = etat.joueur_adverse()
+
+    coup = jouer_ia(etat, joueur_ia, niveau)
 
     if coup is None:
         from game_engine import action_passer_repiocher
         action_passer_repiocher(etat)
-        etat.passer_tour()  # Met à jour le timestamp automatiquement
+        etat.passer_tour()
+        etat.timestamp_debut_tour = time.time()
         etat_serialise = serialiser_etat(etat)
         socketio.emit("etat_mis_a_jour", {
             "etat": etat_serialise, "action": "repiocher",
@@ -749,21 +755,22 @@ def coup_ia(partie_id: str):
     piece_index, origine = coup
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
 
-    # Si l'IA a complété des puzzles → appliquer pouvoir automatiquement
+    # CORRECTION: Si l'IA a complété des puzzles -> appliquer pouvoir automatiquement
+    # Note: joueur_ia et adverse sont deja captures AVANT le coup
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
-        joueur_ia = etat.joueur_actif()
-        adverse = etat.joueur_adverse()
-
         # NIVEAU 4 : choix intelligent du pouvoir
         if niveau >= 4:
             from ai_player import choisir_pouvoir_niveau_4
             pouvoir_choisi, cible = choisir_pouvoir_niveau_4(etat, joueur_ia, resultat.get("puzzles_completes", []))
+
             if pouvoir_choisi == "extraire" and cible:
                 from game_engine import appliquer_bonus_serie
-                bonus = appliquer_bonus_serie(etat, cible)
-                if bonus.get("recoloriages_possibles", 0) > 0 and cible:
+                # cible peut etre une liste de positions
+                positions = cible if isinstance(cible, list) else [cible]
+                bonus = appliquer_bonus_serie(etat, positions)
+                if bonus.get("recoloriages_possibles", 0) > 0 and positions:
                     from game_engine import recolorier_piece
-                    recolorier_piece(etat, cible[0])
+                    recolorier_piece(etat, positions[0])
             elif pouvoir_choisi == "echanger" and cible:
                 from game_engine import appliquer_pouvoir
                 appliquer_pouvoir(etat, "echanger", cible)
@@ -771,7 +778,7 @@ def coup_ia(partie_id: str):
                 from game_engine import appliquer_pouvoir
                 appliquer_pouvoir(etat, "rien")
 
-        # NIVEAU 2-3 : échanger une pièce adverse
+        # NIVEAU 2-3 : echange automatique simple
         elif niveau >= 2 and adverse.main_active:
             piece_prise = adverse.main_active.pop(0)
             if joueur_ia.main_active:
@@ -779,10 +786,12 @@ def coup_ia(partie_id: str):
                 adverse.main_active.append(piece_donnee)
             joueur_ia.main_active.append(piece_prise)
 
-        # ✅ TOUJOURS passer le tour après le pouvoir
+        # CORRECTION: Un seul passer_tour() ici
+        # car jouer_tour() ne l'a PAS fait (attente_pouvoir = True)
         etat.passer_tour()
 
-    # FIX CRITIQUE : timestamp à MAINTENANT après le tour IA
+    # CORRECTION: Si pas d'attente_pouvoir, jouer_tour() a DEJA fait passer_tour()
+    # Donc on ne le fait PAS a nouveau. On met juste a jour le timestamp.
     etat.timestamp_debut_tour = time.time()
 
     etat_serialise = serialiser_etat(etat)
@@ -875,7 +884,7 @@ def consommer_bonus(partie_id: str):
     return jsonify({"succes": False, "message": "Pas de bonus actif"}), 400
 
 
-# ── Pause mutuelle ──
+#  Pause mutuelle 
 @app.route("/pause/demander/<partie_id>", methods=["POST"])
 def demander_pause(partie_id: str):
     if partie_id not in parties:
