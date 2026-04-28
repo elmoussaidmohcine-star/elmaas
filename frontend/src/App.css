@@ -1104,7 +1104,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
 /* ════════════════════════════════════════════════════════════
    MINI-PIÈCES ELMAAS
    ════════════════════════════════════════════════════════════ */
-
+/* Dans la section des mini-pièces */
 .mini-piece.elmaas {
   animation: mini-elmaas-pulse 2s ease-in-out infinite;
 }

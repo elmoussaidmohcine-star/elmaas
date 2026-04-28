@@ -584,21 +584,33 @@ def determiner_gagnant_puzzle(etat: EtatJeu, puzzle: Puzzle):
         for r, c in puzzle.cellules
         if etat.plateau.pieces.get(f"{r},{c}") is not None
     }
-    tout_rouge = couleurs == {COULEUR_JOUEUR_1}
-    tout_noir  = couleurs == {COULEUR_JOUEUR_2}
+    
+    # ✅ GESTION DU DIAMANT : s'il y a un diamant, le puzzle ne peut pas être complété
+    # par une couleur mono pure. Le diamant "bloque" la complétion.
+    a_diamant = "diamant" in couleurs
+    couleurs_joueurs = couleurs - {"diamant"}  # Enlever le diamant pour les checks
+    
+    tout_rouge = couleurs_joueurs == {COULEUR_JOUEUR_1}
+    tout_noir  = couleurs_joueurs == {COULEUR_JOUEUR_2}
 
     if puzzle.type_couleur == "mono_rouge":
+        # Si diamant présent : impossible de compléter (ni rouge ni noir ne gagne)
+        if a_diamant:
+            return None
         if tout_rouge: return COULEUR_JOUEUR_1
         if tout_noir:  return COULEUR_JOUEUR_2
         return None
 
     elif puzzle.type_couleur == "mono_noir":
+        if a_diamant:
+            return None
         if tout_noir:  return COULEUR_JOUEUR_2
         if tout_rouge: return COULEUR_JOUEUR_1
         return None
 
     elif puzzle.type_couleur == "mixte":
-        if COULEUR_JOUEUR_1 in couleurs and COULEUR_JOUEUR_2 in couleurs:
+        # Mixte : diamant est neutre, il faut rouge ET noir (hors diamant)
+        if COULEUR_JOUEUR_1 in couleurs_joueurs and COULEUR_JOUEUR_2 in couleurs_joueurs:
             return etat.joueur_actif().couleur
         return None
 

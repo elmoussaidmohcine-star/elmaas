@@ -1617,35 +1617,44 @@ export default function App() {
           )}
         </div>
 
-        <div className="header-droite">
-          <div className="pseudo-joueur noir">
-            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : pseudoAdverse}</span>
-            <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
-          </div>
-          <div className="tour-info">
-            {t("tour", L)} {etat?.numero_tour}
-            {modeMultijoueur && (
-              <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
-                {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
-              </span>
-            )}
-            {bonusDoubleActif && <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>{t("doubleTourActif", L)}</span>}
-            {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
-            {joueurAffiche?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurAffiche.serie_actuelle}</span>}
-          </div>
-          {dernierCoupClassif && (
-            <span className="badge-classif" style={{
-              background: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur + "22",
-              borderColor: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur,
-              color: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur
-            }}>
-              {dernierCoupClassif}
-            </span>
-          )}
-          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>⚙</button>
-          <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
-          <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
-        </div>
+    <div className="header-droite">
+      <div className="pseudo-joueur noir">
+        <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : pseudoAdverse}</span>
+        <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
+      </div>
+      <div className="tour-info">
+        {t("tour", L)} {etat?.numero_tour}
+        {modeMultijoueur && (
+          <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
+            {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
+          </span>
+        )}
+        {bonusDoubleActif && <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>{t("doubleTourActif", L)}</span>}
+        {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
+        {joueurAffiche?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurAffiche.serie_actuelle}</span>}
+      </div>
+      {dernierCoupClassif && (
+        <span className="badge-classif" style={{
+          background: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur + "22",
+          borderColor: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur,
+          color: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur
+        }}>
+          {dernierCoupClassif}
+        </span>
+      )}
+      {/* ✅ BOUTON ANALYSE - toujours visible pendant le jeu */}
+      <button 
+        className="btn-manuel" 
+        onClick={() => { setModeAnalyse("rapide"); setShowAnalyse(true); }}
+        title={t("analyseTitre", L)}
+        style={{ borderColor: "#ffaa44", color: "#ffaa44" }}
+      >
+        📊
+      </button>
+      <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>⚙</button>
+      <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
+      <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
+    </div>
       </header>
 
       <div className="zone-adverse">
