@@ -1,7 +1,7 @@
-# ELMAAS — analyse_partie.py v3.0
-# Analyse rigoureuse de partie : tous les types de coups évalués
-# Pose, Repiocher, Scout, Échange, ELMAAS/Diamant, Pouvoirs, Séries
-# Évaluation multi-critères avec profondeur configurable
+# ELMAAS — analyse_partie.py v4.0
+# Analyse rigoureuse de partie : tous les coups des deux joueurs
+# + Proposition du meilleur coup alternatif
+# + Pas d'IA GM 2500+ dans l'analyse (analyse statique uniquement)
 
 import copy
 import time
@@ -17,7 +17,6 @@ from game_engine import (
     SERIE_BONUS_EXTRACTION, SERIE_VICTOIRE_IMMEDIATE,
     NB_PIECES_EXTRACTION
 )
-from ai_player import jouer_ia, ia_niveau_3, ia_niveau_4
 from pieces_generator import (
     cellules_absolues, placement_valide, generer_piece,
     serialiser_piece, toutes_rotations, FORMES
@@ -29,15 +28,14 @@ from puzzle_generator import Puzzle
 # CONSTANTES DE CLASSIFICATION
 # ═══════════════════════════════════════════════════════════
 
-CLASSE_ELMAAS     = "ELMAAS"      # Coup brillant : gain maximal, créativité
-CLASSE_ELMAASYON  = "ELMAASYON"   # Excellent : top 3, gain solide
-CLASSE_MASSY      = "MASSY"       # Très bon : meilleur coup objectif
+CLASSE_ELMAAS     = "ELMAAS"      # Coup brillant : gain maximal
+CLASSE_ELMAASYON  = "ELMAASYON"   # Excellent : top 3
+CLASSE_MASSY      = "MASSY"       # Tres bon : meilleur coup objectif
 CLASSE_NOTMESSY   = "NOTMESSY"    # Bon : dans les 10% meilleurs
-CLASSE_MISSED     = "MISSED"      # Moyen : opportunité manquée visible
+CLASSE_MISSED     = "MISSED"      # Moyen : opportunite manquee visible
 CLASSE_CHESS      = "CHESS"       # Faible : erreur significative
-CLASSE_BLUNDER    = "BLUNDER"     # Grosse erreur : perd du matériel ou laisse gagner
+CLASSE_BLUNDER    = "BLUNDER"     # Grosse erreur
 
-# Poids pour le calcul de précision globale
 POIDS_CLASSIFICATION = {
     CLASSE_ELMAAS:    100,
     CLASSE_ELMAASYON:  92,
@@ -48,73 +46,51 @@ POIDS_CLASSIFICATION = {
     CLASSE_BLUNDER:     5,
 }
 
-# Seuils de classification
-SEUIL_ELMAAS    = 0.95   # Top 1% et gain exceptionnel
-SEUIL_ELMAASYON = 0.90   # Top 5% et gain fort
-SEUIL_MASSY     = 0.85   # Top 10% ou meilleur coup sans gain
-SEUIL_NOTMESSY  = 0.70   # Top 25%
-SEUIL_MISSED    = 0.50   # Top 50% mais écart significatif
-SEUIL_CHESS     = 0.20   # En dessous du top 50%
+SEUIL_ELMAAS    = 0.95
+SEUIL_ELMAASYON = 0.90
+SEUIL_MASSY     = 0.85
+SEUIL_NOTMESSY  = 0.70
+SEUIL_MISSED    = 0.50
+SEUIL_CHESS     = 0.20
 
 
 # ═══════════════════════════════════════════════════════════
-# STRUCTURES DE DONNÉES POUR L'ANALYSE
+# STRUCTURES DE DONNEES
 # ═══════════════════════════════════════════════════════════
 
 @dataclass
 class AnalyseCoup:
-    """Résultat d'analyse d'un coup individuel."""
     index: int
-    type_coup: str                    # "poser", "repiocher", "scout", "pouvoir"
+    type_coup: str
     couleur: str
     numero_tour: int
 
-    # Pour les coups poser
     piece_index: Optional[int] = None
     piece_forme: Optional[str] = None
     piece_est_elmaas: bool = False
     origine: Optional[Tuple[int, int]] = None
 
-    # Pour les coups repiocher
-    pieces_avant: Optional[List[dict]] = None
-    pieces_apres: Optional[List[dict]] = None
-
-    # Pour les coups scout
-    pieces_vues: Optional[List[dict]] = None
-    echanges_scout: Optional[List[dict]] = None
-
-    # Pour les pouvoirs
-    pouvoir_type: Optional[str] = None
-    cible_pouvoir: Optional[Tuple[int, int]] = None
-
-    # Évaluation
     classification: str = CLASSE_NOTMESSY
     score_joue: float = 0.0
     score_optimal: float = 0.0
-    ecart_relatif: float = 0.0        # (optimal - joue) / optimal
+    ecart_relatif: float = 0.0
     rang: int = 1
     total_coups_possibles: int = 1
 
-    # Impact sur le jeu
     puzzles_completes: List[int] = field(default_factory=list)
     gain_cellules: int = 0
     serie_apres: int = 0
     serie_avant: int = 0
-    nb_pieces_posees_apres: int = 0
 
-    # Contexte
-    plateau_avant: Dict[str, str] = field(default_factory=dict)
     scores_avant: Dict[str, int] = field(default_factory=dict)
     scores_apres: Dict[str, int] = field(default_factory=dict)
 
-    # Meilleure alternative
     meilleur_alternative: Optional[dict] = None
     alternative_est_elmaas: bool = False
 
-    # Métriques avancées
-    valeur_positionnelle: float = 0.0   # Évaluation positionnelle pure
-    valeur_tactique: float = 0.0        # Évaluation tactique (puzzles, séries)
-    valeur_strategique: float = 0.0     # Évaluation stratégique (long terme)
+    valeur_positionnelle: float = 0.0
+    valeur_tactique: float = 0.0
+    valeur_strategique: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -142,38 +118,33 @@ class AnalyseCoup:
             "valeur_tactique": round(self.valeur_tactique, 2),
             "valeur_strategique": round(self.valeur_strategique, 2),
             "meilleur_alternative": self.meilleur_alternative,
+            "alternative_est_elmaas": self.alternative_est_elmaas,
         }
 
 
-@dataclass  
+@dataclass
 class ResumeAnalyse:
-    """Résumé global de l'analyse de partie."""
     precision_pct: float = 0.0
     couleur_analysee: Optional[str] = None
     nb_coups_total: int = 0
     nb_coups_analyses: int = 0
     stats_classes: Dict[str, int] = field(default_factory=dict)
 
-    # Tendances
-    tendance_debut: str = "stable"    # "fort", "stable", "faible"
+    tendance_debut: str = "stable"
     tendance_milieu: str = "stable"
     tendance_fin: str = "stable"
 
-    # Moments clés
     meilleur_coup: Optional[dict] = None
     pire_coup: Optional[dict] = None
-    coup_decisif: Optional[dict] = None  # Coup qui a changé le cours
+    coup_decisif: Optional[dict] = None
 
-    # ELMAAS spécifique
     nb_elmaas_joues: int = 0
     nb_elmaas_opportunites_manquees: int = 0
-    efficacite_elmaas: float = 0.0    # % d'ELMAAS bien utilisés
+    efficacite_elmaas: float = 0.0
 
-    # Séries
     serie_max_atteinte: int = 0
     nb_series_ratees: int = 0
 
-    # Pouvoirs
     nb_pouvoirs_utilises: int = 0
     efficacite_pouvoirs: float = 0.0
 
@@ -201,41 +172,95 @@ class ResumeAnalyse:
 
 
 # ═══════════════════════════════════════════════════════════
-# ÉVALUATION POSITIONNELLE AVANCÉE
+# COPIE MANUELLE D'ETAT (evite deepcopy RecursionError)
 # ═══════════════════════════════════════════════════════════
 
-def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str, 
-                               profondeur: int = 0) -> float:
-    """
-    Évaluation complète d'une position.
-    Combine : matériel, puzzles, séries, territoire, mobilité, ELMAAS.
-    """
+def copier_etat_manuel(etat: EtatJeu) -> EtatJeu:
+    """Copie manuelle d'EtatJeu sans deepcopy (evite RecursionError)."""
+    plateau_orig = etat.plateau
+
+    # Copier pieces (dict simple)
+    pieces_copy = dict(plateau_orig.pieces)
+
+    # Garder les memes puzzles (read-only pendant la simulation)
+    puzzles_copy = dict(plateau_orig.puzzles)
+
+    # Copier les sets
+    cellules_libres_copy = set(plateau_orig.cellules_libres)
+    cellules_actives_copy = set(plateau_orig.cellules_actives)
+
+    # Copier la grille numpy
+    grille_copy = plateau_orig.grille_bicolore.copy()
+
+    # Reconstruire le plateau
+    from puzzle_generator import Plateau
+    plateau_copy = Plateau(
+        grille_bicolore=grille_copy,
+        pieces=pieces_copy,
+        puzzles=puzzles_copy,
+        cellules_libres=cellules_libres_copy,
+        cellules_actives=cellules_actives_copy,
+    )
+
+    # Copier les joueurs
+    def copier_joueur(j):
+        from game_engine import Joueur
+        return Joueur(
+            id=j.id,
+            couleur=j.couleur,
+            main_active=list(j.main_active),
+            reserve=list(j.reserve),
+            pieces_protegees=set(j.pieces_protegees),
+            serie_actuelle=j.serie_actuelle,
+            score_puzzles=list(j.score_puzzles),
+            nb_pieces_posees_depuis_regen=j.nb_pieces_posees_depuis_regen,
+            seuil_regen_actuel=j.seuil_regen_actuel,
+            puzzles_completes_depuis_regen=j.puzzles_completes_depuis_regen,
+        )
+
+    from game_engine import EtatJeu
+    return EtatJeu(
+        plateau=plateau_copy,
+        joueur1=copier_joueur(etat.joueur1),
+        joueur2=copier_joueur(etat.joueur2),
+        tour_actuel=etat.tour_actuel,
+        numero_tour=etat.numero_tour,
+        manche_terminee=etat.manche_terminee,
+        gagnant=etat.gagnant,
+        victoire_immediate=etat.victoire_immediate,
+        historique_actions=list(etat.historique_actions),
+        piece_initiale_pos=etat.piece_initiale_pos,
+        timestamp_debut_tour=etat.timestamp_debut_tour,
+    )
+
+
+# ═══════════════════════════════════════════════════════════
+# EVALUATION POSITIONNELLE
+# ═══════════════════════════════════════════════════════════
+
+def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
+    """Evaluation complete d'une position pour couleur_perspective."""
     scores = calculer_scores(etat)
     couleur_adverse = "noir" if couleur_perspective == "rouge" else "rouge"
 
     score_total = 0.0
 
-    # 1. DIFFÉRENTIEL DE CELLULES (base)
+    # 1. DIFFERENTIEL DE CELLULES
     cellules_moi = scores.get(couleur_perspective, 0)
     cellules_adv = scores.get(couleur_adverse, 0)
     score_total += (cellules_moi - cellules_adv) * 3.0
 
-    # 2. PUZZLES COMPLÉTÉS ET PROGRESSION
+    # 2. PUZZLES COMPLETES ET PROGRESSION
     nb_puzzles_moi = 0
     nb_puzzles_adv = 0
-    puzzles_quasi_moi = 0      # 1-2 cases manquantes
-    puzzles_quasi_adv = 0
-    puzzles_bloques = 0        # Bloqués par diamant
 
     for puzzle in etat.plateau.puzzles.values():
         if puzzle.brise:
             continue
-
         nb_total = len(puzzle.cellules)
         if nb_total == 0:
             continue
 
-        # Déjà complété
         if puzzle.complete_par == couleur_perspective:
             score_total += nb_total * 8.0
             nb_puzzles_moi += 1
@@ -262,24 +287,19 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str,
             elif v == "diamant":
                 nb_diamant += 1
 
-        # Puzzle bloqué par diamant
+        # Puzzle bloque par diamant
         if nb_diamant > 0 and puzzle.type_couleur in ("mono_rouge", "mono_noir"):
-            puzzles_bloques += 1
-            # Le diamant avantage celui qui l'a posé (souvent le joueur actif)
-            # mais c'est complexe... on neutralise
             score_total -= 1.0
             continue
 
         # Quasi-complet
         if nb_vide <= 2:
             if nb_moi > nb_adv:
-                puzzles_quasi_moi += 1
                 score_total += nb_total * 4.0 * (nb_moi / max(nb_moi + nb_adv, 1))
             elif nb_adv > nb_moi:
-                puzzles_quasi_adv += 1
                 score_total -= nb_total * 4.0 * (nb_adv / max(nb_moi + nb_adv, 1))
 
-        # Progression générale
+        # Progression generale
         if puzzle.type_couleur == "mono_rouge":
             gagnant_nat = "rouge"
             if gagnant_nat == couleur_perspective:
@@ -296,57 +316,47 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str,
             avance = nb_moi - nb_adv
             score_total += avance * 1.5 + (nb_moi + nb_adv) * 0.5
 
-    # 3. SÉRIES (très important pour les pouvoirs)
+    # 3. SERIES
     joueur_moi = etat.joueur1 if etat.joueur1.couleur == couleur_perspective else etat.joueur2
     joueur_adv = etat.joueur2 if joueur_moi == etat.joueur1 else etat.joueur1
 
-    serie_moi = joueur_moi.serie_actuelle
-    serie_adv = joueur_adv.serie_actuelle
+    score_total += joueur_moi.serie_actuelle * 5.0
+    score_total -= joueur_adv.serie_actuelle * 4.0
 
-    # Série en cours = menace/potentiel
-    score_total += serie_moi * 5.0
-    score_total -= serie_adv * 4.0
-
-    # Proche de victoire immédiate (série 4 = à 1 du 5)
-    if serie_moi >= 4:
+    if joueur_moi.serie_actuelle >= 4:
         score_total += 25.0
-    if serie_adv >= 4:
+    if joueur_adv.serie_actuelle >= 4:
         score_total -= 20.0
 
-    # 4. MATÉRIEL (pièces restantes)
+    # 4. MATERIEL
     score_total += len(joueur_moi.main_active) * 1.5
     score_total += len(joueur_moi.reserve) * 1.0
     score_total -= len(joueur_adv.main_active) * 1.2
     score_total -= len(joueur_adv.reserve) * 0.8
 
-    # Danger : plus de pièces et aucun puzzle
+    # Danger: plus de pieces et aucun puzzle
     if not joueur_moi.reserve and not joueur_moi.main_active:
         if nb_puzzles_moi == 0:
-            score_total -= 50.0  # Défaite quasi-certaine
+            score_total -= 50.0
         else:
             score_total -= 15.0
 
-    # 5. MOBILITÉ (nombre de placements possibles)
+    # 5. MOBILITE
     mobilite_moi = compter_mobilite(etat, joueur_moi)
     mobilite_adv = compter_mobilite(etat, joueur_adv)
     score_total += (mobilite_moi - mobilite_adv) * 0.3
 
-    # 6. ELMAAS EN MAIN (potentiel d'enlèvement)
+    # 6. ELMAAS EN MAIN
     elmaas_moi = sum(1 for p in joueur_moi.main_active if p.get("enlevement"))
     elmaas_adv = sum(1 for p in joueur_adv.main_active if p.get("enlevement"))
     score_total += elmaas_moi * 3.0
     score_total -= elmaas_adv * 2.5
 
-    # 7. PROFONDEUR (bonus pour positions qui mènent à des gains)
-    if profondeur > 0:
-        # Simuler un coup adverse moyen et réévaluer
-        score_total *= 0.9  # Légère pénalité pour l'incertitude
-
     return score_total
 
 
 def compter_mobilite(etat: EtatJeu, joueur: Joueur) -> int:
-    """Compte le nombre de placements légaux pour toutes les pièces en main."""
+    """Compte le nombre de placements legaux pour toutes les pieces en main."""
     taille = etat.plateau.grille_bicolore.shape[0]
     total = 0
     for piece in joueur.main_active:
@@ -359,11 +369,11 @@ def compter_mobilite(etat: EtatJeu, joueur: Joueur) -> int:
 
 
 # ═══════════════════════════════════════════════════════════
-# LISTAGE DES COUPS POSSIBLES PAR TYPE
+# LISTAGE DES COUPS POSSIBLES
 # ═══════════════════════════════════════════════════════════
 
 def lister_coups_poser(etat: EtatJeu, joueur: Joueur) -> List[Tuple[int, Tuple[int, int]]]:
-    """Tous les coups 'poser' légaux."""
+    """Tous les coups 'poser' legaux."""
     coups = []
     taille = etat.plateau.grille_bicolore.shape[0]
     for idx, piece in enumerate(joueur.main_active):
@@ -376,14 +386,14 @@ def lister_coups_poser(etat: EtatJeu, joueur: Joueur) -> List[Tuple[int, Tuple[i
 
 
 def lister_coups_repiocher(etat: EtatJeu, joueur: Joueur) -> List[str]:
-    """Le repiocher est toujours possible si on a des pièces en main."""
+    """Repiocher possible si on a des pieces en main et en reserve."""
     if len(joueur.main_active) > 0 and len(joueur.reserve) > 0:
         return ["repiocher"]
     return []
 
 
 def lister_coups_scout(etat: EtatJeu, joueur: Joueur) -> List[str]:
-    """Scout possible si main assez grande et réserve non vide."""
+    """Scout possible si main assez grande et reserve non vide."""
     from config import MIN_PIECES_SCOUT
     if len(joueur.main_active) > MIN_PIECES_SCOUT and len(joueur.reserve) > 0:
         return ["scout"]
@@ -391,13 +401,10 @@ def lister_coups_scout(etat: EtatJeu, joueur: Joueur) -> List[str]:
 
 
 def lister_tous_coups(etat: EtatJeu, joueur: Joueur) -> List[dict]:
-    """
-    Liste TOUTES les actions possibles pour un joueur.
-    Retourne une liste de dicts avec type et données.
-    """
+    """Liste TOUTES les actions possibles pour un joueur."""
     coups = []
 
-    # 1. Coups poser (prioritaires, les plus nombreux)
+    # 1. Coups poser
     for idx, orig in lister_coups_poser(etat, joueur):
         piece = joueur.main_active[idx]
         coups.append({
@@ -420,35 +427,22 @@ def lister_tous_coups(etat: EtatJeu, joueur: Joueur) -> List[dict]:
 
 
 # ═══════════════════════════════════════════════════════════
-# SIMULATION DE COUPS
+# SIMULATION DE COUPS (avec copie manuelle)
 # ═══════════════════════════════════════════════════════════
 
 def simuler_coup(etat: EtatJeu, coup: dict) -> Tuple[Optional[EtatJeu], Optional[dict]]:
-    """
-    Simule un coup et retourne (nouvel_etat, resultat_action).
-    Gère tous les types de coups.
-    """
-    etat_copie = copy.deepcopy(etat)
+    """Simule un coup et retourne (nouvel_etat, resultat_action)."""
+    etat_copie = copier_etat_manuel(etat)
 
     try:
         if coup["type"] == "poser":
             resultat = action_poser_piece(
-                etat_copie, 
-                coup["piece_index"], 
+                etat_copie,
+                coup["piece_index"],
                 coup["origine"]
             )
-
-            # Gérer les pouvoirs automatiquement si puzzles complétés
-            if resultat.get("puzzles_completes") and not resultat.get("victoire_immediate"):
-                joueur = etat_copie.joueur_actif()
-                if joueur.serie_actuelle >= SERIE_BONUS_EXTRACTION:
-                    # Pour l'analyse, on simule "rien" (conservateur)
-                    # ou on pourrait tester plusieurs options
-                    pass  # Le tour passe automatiquement après pouvoir
-
             if not resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
                 etat_copie.passer_tour()
-
             return etat_copie, resultat
 
         elif coup["type"] == "repiocher":
@@ -469,17 +463,13 @@ def simuler_coup(etat: EtatJeu, coup: dict) -> Tuple[Optional[EtatJeu], Optional
         return None, None
 
 
-def simuler_coup_pour_eval(etat: EtatJeu, coup: dict, 
-                           couleur_perspective: str) -> float:
-    """
-    Simule un coup et retourne l'évaluation de la position résultante.
-    Version rapide pour le classement des coups.
-    """
+def simuler_coup_pour_eval(etat: EtatJeu, coup: dict, couleur_perspective: str) -> float:
+    """Simule un coup et retourne l'evaluation de la position resultante."""
     etat_apres, resultat = simuler_coup(etat, coup)
     if etat_apres is None:
-        return float("-inf") if etat.joueur_actif().couleur == couleur_perspective else float("inf")
+        return float("-inf")
 
-    # Si victoire immédiate, score maximal/minimal
+    # Victoire immediate
     if resultat and resultat.get("victoire_immediate"):
         gagnant = etat_apres.gagnant
         if gagnant == couleur_perspective:
@@ -487,10 +477,10 @@ def simuler_coup_pour_eval(etat: EtatJeu, coup: dict,
         else:
             return -1000.0
 
-    # Évaluation standard
+    # Evaluation standard
     score = evaluer_position_complete(etat_apres, couleur_perspective)
 
-    # Bonus/Malus pour puzzles complétés dans ce coup
+    # Bonus pour puzzles completes
     if resultat and resultat.get("puzzles_completes"):
         nb_puzzles = len(resultat["puzzles_completes"])
         gain_cellules = sum(len(p.cellules) for p in resultat["puzzles_completes"])
@@ -500,30 +490,24 @@ def simuler_coup_pour_eval(etat: EtatJeu, coup: dict,
 
 
 # ═══════════════════════════════════════════════════════════
-# ÉVALUATION SPÉCIFIQUE PAR TYPE DE COUP
+# EVALUATION PAR TYPE DE COUP
 # ═══════════════════════════════════════════════════════════
 
 def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict, 
                         profondeur: int = 1, deadline: float = None) -> AnalyseCoup:
-    """
-    Évaluation rigoureuse d'un coup 'poser'.
-    Compare avec toutes les alternatives possibles (poser, repiocher, scout).
-    """
+    """Evaluation rigoureuse d'un coup 'poser'."""
     joueur = etat_avant.joueur_actif()
     couleur = joueur.couleur
-    couleur_adverse = "noir" if couleur == "rouge" else "rouge"
 
-    # Récupérer les infos du coup joué
     piece_idx_joue = coup_joue.get("piece_index", 0)
     origine_joue = tuple(coup_joue.get("origine", [0, 0]))
     piece_joue = joueur.main_active[piece_idx_joue] if piece_idx_joue < len(joueur.main_active) else None
     est_elmaas = piece_joue.get("enlevement", False) if piece_joue else False
 
-    # État avant
     scores_avant = calculer_scores(etat_avant)
     serie_avant = joueur.serie_actuelle
 
-    # Simuler le coup joué
+    # Simuler le coup joue
     etat_apres_joue, resultat_joue = simuler_coup(etat_avant, {
         "type": "poser",
         "piece_index": piece_idx_joue,
@@ -531,7 +515,6 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     })
 
     if etat_apres_joue is None:
-        # Coup illégal ?
         return AnalyseCoup(
             index=coup_joue.get("index", 0),
             type_coup="poser",
@@ -551,31 +534,31 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
         )
 
     scores_apres_joue = calculer_scores(etat_apres_joue)
-    serie_apres_joue = etat_apres_joue.joueur_actif().serie_actuelle if etat_apres_joue.joueur_actif().couleur != couleur else                        (etat_apres_joue.joueur1 if etat_apres_joue.joueur1.couleur == couleur else etat_apres_joue.joueur2).serie_actuelle
 
-    # Générer toutes les alternatives
+    # Determiner serie_apres (du joueur qui a joue)
+    joueur_apres = etat_apres_joue.joueur1 if etat_apres_joue.joueur1.couleur == couleur else etat_apres_joue.joueur2
+    serie_apres_joue = joueur_apres.serie_actuelle
+
+    # Generer toutes les alternatives
     tous_coups = lister_tous_coups(etat_avant, joueur)
 
-    # Évaluer chaque alternative
+    # Evaluer chaque alternative
     evaluations = []
     for alt in tous_coups:
         if deadline and time.time() > deadline:
             break
 
         score = simuler_coup_pour_eval(etat_avant, alt, couleur)
-
-        # Informations supplémentaires
-        info = {
+        evaluations.append({
             "coup": alt,
             "score": score,
             "est_elmaas": alt.get("est_elmaas", False),
-        }
-        evaluations.append(info)
+        })
 
-    # Trier par score décroissant
+    # Trier par score decroissant
     evaluations.sort(key=lambda x: x["score"], reverse=True)
 
-    # Trouver le score du coup joué
+    # Trouver le score du coup joue
     score_joue = None
     rang_joue = 0
     for i, ev in enumerate(evaluations):
@@ -594,21 +577,17 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     score_optimal = evaluations[0]["score"] if evaluations else score_joue
     total_coups = len(evaluations)
 
-    # Calculer l'écart relatif
+    # Ecart relatif
     if score_optimal != 0:
         ecart = (score_optimal - score_joue) / abs(score_optimal)
     else:
         ecart = 0.0 if score_joue == 0 else 1.0
 
-    # Déterminer la classification
-    pctile = 1.0 - (rang_joue / max(total_coups - 1, 1)) if total_coups > 1 else 1.0
-
-    # Gain réel
+    # Classification
     puzzles_c = resultat_joue.get("puzzles_completes", []) if resultat_joue else []
     gain_cellules = sum(len(p.cellules) for p in puzzles_c) if puzzles_c else 0
     nb_puzzles = len(puzzles_c)
 
-    # Classification fine
     classification = CLASSE_NOTMESSY
 
     if rang_joue == 0:
@@ -634,16 +613,16 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     else:
         classification = CLASSE_MISSED
 
-    # Vérifier si le meilleur coup était un ELMAAS
+    # Meilleure alternative
     meilleur_alt = evaluations[0] if evaluations else None
     alt_est_elmaas = False
     if meilleur_alt and meilleur_alt["coup"].get("est_elmaas"):
         alt_est_elmaas = True
 
-    # Valeurs décomposées
+    # Valeurs decomposees
     val_pos = evaluer_position_complete(etat_apres_joue, couleur)
     val_tac = nb_puzzles * 10.0 + gain_cellules * 2.0 + (serie_apres_joue - serie_avant) * 5.0
-    val_strat = val_pos * 0.3  # Simplifié
+    val_strat = val_pos * 0.3
 
     return AnalyseCoup(
         index=coup_joue.get("index", 0),
@@ -681,15 +660,11 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
 
 
 def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
-    """
-    Évalue un coup 'repiocher'.
-    Compare avec l'option de poser une pièce (si possible).
-    """
+    """Evalue un coup 'repiocher'."""
     joueur = etat_avant.joueur_actif()
     couleur = joueur.couleur
     scores_avant = calculer_scores(etat_avant)
 
-    # Simuler le repiocher
     etat_apres, resultat = simuler_coup(etat_avant, {"type": "repiocher"})
 
     if etat_apres is None:
@@ -705,19 +680,15 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         )
 
     scores_apres = calculer_scores(etat_apres)
-
-    # Vérifier si on aurait pu poser une pièce
     coups_poser = lister_coups_poser(etat_avant, joueur)
 
     if not coups_poser:
-        # Repiocher obligatoire → bon coup
         classification = CLASSE_MASSY
         score_joue = 5.0
         score_optimal = 5.0
     else:
-        # Évaluer le meilleur coup poser possible
         meilleur_score_poser = float("-inf")
-        for idx, orig in coups_poser[:10]:  # Limiter pour perf
+        for idx, orig in coups_poser[:10]:
             score = simuler_coup_pour_eval(etat_avant, {
                 "type": "poser",
                 "piece_index": idx,
@@ -725,11 +696,9 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
             }, couleur)
             meilleur_score_poser = max(meilleur_score_poser, score)
 
-        # Évaluer le repiocher
         score_repiocher = evaluer_position_complete(etat_apres, couleur)
 
         if score_repiocher >= meilleur_score_poser - 5.0:
-            # Repiocher presque aussi bon → bon choix
             classification = CLASSE_NOTMESSY
             score_joue = score_repiocher
             score_optimal = meilleur_score_poser
@@ -749,9 +718,6 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         type_coup="repiocher",
         couleur=couleur,
         numero_tour=etat_avant.numero_tour,
-        pieces_avant=[serialiser_piece(p) for p in joueur.main_active],
-        pieces_apres=[serialiser_piece(p) for p in etat_apres.joueur_actif().main_active] if etat_apres.joueur_actif().couleur == couleur else 
-                     [serialiser_piece(p) for p in (etat_apres.joueur1 if etat_apres.joueur1.couleur == couleur else etat_apres.joueur2).main_active],
         classification=classification,
         score_joue=score_joue,
         score_optimal=score_optimal,
@@ -764,15 +730,11 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
 
 
 def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
-    """
-    Évalue un coup 'scout'.
-    Le scout est généralement un coup de positionnement/info.
-    """
+    """Evalue un coup 'scout'."""
     joueur = etat_avant.joueur_actif()
     couleur = joueur.couleur
     scores_avant = calculer_scores(etat_avant)
 
-    # Simuler le scout
     etat_apres, resultat = simuler_coup(etat_avant, {"type": "scout"})
 
     if etat_apres is None:
@@ -788,29 +750,32 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         )
 
     scores_apres = calculer_scores(etat_apres)
-
-    # Vérifier si on aurait pu poser une pièce valable
     coups_poser = lister_coups_poser(etat_avant, joueur)
 
-    # Évaluer si le scout améliore la main
+    # Evaluer si le scout ameliore la main
     main_avant = joueur.main_active
-    main_apres = etat_apres.joueur_actif().main_active if etat_apres.joueur_actif().couleur == couleur else                  (etat_apres.joueur1 if etat_apres.joueur1.couleur == couleur else etat_apres.joueur2).main_active
+    joueur_apres = etat_apres.joueur1 if etat_apres.joueur1.couleur == couleur else etat_apres.joueur2
+    main_apres = joueur_apres.main_active
 
-    # Compter les pièces devenues plaçables
     mobilite_avant = compter_mobilite(etat_avant, joueur)
-    # Recréer un joueur temporaire avec la nouvelle main
-    joueur_temp = copy.deepcopy(joueur)
-    joueur_temp.main_active = main_apres
+
+    # Creer joueur temporaire avec nouvelle main
+    from game_engine import Joueur
+    joueur_temp = Joueur(
+        id=joueur.id,
+        couleur=joueur.couleur,
+        main_active=list(main_apres),
+        reserve=list(joueur.reserve),
+        pieces_protegees=set(joueur.pieces_protegees),
+    )
     mobilite_apres = compter_mobilite(etat_avant, joueur_temp)
 
     score_joue = mobilite_apres * 0.5
     score_optimal = mobilite_avant * 0.5 if mobilite_avant > 0 else 5.0
 
     if mobilite_apres > mobilite_avant and mobilite_avant < 10:
-        # Scout a significativement amélioré la mobilité → bon
         classification = CLASSE_NOTMESSY
     elif mobilite_avant >= 20:
-        # On avait déjà beaucoup de choix → scout inutile
         classification = CLASSE_MISSED
     else:
         classification = CLASSE_NOTMESSY
@@ -820,8 +785,6 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         type_coup="scout",
         couleur=couleur,
         numero_tour=etat_avant.numero_tour,
-        pieces_vues=[serialiser_piece(p) for p in resultat.get("pieces_vues", [])] if resultat else [],
-        echanges_scout=resultat.get("echanges", []) if resultat else [],
         classification=classification,
         score_joue=score_joue,
         score_optimal=score_optimal,
@@ -845,23 +808,21 @@ def analyser_partie_complete(
     timeout_global: int = 120
 ) -> dict:
     """
-    Analyse complète d'une partie.
+    Analyse complete d'une partie.
 
     Args:
-        coups_historique: Liste des coups joués (dict avec type, couleur, etc.)
-        etat_initial: État initial de la partie
-        couleur_joueur: "rouge", "noir", ou None pour analyser les deux
-        profondeur: 1=rapide (évaluation directe), 2=moyen (1 coup lookahead),
-                    3=profond (minimax léger)
-        timeout_global: Timeout en secondes pour l'analyse complète
+        coups_historique: Liste des coups joues
+        etat_initial: Etat initial de la partie
+        couleur_joueur: "rouge", "noir", ou None pour les deux
+        profondeur: 1=rapide, 2=moyen, 3=profond
+        timeout_global: Timeout en secondes
 
     Returns:
-        dict avec coups analysés, stats, résumé, précision
+        dict avec coups analyses, stats, resume, precision
     """
-    import time
     deadline_global = time.time() + timeout_global
 
-    etat = copy.deepcopy(etat_initial)
+    etat = copier_etat_manuel(etat_initial)
     coups_analyses = []
     resume = ResumeAnalyse()
     resume.couleur_analysee = couleur_joueur
@@ -869,11 +830,8 @@ def analyser_partie_complete(
 
     compteur_classes = {cls: 0 for cls in POIDS_CLASSIFICATION.keys()}
 
-    # Tracking ELMAAS
     nb_elmaas_joues = 0
     nb_elmaas_opportunites = 0
-
-    # Tracking séries
     serie_max = 0
 
     erreurs_consecutives = 0
@@ -881,39 +839,33 @@ def analyser_partie_complete(
 
     for i, coup in enumerate(coups_historique):
         if time.time() > deadline_global:
-            print(f"[analyse] Timeout global — {len(coups_analyses)}/{len(coups_historique)} coups analysés")
+            print(f"[analyse] Timeout global — {len(coups_analyses)}/{len(coups_historique)} coups analyses")
             break
 
         couleur_coup = coup.get("couleur", "")
         doit_analyser = (couleur_joueur is None or couleur_coup == couleur_joueur)
 
-        # Mettre à jour la série max
+        # Mettre a jour serie max
         joueur_actuel = etat.joueur1 if etat.joueur1.couleur == couleur_coup else etat.joueur2
         serie_max = max(serie_max, joueur_actuel.serie_actuelle)
 
         try:
             if coup["type"] == "poser" and doit_analyser:
-                # Vérifier si c'est un ELMAAS
+                # Verifier si ELMAAS
                 piece_idx = coup.get("piece_index", 0)
-                piece_data = coup.get("piece_data")
                 est_elmaas_coup = False
-                if piece_data and piece_data.get("enlevement"):
-                    est_elmaas_coup = True
-                    nb_elmaas_joues += 1
-                elif piece_idx < len(joueur_actuel.main_active):
+                if piece_idx < len(joueur_actuel.main_active):
                     if joueur_actuel.main_active[piece_idx].get("enlevement"):
                         est_elmaas_coup = True
                         nb_elmaas_joues += 1
 
-                # Évaluer le coup poser
                 analyse = evaluer_coup_poser(
-                    etat, 
+                    etat,
                     {**coup, "index": i},
                     profondeur=profondeur,
                     deadline=deadline_global
                 )
 
-                # Vérifier si on a manqué une opportunité ELMAAS
                 if analyse.alternative_est_elmaas and not est_elmaas_coup:
                     nb_elmaas_opportunites += 1
 
@@ -933,36 +885,14 @@ def analyser_partie_complete(
                 compteur_classes[analyse.classification] += 1
                 erreurs_consecutives = 0
 
-            # Rejouer le coup pour avancer l'état (TOUJOURS, même si pas analysé)
+            # REJOUER le coup pour avancer l'etat (TOUJOURS)
             if coup["type"] == "poser":
-                # Essayer de rejouer avec les données exactes
-                piece_data = coup.get("piece_data")
-                if piece_data and etat.joueur_actif().main_active:
-                    # Chercher la pièce correspondante dans la main
-                    joueur_r = etat.joueur_actif()
-                    piece_trouvee = False
-                    for j, p in enumerate(joueur_r.main_active):
-                        if (p.get("forme") == piece_data.get("forme") and
-                                p.get("enlevement") == piece_data.get("enlevement")):
-                            res = jouer_tour(etat, "poser", piece_index=j,
-                                           origine=tuple(coup["origine"]),
-                                           pouvoir=coup.get("pouvoir", "rien"))
-                            piece_trouvee = True
-                            break
-                    if not piece_trouvee:
-                        idx_safe = min(coup["piece_index"], len(joueur_r.main_active) - 1)
-                        jouer_tour(etat, "poser", piece_index=idx_safe,
-                                  origine=tuple(coup["origine"]),
-                                  pouvoir=coup.get("pouvoir", "rien"))
-                else:
-                    idx_safe = min(coup["piece_index"], len(etat.joueur_actif().main_active) - 1)
-                    jouer_tour(etat, "poser", piece_index=idx_safe,
-                              origine=tuple(coup["origine"]),
-                              pouvoir=coup.get("pouvoir", "rien"))
-
+                idx_safe = min(coup.get("piece_index", 0), len(joueur_actuel.main_active) - 1)
+                jouer_tour(etat, "poser", piece_index=idx_safe,
+                          origine=tuple(coup.get("origine", [0, 0])),
+                          pouvoir=coup.get("pouvoir", "rien"))
             elif coup["type"] == "repiocher":
                 jouer_tour(etat, "repiocher")
-
             elif coup["type"] == "scout":
                 jouer_tour(etat, "scout")
 
@@ -972,9 +902,8 @@ def analyser_partie_complete(
             print(f"[analyse] Erreur coup {i} ({coup.get('type')}): {e}")
             erreurs_consecutives += 1
             if erreurs_consecutives >= MAX_ERREURS:
-                print("[analyse] Trop d'erreurs consécutives, arrêt.")
+                print("[analyse] Trop d'erreurs consecutives, arret.")
                 break
-            # Continuer malgré l'erreur
             continue
 
     # Calculer les tendances
@@ -983,7 +912,6 @@ def analyser_partie_complete(
     resume.nb_elmaas_opportunites_manquees = nb_elmaas_opportunites
     resume.efficacite_elmaas = (nb_elmaas_joues / max(nb_elmaas_joues + nb_elmaas_opportunites, 1)) * 100
 
-    # Tendances par tiers
     tiers = max(len(coups_analyses) // 3, 1)
     if coups_analyses:
         debut = [c.classification for c in coups_analyses[:tiers]]
@@ -1006,17 +934,16 @@ def analyser_partie_complete(
         resume.meilleur_coup = meilleurs[0].to_dict() if meilleurs else None
         resume.pire_coup = meilleurs[-1].to_dict() if meilleurs else None
 
-        # Coup décisif : plus grand écart avant/après
-        decisifs = sorted(coups_analyses, 
-                         key=lambda c: c.scores_apres.get(couleur_joueur or c.couleur, 0) - 
+        decisifs = sorted(coups_analyses,
+                         key=lambda c: c.scores_apres.get(couleur_joueur or c.couleur, 0) -
                                       c.scores_avant.get(couleur_joueur or c.couleur, 0),
                          reverse=True)
         resume.coup_decisif = decisifs[0].to_dict() if decisifs else None
 
-    # Calcul de précision
+    # Precision
     nb_analyses = sum(compteur_classes.values())
     if nb_analyses > 0:
-        precision = sum(POIDS_CLASSIFICATION.get(c, 50) * n 
+        precision = sum(POIDS_CLASSIFICATION.get(c, 50) * n
                        for c, n in compteur_classes.items()) / nb_analyses
     else:
         precision = 0.0
@@ -1025,8 +952,8 @@ def analyser_partie_complete(
     resume.nb_coups_analyses = nb_analyses
     resume.stats_classes = {k: v for k, v in compteur_classes.items() if v > 0}
 
-    print(f"[analyse] Terminé : {nb_analyses}/{len(coups_historique)} coups analysés")
-    print(f"[analyse] Précision : {precision:.1f}%")
+    print(f"[analyse] Termine : {nb_analyses}/{len(coups_historique)} coups analyses")
+    print(f"[analyse] Precision : {precision:.1f}%")
     print(f"[analyse] Classes : {resume.stats_classes}")
 
     return {
@@ -1043,49 +970,40 @@ def analyser_partie_complete(
 # FONCTIONS UTILITAIRES
 # ═══════════════════════════════════════════════════════════
 
-def snapshot_pieces(etat: EtatJeu) -> dict:
-    """Capture l'état du plateau."""
-    return dict(etat.plateau.pieces)
-
-
 def formater_analyse_rapide(resultat_analyse: dict) -> str:
-    """Formate le résultat pour un affichage lisible."""
+    """Formate le resultat pour un affichage lisible."""
     resume = resultat_analyse.get("resume", {})
     lines = [
-        "═" * 50,
+        "=" * 50,
         "  ANALYSE ELMAAS",
-        "═" * 50,
-        f"  Précision : {resultat_analyse.get('precision_pct', 0)}%",
-        f"  Coups analysés : {resultat_analyse.get('total_coups_analyses', 0)}/{resultat_analyse.get('nb_coups_total', 0)}",
+        "=" * 50,
+        f"  Precision : {resultat_analyse.get('precision_pct', 0)}%",
+        f"  Coups analyses : {resultat_analyse.get('total_coups_analyses', 0)}/{resultat_analyse.get('nb_coups_total', 0)}",
         "",
         "  Distribution :",
     ]
     for classe, nb in resultat_analyse.get("stats", {}).items():
         pct = nb / max(resultat_analyse.get('total_coups_analyses', 1), 1) * 100
-        bar = "█" * int(pct / 5)
+        bar = "#" * int(pct / 5)
         lines.append(f"    {classe:12} : {nb:3} ({pct:5.1f}%) {bar}")
 
     lines.extend([
         "",
-        f"  Tendance début : {resume.get('tendance_debut', 'N/A')}",
+        f"  Tendance debut : {resume.get('tendance_debut', 'N/A')}",
         f"  Tendance milieu : {resume.get('tendance_milieu', 'N/A')}",
         f"  Tendance fin : {resume.get('tendance_fin', 'N/A')}",
         "",
-        f"  Série max : {resume.get('serie_max_atteinte', 0)}",
-        f"  ELMAAS joués : {resume.get('nb_elmaas_joues', 0)}",
-        f"  Opportunités ELMAAS manquées : {resume.get('nb_elmaas_opportunites_manquees', 0)}",
-        "═" * 50,
+        f"  Serie max : {resume.get('serie_max_atteinte', 0)}",
+        f"  ELMAAS joues : {resume.get('nb_elmaas_joues', 0)}",
+        f"  Opportunites ELMAAS manquees : {resume.get('nb_elmaas_opportunites_manquees', 0)}",
+        "=" * 50,
     ])
 
     return "\n".join(lines)
 
 
-# ═══════════════════════════════════════════════════════════
-# TEST RAPIDE
-# ═══════════════════════════════════════════════════════════
-
 if __name__ == "__main__":
-    print("Module analyse_partie.py v3.0 chargé.")
+    print("Module analyse_partie.py v4.0 charge.")
     print("Fonctions principales :")
     print("  - analyser_partie_complete(coups, etat_initial, couleur, profondeur)")
     print("  - evaluer_position_complete(etat, couleur)")

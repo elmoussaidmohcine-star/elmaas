@@ -46,6 +46,24 @@ class Puzzle:
             f"chef={self.est_chef})"
         )
 
+    def __deepcopy__(self, memo):
+        """Deepcopy personnalisé - évite la récursion infinie sur parent/enfants."""
+        import copy
+        new_obj = Puzzle(
+            id=self.id,
+            cellules=copy.deepcopy(self.cellules, memo),
+            type_couleur=self.type_couleur,
+            niveau=self.niveau,
+            parent_id=self.parent_id,
+            enfants_ids=copy.deepcopy(self.enfants_ids, memo),
+            est_chef=self.est_chef,
+            brise=self.brise,
+            complete_par=self.complete_par,
+            protege=self.protege,
+        )
+        memo[id(self)] = new_obj
+        return new_obj
+
 
 @dataclass
 class Plateau:
@@ -54,6 +72,19 @@ class Plateau:
     puzzles: dict                         # id → Puzzle
     cellules_libres: set                  # cellules sans appartenance à aucun puzzle
     cellules_actives: set                 # cellules qui ont une pièce posée
+
+    def __deepcopy__(self, memo):
+        """Deepcopy personnalisé - shallow copy des puzzles (immuable pendant la simulation)."""
+        import copy
+        new_obj = Plateau(
+            grille_bicolore=copy.deepcopy(self.grille_bicolore, memo),
+            pieces=copy.deepcopy(self.pieces, memo),
+            puzzles=copy.deepcopy(self.puzzles, memo),
+            cellules_libres=copy.deepcopy(self.cellules_libres, memo),
+            cellules_actives=copy.deepcopy(self.cellules_actives, memo),
+        )
+        memo[id(self)] = new_obj
+        return new_obj
 
 
 # ── Extraction de régions connexes ──────────────────────────

@@ -740,7 +740,11 @@ def _meilleurs_coups(etat, joueur, n_max=40):
 
 
 def _simuler_coup(etat, idx, origine):
-    """Simule un coup poser et retourne l'état modifié (deepcopy)."""
+    """Simule un coup poser et retourne l'etat modifie (deepcopy).
+
+    Maintenant sur grace aux __deepcopy__ personnalises dans Joueur, EtatJeu,
+    Puzzle et Plateau, le deepcopy fonctionne sans RecursionError.
+    """
     import copy
     e = copy.deepcopy(etat)
     try:
@@ -767,10 +771,11 @@ def _coup_adverse_greedy(etat, niveau_adv=2):
 
 def ia_niveau_4(etat, joueur):
     """
-    ELMAAS Grandmaster — Minimax profondeur 2 avec évaluation ELO 2500.
+    ELMAAS Grandmaster — Minimax profondeur 2 avec evaluation ELO 2500.
+    VERSION CORRIGEE: deepcopy avec __deepcopy__ personnalise dans les dataclasses.
     """
-    import copy, time
-    deadline = time.time() + 2.5  # 2.5s max
+    import time
+    deadline = time.time() + 4.0  # 4s max pour eviter timeout
     couleur = joueur.couleur
     couleur_adv = "noir" if couleur == "rouge" else "rouge"
 
@@ -799,7 +804,7 @@ def ia_niveau_4(etat, joueur):
             break
 
         e1, res1 = _simuler_coup(etat, idx, orig)
-        if e1 is None:
+        if e1 is None or res1 is None:
             continue
 
         # Si victoire immédiate, score maximal
@@ -818,7 +823,7 @@ def ia_niveau_4(etat, joueur):
                 if time.time() > deadline:
                     break
                 e2, res2 = _simuler_coup(e1, adv_idx, adv_orig)
-                if e2 is None:
+                if e2 is None or res2 is None:
                     continue
                 val = evaluer_position_elo2500(e2, couleur)
                 if val < pire_score:

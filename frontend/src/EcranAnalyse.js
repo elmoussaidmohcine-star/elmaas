@@ -1,21 +1,70 @@
-// ELMAAS — EcranAnalyse.js v4
-// Analyse séquentielle avec reconstruction correcte du plateau
-// + Bouton "Rejouer ce coup avec IA niveau 4"
+// ELMAAS — EcranAnalyse.js v5
+// Analyse statique de partie sans IA GM 2500+
+// Analyse de tous les coups des deux joueurs avec proposition du meilleur coup
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import Board from "./Board";
-import { t, getSloganAnalyse } from "./translations";
+import { t } from "./translations";
 
 const API = "https://elmaas-backend.onrender.com";
+
 const COULEURS_CLASSE = {
   ELMAAS:    "#ffd700",
-  ELMAASYON: "#88ff88",
+  ELMAASYON: "#88ff88", 
   MASSY:     "#44cc44",
   NOTMESSY:  "#88aaff",
   MISSED:    "#ffaa44",
   CHESS:     "#ff4422",
+  BLUNDER:   "#ff0000",
 };
+
+const NOMS_CLASSE_FR = {
+  ELMAAS: "ELMAAS",
+  ELMAASYON: "ELMAASYON",
+  MASSY: "MASSY",
+  NOTMESSY: "NOTMESSY",
+  MISSED: "MISSED",
+  CHESS: "CHESS",
+  BLUNDER: "BLUNDER",
+};
+
+const NOMS_CLASSE_EN = {
+  ELMAAS: "ELMAAS",
+  ELMAASYON: "ELMAASYON",
+  MASSY: "MASSY",
+  NOTMESSY: "NOTMESSY",
+  MISSED: "MISSED",
+  CHESS: "CHESS",
+  BLUNDER: "BLUNDER",
+};
+
+const NOMS_CLASSE_AR = {
+  ELMAAS: "الماس",
+  ELMAASYON: "الماسيون",
+  MASSY: "ماسي",
+  NOTMESSY: "نوتمسي",
+  MISSED: "ميسد",
+  CHESS: "شيس",
+  BLUNDER: "بلندر",
+};
+
+const NOMS_CLASSE_ES = {
+  ELMAAS: "ELMAAS",
+  ELMAASYON: "ELMAASYON",
+  MASSY: "MASSY",
+  NOTMESSY: "NOTMESSY",
+  MISSED: "MISSED",
+  CHESS: "CHESS",
+  BLUNDER: "BLUNDER",
+};
+
+function getNomsClasse(L) {
+  if (L === 1) return NOMS_CLASSE_EN;
+  if (L === 2) return NOMS_CLASSE_AR;
+  if (L === 3) return NOMS_CLASSE_ES;
+  return NOMS_CLASSE_FR;
+}
 
 export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhoto, taille, onFermer, L }) {
   const [analyseMoi, setAnalyseMoi] = useState(null);
@@ -25,14 +74,17 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const [indexCoup, setIndexCoup] = useState(0);
   const [coteActif, setCoteActif] = useState("moi");
   const [quotaInfo, setQuotaInfo] = useState(null);
-  const [rejouerResultat, setRejouerResultat] = useState(null);
-  const [rejouerChargement, setRejouerChargement] = useState(false);
+  const [showMeilleurCoup, setShowMeilleurCoup] = useState(false);
 
+  const nomsClasse = getNomsClasse(L);
+
+  // Charger l'analyse au montage
   useEffect(() => {
     const fetchAnalyse = async () => {
       try {
         const token = localStorage.getItem("elmaas_token");
 
+        // Analyse du joueur
         const resMoi = await axios.post(
           `${API}/analyse/${partieId}`,
           { couleur: couleurJoueur, mode: mode || "rapide" },
@@ -40,6 +92,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         );
         setAnalyseMoi(resMoi.data.analyse);
 
+        // Analyse de l'adversaire
         const couleurAdv = couleurJoueur === "rouge" ? "noir" : "rouge";
         const resAdv = await axios.post(
           `${API}/analyse/${partieId}`,
@@ -70,19 +123,19 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
   const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
-  // ✅ RECONSTRUCTION SÉQUENTIELLE DU PLATEAU
+  // RECONSTRUCTION SEQUENTIELLE DU PLATEAU
   const etatPlateau = useMemo(() => {
     if (!analyseCourante?.coups || analyseCourante.coups.length === 0) return null;
 
     const pieces = {};
     const coups = analyseCourante.coups;
 
-    // Partir du plateau_avant du premier coup (état initial)
+    // Partir du plateau_avant du premier coup
     if (coups[0]?.plateau_avant) {
       Object.assign(pieces, coups[0].plateau_avant);
     }
 
-    // Appliquer chaque coup jusqu'à indexCoup (inclus)
+    // Appliquer chaque coup jusqu'a indexCoup (inclus)
     for (let i = 0; i <= indexCoup && i < coups.length; i++) {
       const coup = coups[i];
       if (coup.type === "poser" && coup.piece_data && coup.origine) {
@@ -111,49 +164,25 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const coupActuel = analyseCourante?.coups?.[indexCoup];
   const totalCoups = analyseCourante?.coups?.length || 0;
 
-  const precedent = () => {
+  const precedent = useCallback(() => {
     setIndexCoup(prev => Math.max(0, prev - 1));
-    setRejouerResultat(null);
-  };
-  const suivant = () => {
+    setShowMeilleurCoup(false);
+  }, []);
+
+  const suivant = useCallback(() => {
     setIndexCoup(prev => Math.min(totalCoups - 1, prev + 1));
-    setRejouerResultat(null);
-  };
+    setShowMeilleurCoup(false);
+  }, [totalCoups]);
 
-  // ✅ FONCTION REJOUER AVEC IA NIVEAU 4
-  const rejouerAvecIA4 = async () => {
-    if (!coupActuel || !partieId) return;
-
-    setRejouerChargement(true);
-    setRejouerResultat(null);
-
-    try {
-      // On envoie le coup actuel au backend avec niveau 4
-      // Le backend va simuler ce coup avec l'IA niveau 4 et comparer
-      const token = localStorage.getItem("elmaas_token");
-      const res = await axios.post(
-        `${API}/analyse/rejouer`,
-        {
-          partie_id: partieId,
-          coup_index: indexCoup,
-          couleur: coupActuel.couleur,
-          niveau_ia: 4
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setRejouerResultat(res.data);
-    } catch (err) {
-      console.error("Erreur rejouer:", err);
-      // Fallback: message simple
-      setRejouerResultat({
-        message: "IA niveau 4 analyserait ce coup différemment",
-        coup_ia: { piece_index: 0, origine: [0, 0] }
-      });
-    } finally {
-      setRejouerChargement(false);
-    }
-  };
+  // Navigation clavier
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "ArrowLeft") precedent();
+      if (e.key === "ArrowRight") suivant();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [precedent, suivant]);
 
   if (chargement) {
     return (
@@ -162,7 +191,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           <div className="popup-titre">{t("analyseTitre", L)}</div>
           <div className="spinner" style={{ margin: "20px auto" }} />
           <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
-            Analyse en cours...
+            {L === 0 ? "Analyse en cours..." : L === 1 ? "Analyzing..." : L === 2 ? "جاري التحليل..." : "Analizando..."}
           </div>
         </div>
       </div>
@@ -185,17 +214,43 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
 
   const precision = analyseCourante?.precision_pct ?? 0;
   const stats = analyseCourante?.stats || {};
-  const classification = coupActuel?.evaluation?.classification;
+  const classification = coupActuel?.classification;
   const couleurClasse = COULEURS_CLASSE[classification] || "var(--muted)";
+
+  // Textes selon langue
+  const textes = {
+    coup: L === 0 ? "Coup" : L === 1 ? "Move" : L === 2 ? "الحركة" : "Movimiento",
+    sur: L === 0 ? "sur" : L === 1 ? "of" : L === 2 ? "من" : "de",
+    precision: L === 0 ? "précision" : L === 1 ? "accuracy" : L === 2 ? "الدقة" : "precisión",
+    moi: L === 0 ? "Moi" : L === 1 ? "Me" : L === 2 ? "أنا" : "Yo",
+    adversaire: L === 0 ? "Adversaire" : L === 1 ? "Opponent" : L === 2 ? "الخصم" : "Rival",
+    tour: L === 0 ? "Tour" : L === 1 ? "Turn" : L === 2 ? "الدور" : "Turno",
+    joueur: L === 0 ? "Joueur" : L === 1 ? "Player" : L === 2 ? "اللاعب" : "Jugador",
+    meilleurCoup: L === 0 ? "Meilleur coup possible" : L === 1 ? "Best possible move" : L === 2 ? "أفضل حركة ممكنة" : "Mejor movimiento",
+    coupJoue: L === 0 ? "Coup joué" : L === 1 ? "Played move" : L === 2 ? "الحركة الملعوبة" : "Movimiento jugado",
+    ranger: L === 0 ? "Rang" : L === 1 ? "Rank" : L === 2 ? "الترتيب" : "Rango",
+    coupsPossibles: L === 0 ? "coups possibles" : L === 1 ? "possible moves" : L === 2 ? "حركات ممكنة" : "movimientos posibles",
+    piece: L === 0 ? "Pièce" : L === 1 ? "Piece" : L === 2 ? "القطعة" : "Pieza",
+    forme: L === 0 ? "Forme" : L === 1 ? "Shape" : L === 2 ? "الشكل" : "Forma",
+    origine: L === 0 ? "Origine" : L === 1 ? "Origin" : L === 2 ? "الأصل" : "Origen",
+    elmaas: L === 0 ? "ELMAAS (diamant)" : L === 1 ? "ELMAAS (diamond)" : L === 2 ? "الماس (ماسة)" : "ELMAAS (diamante)",
+    voirMeilleur: L === 0 ? "Voir le meilleur coup" : L === 1 ? "See best move" : L === 2 ? "عرض أفضل حركة" : "Ver mejor movimiento",
+    cacherMeilleur: L === 0 ? "Cacher" : L === 1 ? "Hide" : L === 2 ? "إخفاء" : "Ocultar",
+    precedent: L === 0 ? "Précédent" : L === 1 ? "Previous" : L === 2 ? "السابق" : "Anterior",
+    suivant: L === 0 ? "Suivant" : L === 1 ? "Next" : L === 2 ? "التالي" : "Siguiente",
+    analysesRestantes: L === 0 ? "Analyses restantes" : L === 1 ? "Analyses remaining" : L === 2 ? "تحاليل متبقية" : "Análisis restantes",
+  };
 
   return (
     <div className="ecran-analyse-overlay">
       <div className="ecran-analyse">
         {/* Header */}
         <div className="analyse-header">
-          <div className="analyse-titre">{t("analyseTitre", L)} — {couleurAnalysee.toUpperCase()}</div>
+          <div className="analyse-titre">
+            {t("analyseTitre", L)} — {couleurAnalysee.toUpperCase()}
+          </div>
           <div className="analyse-precision">
-            {precision}% <small>précision</small>
+            {precision}% <small>{textes.precision}</small>
           </div>
           <button className="btn-reset" onClick={onFermer}>{t("fermer", L)}</button>
         </div>
@@ -204,17 +259,17 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "8px" }}>
           <button 
             className={`popup-btn ${coteActif === "moi" ? "popup-btn-revanche" : ""}`}
-            onClick={() => { setCoteActif("moi"); setIndexCoup(0); setRejouerResultat(null); }}
+            onClick={() => { setCoteActif("moi"); setIndexCoup(0); setShowMeilleurCoup(false); }}
             style={{ flex: 1, maxWidth: 200, justifyContent: "center" }}
           >
-            Moi ({couleurJoueur}) — {analyseMoi?.precision_pct ?? 0}%
+            {textes.moi} ({couleurJoueur}) — {analyseMoi?.precision_pct ?? 0}%
           </button>
           <button 
             className={`popup-btn ${coteActif === "adv" ? "popup-btn-revanche" : ""}`}
-            onClick={() => { setCoteActif("adv"); setIndexCoup(0); setRejouerResultat(null); }}
+            onClick={() => { setCoteActif("adv"); setIndexCoup(0); setShowMeilleurCoup(false); }}
             style={{ flex: 1, maxWidth: 200, justifyContent: "center" }}
           >
-            Adversaire ({couleurJoueur === "rouge" ? "noir" : "rouge"}) — {analyseAdv?.precision_pct ?? 0}%
+            {textes.adversaire} ({couleurJoueur === "rouge" ? "noir" : "rouge"}) — {analyseAdv?.precision_pct ?? 0}%
           </button>
         </div>
 
@@ -223,7 +278,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           {Object.entries(stats).map(([cls, nb]) => nb > 0 && (
             <div key={cls} className="stat-badge" style={{ borderColor: COULEURS_CLASSE[cls], color: COULEURS_CLASSE[cls] }}>
               <span className="stat-nb">{nb}</span>
-              <span className="stat-label">{cls}</span>
+              <span className="stat-label">{nomsClasse[cls] || cls}</span>
             </div>
           ))}
         </div>
@@ -240,7 +295,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
               />
             ) : (
               <div style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>
-                Chargement du plateau...
+                {L === 0 ? "Chargement du plateau..." : L === 1 ? "Loading board..." : L === 2 ? "جاري تحميل اللوحة..." : "Cargando tablero..."}
               </div>
             )}
           </div>
@@ -248,7 +303,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           <div className="analyse-panneau">
             <div className="analyse-coup-info">
               <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                Coup {indexCoup + 1} / {totalCoups}
+                {textes.coup} {indexCoup + 1} {textes.sur} {totalCoups}
               </div>
 
               {/* Barre de progression */}
@@ -265,6 +320,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                 }} />
               </div>
 
+              {/* Badge de classification */}
               <div className="analyse-badge-classe" style={{
                 background: couleurClasse + "22",
                 borderColor: couleurClasse,
@@ -276,22 +332,16 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                 textAlign: "center",
                 margin: "8px 0"
               }}>
-                {classification || "—"}
+                {nomsClasse[classification] || classification || "—"}
               </div>
 
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                Tour {coupActuel?.numero_tour} — Joueur: {coupActuel?.couleur}
+                {textes.tour} {coupActuel?.numero_tour} — {textes.joueur}: {coupActuel?.couleur}
               </div>
 
-              {coupActuel?.evaluation?.rang > 1 && (
+              {coupActuel?.rang > 1 && (
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
-                  Rang: {coupActuel.evaluation.rang} / {coupActuel.evaluation.total_coups} coups possibles
-                </div>
-              )}
-
-              {coupActuel?.evaluation?.meilleur_coup && classification !== "ELMAAS" && classification !== "MASSY" && (
-                <div style={{ fontSize: 11, color: "#ffaa44", marginTop: 4 }}>
-                  💡 Meilleur coup: pièce #{coupActuel.evaluation.meilleur_coup.piece_index + 1}
+                  {textes.ranger}: {coupActuel.rang} / {coupActuel.total_coups_possibles} {textes.coupsPossibles}
                 </div>
               )}
 
@@ -302,61 +352,67 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                   padding: "10px", background: "var(--bg3)", borderRadius: "6px",
                   border: "1px solid var(--bord)"
                 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Pièce jouée:</div>
-                  <div>Forme: <strong>{coupActuel.piece_data.forme}</strong></div>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{textes.coupJoue}:</div>
+                  <div>{textes.forme}: <strong>{coupActuel.piece_data.forme}</strong></div>
                   {coupActuel.piece_data.enlevement && (
-                    <div style={{ color: "#00BFFF", fontWeight: 600 }}>⚡ ELMAAS (diamant)</div>
+                    <div style={{ color: "#00BFFF", fontWeight: 600 }}>⚡ {textes.elmaas}</div>
                   )}
-                  <div>Origine: [{coupActuel.origine?.join(", ")}]</div>
+                  <div>{textes.origine}: [{coupActuel.origine?.join(", ")}]</div>
                 </div>
               )}
 
-              {/* ✅ BOUTON REJOUER AVEC IA NIVEAU 4 */}
-              <button
-                onClick={rejouerAvecIA4}
-                disabled={rejouerChargement}
-                style={{
-                  marginTop: 12,
-                  padding: "10px 16px",
-                  background: "linear-gradient(135deg, #6644cc, #8866ff)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  width: "100%",
-                  opacity: rejouerChargement ? 0.6 : 1
-                }}
-              >
-                {rejouerChargement ? "🤖 Analyse en cours..." : "🤖 Rejouer ce coup avec IA niveau 4"}
-              </button>
+              {/* BOUTON: Voir le meilleur coup */}
+              {coupActuel?.meilleur_alternative && (
+                <div style={{ marginTop: 12 }}>
+                  <button
+                    onClick={() => setShowMeilleurCoup(!showMeilleurCoup)}
+                    style={{
+                      padding: "10px 16px",
+                      background: showMeilleurCoup ? "var(--bg3)" : "linear-gradient(135deg, #6644cc, #8866ff)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      width: "100%",
+                    }}
+                  >
+                    {showMeilleurCoup ? textes.cacherMeilleur : textes.voirMeilleur}
+                  </button>
 
-              {/* Résultat du rejouer */}
-              {rejouerResultat && (
-                <div style={{
-                  marginTop: 8,
-                  padding: "10px",
-                  background: "rgba(102,68,204,0.15)",
-                  borderRadius: "6px",
-                  border: "1px solid #6644cc",
-                  fontSize: 12
-                }}>
-                  <div style={{ color: "#aa88ff", fontWeight: 600, marginBottom: 4 }}>
-                    💡 Suggestion IA niveau 4:
-                  </div>
-                  <div style={{ color: "var(--texte)" }}>
-                    {rejouerResultat.message || "L'IA choisirait un coup différent à cette position"}
-                  </div>
-                  {rejouerResultat.coup_ia && (
-                    <div style={{ color: "#ffaa44", marginTop: 4 }}>
-                      Coup suggéré: pièce #{rejouerResultat.coup_ia.piece_index + 1} @ [{rejouerResultat.coup_ia.origine?.join(",")}]
+                  {showMeilleurCoup && (
+                    <div style={{
+                      marginTop: 8,
+                      padding: "10px",
+                      background: "rgba(102,68,204,0.15)",
+                      borderRadius: "6px",
+                      border: "1px solid #6644cc",
+                      fontSize: 12
+                    }}>
+                      <div style={{ color: "#aa88ff", fontWeight: 600, marginBottom: 4 }}>
+                        {textes.meilleurCoup}:
+                      </div>
+                      <div style={{ color: "var(--texte)" }}>
+                        {textes.piece} #{coupActuel.meilleur_alternative.piece_index + 1} 
+                        ({coupActuel.meilleur_alternative.forme || "?"})
+                      </div>
+                      <div style={{ color: "#ffaa44" }}>
+                        {textes.origine}: [{coupActuel.meilleur_alternative.origine?.join(",")}]
+                      </div>
+                      {coupActuel.meilleur_alternative.est_elmaas && (
+                        <div style={{ color: "#00BFFF" }}>⚡ {textes.elmaas}</div>
+                      )}
+                      <div style={{ color: "var(--muted)", marginTop: 4, fontSize: 11 }}>
+                        Score: {coupActuel.meilleur_alternative.score} vs {Math.round(coupActuel.score_joue)}
+                      </div>
                     </div>
                   )}
                 </div>
               )}
             </div>
 
+            {/* Navigation */}
             <div className="analyse-navigation" style={{ 
               display: "flex", gap: 8, marginTop: 16 
             }}>
@@ -366,7 +422,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                 disabled={indexCoup === 0}
                 style={{ flex: 1, opacity: indexCoup === 0 ? 0.4 : 1 }}
               >
-                ◄ Précédent
+                ◄ {textes.precedent}
               </button>
               <button 
                 className="popup-btn" 
@@ -374,7 +430,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                 disabled={indexCoup >= totalCoups - 1}
                 style={{ flex: 1, opacity: indexCoup >= totalCoups - 1 ? 0.4 : 1 }}
               >
-                Suivant ►
+                {textes.suivant} ►
               </button>
             </div>
           </div>
@@ -383,7 +439,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         {/* Quota */}
         {quotaInfo && (
           <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", padding: 8 }}>
-            Analyses restantes: {quotaInfo.restant === -1 ? "∞" : quotaInfo.restant}
+            {textes.analysesRestantes}: {quotaInfo.restant === -1 ? "∞" : quotaInfo.restant}
           </div>
         )}
       </div>

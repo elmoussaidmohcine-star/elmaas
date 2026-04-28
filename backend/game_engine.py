@@ -41,6 +41,24 @@ class Joueur:
     seuil_regen_actuel: int = 5
     puzzles_completes_depuis_regen: int = 0
 
+    def __deepcopy__(self, memo):
+        """Deepcopy personnalise pour eviter RecursionError sur les dataclasses."""
+        import copy
+        new_obj = Joueur(
+            id=self.id,
+            couleur=self.couleur,
+            main_active=copy.deepcopy(self.main_active, memo),
+            reserve=copy.deepcopy(self.reserve, memo),
+            pieces_protegees=copy.deepcopy(self.pieces_protegees, memo),
+            serie_actuelle=self.serie_actuelle,
+            score_puzzles=copy.deepcopy(self.score_puzzles, memo),
+            nb_pieces_posees_depuis_regen=self.nb_pieces_posees_depuis_regen,
+            seuil_regen_actuel=self.seuil_regen_actuel,
+            puzzles_completes_depuis_regen=self.puzzles_completes_depuis_regen,
+        )
+        memo[id(self)] = new_obj
+        return new_obj
+
     def nb_pieces_total(self) -> int:
         return len(self.main_active) + len(self.reserve)
 
@@ -69,6 +87,25 @@ class EtatJeu:
     historique_actions: list = field(default_factory=list)
     piece_initiale_pos: Optional[tuple] = None
     timestamp_debut_tour: float = field(default_factory=time.time)
+
+    def __deepcopy__(self, memo):
+        """Deepcopy personnalise pour eviter RecursionError."""
+        import copy
+        new_obj = EtatJeu(
+            plateau=copy.deepcopy(self.plateau, memo),
+            joueur1=copy.deepcopy(self.joueur1, memo),
+            joueur2=copy.deepcopy(self.joueur2, memo),
+            tour_actuel=self.tour_actuel,
+            numero_tour=self.numero_tour,
+            manche_terminee=self.manche_terminee,
+            gagnant=self.gagnant,
+            victoire_immediate=self.victoire_immediate,
+            historique_actions=copy.deepcopy(self.historique_actions, memo),
+            piece_initiale_pos=self.piece_initiale_pos,
+            timestamp_debut_tour=self.timestamp_debut_tour,
+        )
+        memo[id(self)] = new_obj
+        return new_obj
 
     def joueur_actif(self) -> Joueur:
         return self.joueur1 if self.tour_actuel == 0 else self.joueur2

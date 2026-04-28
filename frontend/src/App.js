@@ -1622,14 +1622,14 @@ export default function App() {
             <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : pseudoAdverse}</span>
             <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
           </div>
-          {/* CORRECTION: Bouton Analyse toujours visible */}
+          {/* Bouton Analyse - visible selon langue */}
           <button 
             className="btn-manuel" 
             onClick={() => { setModeAnalyse("rapide"); setShowAnalyse(true); }}
-            title="Analyser la partie"
+            title={L === 0 ? "Analyser la partie" : L === 1 ? "Analyze game" : L === 2 ? "تحليل المباراة" : "Analizar partida"}
             style={{ borderColor: "#ffaa44", color: "#ffaa44" }}
           >
-            A
+            {L === 2 ? "ت" : "A"}
           </button>
           <div className="tour-info">
             {t("tour", L)} {etat?.numero_tour}

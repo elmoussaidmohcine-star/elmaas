@@ -732,13 +732,15 @@ def coup_ia(partie_id: str):
     data = request.json or {}
     niveau = int(data.get("niveau", 2))
 
-    # CORRECTION: Capturer le joueur IA AVANT de jouer le coup
-    # car jouer_tour() va changer le tour actuel
+    # CAPTURER le joueur IA AVANT tout (avant que jouer_tour ne change tour_actuel)
     joueur_ia = etat.joueur_actif()
+    couleur_ia = joueur_ia.couleur
     adverse = etat.joueur_adverse()
 
+    # Jouer le coup IA
     coup = jouer_ia(etat, joueur_ia, niveau)
 
+    # Si aucun coup possible -> repiocher
     if coup is None:
         from game_engine import action_passer_repiocher
         action_passer_repiocher(etat)
@@ -755,17 +757,16 @@ def coup_ia(partie_id: str):
     piece_index, origine = coup
     resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
 
-    # CORRECTION: Si l'IA a complété des puzzles -> appliquer pouvoir automatiquement
-    # Note: joueur_ia et adverse sont deja captures AVANT le coup
+    # === GESTION POUVOIR POST-COMPLETION ===
     if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
-        # NIVEAU 4 : choix intelligent du pouvoir
+
+        # NIVEAU 4: choix intelligent du pouvoir
         if niveau >= 4:
             from ai_player import choisir_pouvoir_niveau_4
             pouvoir_choisi, cible = choisir_pouvoir_niveau_4(etat, joueur_ia, resultat.get("puzzles_completes", []))
 
             if pouvoir_choisi == "extraire" and cible:
                 from game_engine import appliquer_bonus_serie
-                # cible peut etre une liste de positions
                 positions = cible if isinstance(cible, list) else [cible]
                 bonus = appliquer_bonus_serie(etat, positions)
                 if bonus.get("recoloriages_possibles", 0) > 0 and positions:
@@ -778,22 +779,30 @@ def coup_ia(partie_id: str):
                 from game_engine import appliquer_pouvoir
                 appliquer_pouvoir(etat, "rien")
 
-        # NIVEAU 2-3 : echange automatique simple
+        # NIVEAU 2-3: echange automatique simple
         elif niveau >= 2 and adverse.main_active:
             piece_prise = adverse.main_active.pop(0)
             if joueur_ia.main_active:
                 piece_donnee = joueur_ia.main_active.pop(-1)
                 adverse.main_active.append(piece_donnee)
             joueur_ia.main_active.append(piece_prise)
+            # Appliquer le pouvoir "rien" pour terminer proprement
+            from game_engine import appliquer_pouvoir
+            appliquer_pouvoir(etat, "rien")
+        else:
+            # Niveau 1 ou pas d'adversaire -> rien
+            from game_engine import appliquer_pouvoir
+            appliquer_pouvoir(etat, "rien")
 
-        # CORRECTION: Un seul passer_tour() ici
-        # car jouer_tour() ne l'a PAS fait (attente_pouvoir = True)
-        etat.passer_tour()
+        # UN SEUL passer_tour() ici car jouer_tour() ne l'a PAS fait (attente_pouvoir=True)
+        if not etat.manche_terminee:
+            etat.passer_tour()
 
-    # CORRECTION: Si pas d'attente_pouvoir, jouer_tour() a DEJA fait passer_tour()
-    # Donc on ne le fait PAS a nouveau. On met juste a jour le timestamp.
+    # Si PAS d'attente_pouvoir, jouer_tour() a DEJA appele passer_tour()
+    # -> on ne fait RIEN, juste mettre a jour le timestamp
     etat.timestamp_debut_tour = time.time()
 
+    # Serialiser et retourner
     etat_serialise = serialiser_etat(etat)
     resultat["etat"] = etat_serialise
     resultat["manche_terminee"] = etat.manche_terminee
