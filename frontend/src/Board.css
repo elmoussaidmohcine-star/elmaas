@@ -289,3 +289,25 @@
     max-height: calc(100dvh - 140px);
   }
 }
+
+
+/* ════════════════════════════════════════════════════════════
+   MEILLEUR COUP - Style spécial pour l'analyse
+   ════════════════════════════════════════════════════════════ */
+
+.piece-posee-v2.meilleur-coup {
+  background: linear-gradient(135deg, #6644cc, #8866ff);
+  animation: meilleur-coup-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 12px #6644cc, 0 0 24px #8866ff;
+}
+
+@keyframes meilleur-coup-pulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 0 0 12px #6644cc, 0 0 24px #8866ff;
+  }
+  50% { 
+    transform: scale(1.15);
+    box-shadow: 0 0 20px #6644cc, 0 0 40px #8866ff;
+  }
+}

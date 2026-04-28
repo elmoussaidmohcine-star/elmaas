@@ -123,19 +123,20 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
   const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
-  // RECONSTRUCTION SEQUENTIELLE DU PLATEAU
+  // RECONSTRUCTION SEQUENTIELLE DU PLATEAU - ETAT APRES LE COUP
   const etatPlateau = useMemo(() => {
     if (!analyseCourante?.coups || analyseCourante.coups.length === 0) return null;
 
     const pieces = {};
     const coups = analyseCourante.coups;
 
-    // Partir du plateau_avant du premier coup
+    // Partir du plateau initial (etat_initial) - on simule tous les coups depuis le debut
+    // Le premier coup a son plateau_avant qui represente l'etat initial
     if (coups[0]?.plateau_avant) {
       Object.assign(pieces, coups[0].plateau_avant);
     }
 
-    // Appliquer chaque coup jusqu'a indexCoup (inclus)
+    // Appliquer chaque coup jusqu'a indexCoup INCLUS pour voir l'etat APRES le coup
     for (let i = 0; i <= indexCoup && i < coups.length; i++) {
       const coup = coups[i];
       if (coup.type === "poser" && coup.piece_data && coup.origine) {
@@ -160,6 +161,53 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
       }
     };
   }, [analyseCourante, indexCoup, taille]);
+
+  // PLATEAU DU MEILLEUR COUP (quand on clique sur "Voir le meilleur coup")
+  const etatPlateauMeilleur = useMemo(() => {
+    if (!showMeilleurCoup || !coupActuel?.meilleur_alternative) return null;
+
+    const pieces = {};
+    const coups = analyseCourante.coups;
+
+    // Partir du meme etat que le coup actuel
+    if (coups[0]?.plateau_avant) {
+      Object.assign(pieces, coups[0].plateau_avant);
+    }
+
+    // Appliquer tous les coups jusqu'a indexCoup (sans le coup joue)
+    for (let i = 0; i < indexCoup && i < coups.length; i++) {
+      const coup = coups[i];
+      if (coup.type === "poser" && coup.piece_data && coup.origine) {
+        const orig = coup.origine;
+        for (const [dr, dc] of coup.piece_data.cellules || []) {
+          const r = orig[0] + dr, c = orig[1] + dc;
+          if (r >= 0 && r < taille && c >= 0 && c < taille) {
+            const valeur = coup.piece_data.enlevement ? "diamant" : coup.couleur;
+            pieces[`${r},${c}`] = valeur;
+          }
+        }
+      }
+    }
+
+    // Appliquer le MEILLEUR coup alternatif
+    const alt = coupActuel.meilleur_alternative;
+    if (alt && alt.type === "poser" && alt.origine && alt.piece_index !== undefined) {
+      // On ne connait pas la piece exacte, on affiche juste la position
+      const orig = alt.origine;
+      // Marquer la position d'origine
+      pieces[`${orig[0]},${orig[1]}`] = "meilleur_coup";
+    }
+
+    return {
+      plateau: {
+        pieces,
+        puzzles: {},
+        cellules_libres: [],
+        cellules_actives: Object.keys(pieces),
+        grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0))
+      }
+    };
+  }, [showMeilleurCoup, coupActuel, analyseCourante, indexCoup, taille]);
 
   const coupActuel = analyseCourante?.coups?.[indexCoup];
   const totalCoups = analyseCourante?.coups?.length || 0;
@@ -286,7 +334,19 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         {/* Zone de lecture */}
         <div className="analyse-corps">
           <div className="analyse-plateau">
-            {etatPlateau ? (
+            {showMeilleurCoup && etatPlateauMeilleur ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                <div style={{ fontSize: 12, color: "#aa88ff", fontWeight: 600 }}>
+                  {L === 0 ? "Meilleur coup possible" : L === 1 ? "Best possible move" : L === 2 ? "أفضل حركة ممكنة" : "Mejor movimiento"}
+                </div>
+                <Board
+                  etat={etatPlateauMeilleur}
+                  taille={taille}
+                  pixelsPhoto={pixelsPhoto}
+                  onPoserPiece={null}
+                />
+              </div>
+            ) : etatPlateau ? (
               <Board
                 etat={etatPlateau}
                 taille={taille}

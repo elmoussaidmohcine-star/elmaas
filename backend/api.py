@@ -466,17 +466,17 @@ def lancer_analyse(partie_id: str):
     plan = getattr(user, "plan", None)
     limite = float("inf") if plan == "elmaas" else (3 if plan == "elmaasyon" else 1)
 
-    # QUOTA DÉSACTIVÉ POUR TEST
-    # if quota_user["count"] >= limite:
-    #     return jsonify({
-    #         "erreur": "Quota d'analyse atteint pour aujourd'hui",
-    #         "code": "QUOTA_REACHED",
-    #         "plan_actuel": plan or "gratuit"
-    #     }), 429
-
     data = request.get_json() or {}
     mode = data.get("mode", "rapide")
-    profondeur = 1 if mode == "rapide" else 2
+
+    # Mode rapide = profondeur 1, timeout 60s
+    # Mode profonde = profondeur 2, timeout 180s
+    if mode == "profonde":
+        profondeur = 2
+        timeout_analyse = 180
+    else:
+        profondeur = 1
+        timeout_analyse = 60
 
     # Reconstruire EtatJeu depuis le snapshot initial
     def deserialiser_etat_local(d):
@@ -546,7 +546,8 @@ def lancer_analyse(partie_id: str):
             coups_historique=historique,
             etat_initial=etat_initial,
             couleur_joueur=None,
-            profondeur=profondeur
+            profondeur=profondeur,
+            timeout_global=timeout_analyse
         )
 
         quota_user["count"] += 1
