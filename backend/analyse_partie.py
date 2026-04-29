@@ -1,13 +1,12 @@
-# ELMAAS — analyse_partie.py v4.1 (corrigé)
-# Analyse rigoureuse de partie : tous les coups des deux joueurs
-# + Proposition du meilleur coup alternatif
-# + Pas d'IA GM 2500+ dans l'analyse (analyse statique uniquement)
+# ELMAAS — analyse_partie.py v4.2
+# Analyse rigoureuse de partie
 #
-# CORRECTIONS v4.1 :
-#   1. Identification du coup joué par identité de pièce (forme+cellules)
-#      et non par piece_index qui change après repiocher/scout
-#   2. Synchronisation forcée du tour_actuel lors du replay pour éviter
-#      le déraillement quand un coup échoue
+# CORRECTIONS v4.2 (critique) :
+#   1. Puzzles copiés en PROFONDEUR (plus de partage entre copies)
+#   2. Injection robuste piece_data : append si index hors limites
+#   3. Helper _trouver_index_piece pour retrouver une pièce par son identité
+#   4. Replay : recherche de l'index actuel de la pièce avant de jouer
+#   5. Classification : meilleure logique de fallback pour le rang
 
 import copy
 import time
@@ -34,13 +33,13 @@ from puzzle_generator import Puzzle
 # CONSTANTES DE CLASSIFICATION
 # ═══════════════════════════════════════════════════════════
 
-CLASSE_ELMAAS     = "ELMAAS"      # Coup brillant : gain maximal
-CLASSE_ELMAASYON  = "ELMAASYON"   # Excellent : top 3
-CLASSE_MASSY      = "MASSY"       # Tres bon : meilleur coup objectif
-CLASSE_NOTMESSY   = "NOTMESSY"    # Bon : dans les 10% meilleurs
-CLASSE_MISSED     = "MISSED"      # Moyen : opportunite manquee visible
-CLASSE_CHESS      = "CHESS"       # Faible : erreur significative
-CLASSE_BLUNDER    = "BLUNDER"     # Grosse erreur
+CLASSE_ELMAAS     = "ELMAAS"
+CLASSE_ELMAASYON  = "ELMAASYON"
+CLASSE_MASSY      = "MASSY"
+CLASSE_NOTMESSY   = "NOTMESSY"
+CLASSE_MISSED     = "MISSED"
+CLASSE_CHESS      = "CHESS"
+CLASSE_BLUNDER    = "BLUNDER"
 
 POIDS_CLASSIFICATION = {
     CLASSE_ELMAAS:    100,
@@ -51,13 +50,6 @@ POIDS_CLASSIFICATION = {
     CLASSE_CHESS:      20,
     CLASSE_BLUNDER:     5,
 }
-
-SEUIL_ELMAAS    = 0.95
-SEUIL_ELMAASYON = 0.90
-SEUIL_MASSY     = 0.85
-SEUIL_NOTMESSY  = 0.70
-SEUIL_MISSED    = 0.50
-SEUIL_CHESS     = 0.20
 
 
 # ═══════════════════════════════════════════════════════════
@@ -183,27 +175,79 @@ class ResumeAnalyse:
 
 
 # ═══════════════════════════════════════════════════════════
-# COPIE MANUELLE D'ETAT (evite deepcopy RecursionError)
+# UTILITAIRES DE COMPARAISON DE PIÈCES
+# ═══════════════════════════════════════════════════════════
+
+def _normaliser_piece(piece: Optional[dict]) -> Optional[tuple]:
+    """Empreinte unique d'une pièce : (forme, cellules_triées, enlevement)."""
+    if piece is None:
+        return None
+    cellules = piece.get("cellules", [])
+    cellules_norm = tuple(sorted(
+        tuple(c) if not isinstance(c, tuple) else c for c in cellules
+    ))
+    return (piece.get("forme"), cellules_norm, piece.get("enlevement", False))
+
+
+def _trouver_index_piece(main: list, piece_data: dict) -> int:
+    """
+    Trouve l'index d'une pièce dans la main par son identité.
+    Retourne -1 si non trouvée.
+    """
+    cible = _normaliser_piece(piece_data)
+    if cible is None:
+        return -1
+    for i, p in enumerate(main):
+        if _normaliser_piece(p) == cible:
+            return i
+    return -1
+
+
+def _injecter_piece_robuste(joueur: Joueur, piece_data: dict, idx_souhaite: int) -> int:
+    """
+    Injecte une pièce dans la main d'un joueur de façon robuste.
+    Si la pièce est déjà présente, retourne son index actuel.
+    Sinon, injecte à idx_souhaite si valide, ou append.
+    Retourne l'index final de la pièce.
+    """
+    # Déjà présente ?
+    idx_actuel = _trouver_index_piece(joueur.main_active, piece_data)
+    if idx_actuel >= 0:
+        return idx_actuel
+
+    # Injection à l'index souhaité
+    if 0 <= idx_souhaite < len(joueur.main_active):
+        joueur.main_active[idx_souhaite] = piece_data
+        return idx_souhaite
+
+    # Fallback : append
+    joueur.main_active.append(piece_data)
+    return len(joueur.main_active) - 1
+
+
+# ═══════════════════════════════════════════════════════════
+# COPIE MANUELLE D'ETAT — puzzles en PROFONDEUR
 # ═══════════════════════════════════════════════════════════
 
 def copier_etat_manuel(etat: EtatJeu) -> EtatJeu:
-    """Copie manuelle d'EtatJeu sans deepcopy (evite RecursionError)."""
+    """Copie manuelle d'EtatJeu. LES PUZZLES SONT COPIÉS EN PROFONDEUR."""
     plateau_orig = etat.plateau
 
-    # Copie PROFONDE des pieces (dict de strings)
+    # Copie PROFONDE des pieces
     pieces_copy = copy.deepcopy(dict(plateau_orig.pieces))
 
-    # Garder les memes puzzles (read-only pendant la simulation)
-    puzzles_copy = dict(plateau_orig.puzzles)
+    # ═══════════════════════════════════════════════════════════
+    # CORRECTION v4.2 : Copie PROFONDE des puzzles
+    # Avant : puzzles_copy = dict(plateau_orig.puzzles)  # ← SHALLOW !
+    # Les objets Puzzle étaient partagés → complete_par persistait
+    # entre simulations → corrompait le replay.
+    # ═══════════════════════════════════════════════════════════
+    puzzles_copy = copy.deepcopy(dict(plateau_orig.puzzles))
 
-    # Copier les sets
     cellules_libres_copy = set(plateau_orig.cellules_libres)
     cellules_actives_copy = set(plateau_orig.cellules_actives)
-
-    # Copier la grille numpy
     grille_copy = plateau_orig.grille_bicolore.copy()
 
-    # Reconstruire le plateau
     from puzzle_generator import Plateau
     plateau_copy = Plateau(
         grille_bicolore=grille_copy,
@@ -213,7 +257,6 @@ def copier_etat_manuel(etat: EtatJeu) -> EtatJeu:
         cellules_actives=cellules_actives_copy,
     )
 
-    # Copier les joueurs
     def copier_joueur(j):
         from game_engine import Joueur
         return Joueur(
@@ -243,8 +286,6 @@ def copier_etat_manuel(etat: EtatJeu) -> EtatJeu:
         piece_initiale_pos=etat.piece_initiale_pos,
         timestamp_debut_tour=etat.timestamp_debut_tour,
     )
-
-
 
 
 # ═══════════════════════════════════════════════════════════
@@ -283,7 +324,6 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
             nb_puzzles_adv += 1
             continue
 
-        # Analyse cellule par cellule
         nb_moi = 0
         nb_adv = 0
         nb_vide = 0
@@ -300,19 +340,16 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
             elif v == "diamant":
                 nb_diamant += 1
 
-        # Puzzle bloque par diamant
         if nb_diamant > 0 and puzzle.type_couleur in ("mono_rouge", "mono_noir"):
             score_total -= 1.0
             continue
 
-        # Quasi-complet
         if nb_vide <= 2:
             if nb_moi > nb_adv:
                 score_total += nb_total * 4.0 * (nb_moi / max(nb_moi + nb_adv, 1))
             elif nb_adv > nb_moi:
                 score_total -= nb_total * 4.0 * (nb_adv / max(nb_moi + nb_adv, 1))
 
-        # Progression generale
         if puzzle.type_couleur == "mono_rouge":
             gagnant_nat = "rouge"
             if gagnant_nat == couleur_perspective:
@@ -325,7 +362,7 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
                 score_total += nb_moi * 2.0 - nb_adv * 3.0
             else:
                 score_total -= nb_adv * 2.0 - nb_moi * 3.0
-        else:  # mixte
+        else:
             avance = nb_moi - nb_adv
             score_total += avance * 1.5 + (nb_moi + nb_adv) * 0.5
 
@@ -347,7 +384,6 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
     score_total -= len(joueur_adv.main_active) * 1.2
     score_total -= len(joueur_adv.reserve) * 0.8
 
-    # Danger: plus de pieces et aucun puzzle
     if not joueur_moi.reserve and not joueur_moi.main_active:
         if nb_puzzles_moi == 0:
             score_total -= 50.0
@@ -399,14 +435,12 @@ def lister_coups_poser(etat: EtatJeu, joueur: Joueur) -> List[Tuple[int, Tuple[i
 
 
 def lister_coups_repiocher(etat: EtatJeu, joueur: Joueur) -> List[str]:
-    """Repiocher possible si on a des pieces en main et en reserve."""
     if len(joueur.main_active) > 0 and len(joueur.reserve) > 0:
         return ["repiocher"]
     return []
 
 
 def lister_coups_scout(etat: EtatJeu, joueur: Joueur) -> List[str]:
-    """Scout possible si main assez grande et reserve non vide."""
     from config import MIN_PIECES_SCOUT
     if len(joueur.main_active) > MIN_PIECES_SCOUT and len(joueur.reserve) > 0:
         return ["scout"]
@@ -416,8 +450,6 @@ def lister_coups_scout(etat: EtatJeu, joueur: Joueur) -> List[str]:
 def lister_tous_coups(etat: EtatJeu, joueur: Joueur) -> List[dict]:
     """Liste TOUTES les actions possibles pour un joueur."""
     coups = []
-
-    # 1. Coups poser
     for idx, orig in lister_coups_poser(etat, joueur):
         piece = joueur.main_active[idx]
         coups.append({
@@ -427,34 +459,15 @@ def lister_tous_coups(etat: EtatJeu, joueur: Joueur) -> List[dict]:
             "piece": piece,
             "est_elmaas": piece.get("enlevement", False),
         })
-
-    # 2. Repiocher
     if lister_coups_repiocher(etat, joueur):
         coups.append({"type": "repiocher"})
-
-    # 3. Scout
     if lister_coups_scout(etat, joueur):
         coups.append({"type": "scout"})
-
     return coups
 
 
 # ═══════════════════════════════════════════════════════════
-# UTILITAIRE : normaliser une pièce pour comparaison
-# ═══════════════════════════════════════════════════════════
-
-def _normaliser_piece(piece: Optional[dict]) -> Optional[tuple]:
-    """Retourne un tuple unique identifiant une pièce par sa forme et ses cellules."""
-    if piece is None:
-        return None
-    cellules = piece.get("cellules", [])
-    # Normaliser : trier les cellules, convertir en tuples
-    cellules_norm = tuple(sorted(tuple(c) if not isinstance(c, tuple) else c for c in cellules))
-    return (piece.get("forme"), cellules_norm, piece.get("enlevement", False))
-
-
-# ═══════════════════════════════════════════════════════════
-# SIMULATION DE COUPS (avec copie manuelle)
+# SIMULATION DE COUPS
 # ═══════════════════════════════════════════════════════════
 
 def simuler_coup(etat: EtatJeu, coup: dict) -> Tuple[Optional[EtatJeu], Optional[dict]]:
@@ -463,17 +476,22 @@ def simuler_coup(etat: EtatJeu, coup: dict) -> Tuple[Optional[EtatJeu], Optional
 
     try:
         if coup["type"] == "poser":
-            # Si piece_data fourni (historique exact), injecter temporairement
+            idx = coup["piece_index"]
+            joueur = etat_copie.joueur_actif()
+
+            # ═══════════════════════════════════════════════════════════
+            # CORRECTION v4.2 : Injection ROBUSTE de piece_data
+            # Avant : échouait si idx >= len(main_active)
+            # Maintenant : append si hors limites
+            # ═══════════════════════════════════════════════════════════
             if "piece_data" in coup:
-                idx = coup["piece_index"]
-                joueur = etat_copie.joueur_actif()
-                if 0 <= idx < len(joueur.main_active):
-                    joueur.main_active[idx] = coup["piece_data"]
-            resultat = action_poser_piece(
-                etat_copie,
-                coup["piece_index"],
-                coup["origine"]
-            )
+                idx = _injecter_piece_robuste(joueur, coup["piece_data"], idx)
+
+            # Vérification finale de l'index
+            if idx < 0 or idx >= len(joueur.main_active):
+                return etat_copie, {"succes": False, "erreur": f"Index {idx} invalide (main={len(joueur.main_active)})"}
+
+            resultat = action_poser_piece(etat_copie, idx, coup["origine"])
             if not resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
                 etat_copie.passer_tour()
             return etat_copie, resultat
@@ -502,7 +520,6 @@ def simuler_coup_pour_eval(etat: EtatJeu, coup: dict, couleur_perspective: str) 
     if etat_apres is None:
         return float("-inf")
 
-    # Victoire immediate
     if resultat and resultat.get("victoire_immediate"):
         gagnant = etat_apres.gagnant
         if gagnant == couleur_perspective:
@@ -510,10 +527,8 @@ def simuler_coup_pour_eval(etat: EtatJeu, coup: dict, couleur_perspective: str) 
         else:
             return -1000.0
 
-    # Evaluation standard
     score = evaluer_position_complete(etat_apres, couleur_perspective)
 
-    # Bonus pour puzzles completes
     if resultat and resultat.get("puzzles_completes"):
         nb_puzzles = len(resultat["puzzles_completes"])
         gain_cellules = sum(len(p.cellules) for p in resultat["puzzles_completes"])
@@ -526,7 +541,7 @@ def simuler_coup_pour_eval(etat: EtatJeu, coup: dict, couleur_perspective: str) 
 # EVALUATION PAR TYPE DE COUP
 # ═══════════════════════════════════════════════════════════
 
-def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict, 
+def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
                         profondeur: int = 2, deadline: float = None) -> AnalyseCoup:
     """Evaluation rigoureuse d'un coup 'poser'."""
     joueur = etat_avant.joueur_actif()
@@ -535,22 +550,19 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     piece_idx_joue = coup_joue.get("piece_index", 0)
     origine_joue = tuple(coup_joue.get("origine", [0, 0]))
 
-    # Utiliser piece_data si disponible (historique exact), sinon fallback sur main_active
     piece_joue = coup_joue.get("piece_data")
     if piece_joue is None and piece_idx_joue < len(joueur.main_active):
         piece_joue = joueur.main_active[piece_idx_joue]
     est_elmaas = piece_joue.get("enlevement", False) if piece_joue else False
 
-    # Normaliser la pièce jouée pour comparaison par identité
     piece_joue_norm = _normaliser_piece(piece_joue)
 
     scores_avant = calculer_scores(etat_avant)
     serie_avant = joueur.serie_actuelle
 
-    # CAPTURER plateau AVANT (copie profonde pour éviter mutation)
     plateau_avant_dict = copy.deepcopy(dict(etat_avant.plateau.pieces))
 
-    # Simuler le coup joue avec piece_data exacte
+    # Simuler le coup joue
     etat_apres_joue, resultat_joue = simuler_coup(etat_avant, {
         "type": "poser",
         "piece_index": piece_idx_joue,
@@ -576,59 +588,40 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
             total_coups_possibles=1,
             scores_avant=scores_avant,
             plateau_avant=plateau_avant_dict,
-            plateau_apres=plateau_avant_dict,  # fallback identique si erreur
+            plateau_apres=plateau_avant_dict,
         )
 
-    # CAPTURER plateau APRÈS (copie profonde)
     plateau_apres_dict = copy.deepcopy(dict(etat_apres_joue.plateau.pieces))
-
     scores_apres_joue = calculer_scores(etat_apres_joue)
 
-    # Determiner serie_apres (du joueur qui a joue)
     joueur_apres = etat_apres_joue.joueur1 if etat_apres_joue.joueur1.couleur == couleur else etat_apres_joue.joueur2
     serie_apres_joue = joueur_apres.serie_actuelle
 
     # ═══════════════════════════════════════════════════════════
-    # CORRECTION v4.1 : Identifier le coup joué par pièce exacte
+    # Générer les alternatives avec la pièce exacte injectée
     # ═══════════════════════════════════════════════════════════
-    #
-    # Problème : après repiocher/scout, piece_index change. On doit comparer
-    # par la forme+cellules de la pièce, pas par son index dans la main.
-    #
-    # 1. Créer une copie avec la pièce exacte injectée pour que lister_tous_coups
-    #    la trouve correctement
-    # 2. Chercher le coup joué dans les alternatives par _normaliser_piece()
-
-    # Pour l'évaluation des alternatives, créer une copie avec la pièce exacte
     etat_pour_alternatives = copier_etat_manuel(etat_avant)
     joueur_alt = etat_pour_alternatives.joueur_actif()
 
-    # S'assurer que la pièce exacte du coup joué est dans la main pour
-    # que lister_tous_coups puisse l'évaluer comme alternative
     if piece_joue is not None and piece_joue_norm is not None:
-        # Chercher si la pièce exacte est déjà dans la main
-        piece_trouvee_idx = -1
-        for i, p in enumerate(joueur_alt.main_active):
-            if _normaliser_piece(p) == piece_joue_norm:
-                piece_trouvee_idx = i
-                break
-        if piece_trouvee_idx < 0 and piece_idx_joue < len(joueur_alt.main_active):
-            # Remplacer temporairement la pièce à l'index historique
-            # (la copie etat_pour_alternatives est indépendante)
-            joueur_alt.main_active[piece_idx_joue] = piece_joue
+        # Injecter la pièce exacte pour qu'elle apparaisse dans les alternatives
+        idx_injecte = _trouver_index_piece(joueur_alt.main_active, piece_joue)
+        if idx_injecte < 0:
+            # Pas trouvée : remplacer à l'index historique si possible
+            if piece_idx_joue < len(joueur_alt.main_active):
+                joueur_alt.main_active[piece_idx_joue] = piece_joue
+            else:
+                joueur_alt.main_active.append(piece_joue)
 
-    # Generer toutes les alternatives — LIMITE selon profondeur
     MAX_ALTERNATIVES = 15 if profondeur <= 1 else 25
     tous_coups = lister_tous_coups(etat_pour_alternatives, joueur_alt)
 
-    # Evaluer chaque alternative
     evaluations = []
     for i, alt in enumerate(tous_coups):
         if deadline and time.time() > deadline:
             break
         if i >= MAX_ALTERNATIVES:
             break
-
         score = simuler_coup_pour_eval(etat_pour_alternatives, alt, couleur)
         evaluations.append({
             "coup": alt,
@@ -636,13 +629,11 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
             "est_elmaas": alt.get("est_elmaas", False),
         })
 
-    # Trier par score decroissant
     evaluations.sort(key=lambda x: x["score"], reverse=True)
 
     # ═══════════════════════════════════════════════════════════
-    # CORRECTION v4.1 : Trouver le coup joué par identité de pièce
+    # Trouver le score du coup joué PAR IDENTITÉ DE PIÈCE
     # ═══════════════════════════════════════════════════════════
-    # Comparer par _normaliser_piece() + origine, PAS par piece_index
     score_joue = None
     rang_joue = 0
     for i, ev in enumerate(evaluations):
@@ -652,7 +643,6 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
             alt_orig = tuple(alt.get("origine", [0, 0]))
             alt_norm = _normaliser_piece(alt_piece)
 
-            # Comparer par pièce exacte (forme + cellules) ET origine
             if (alt_norm is not None and piece_joue_norm is not None and
                 alt_norm == piece_joue_norm and
                 alt_orig == origine_joue):
@@ -660,18 +650,14 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
                 rang_joue = i
                 break
 
-    # Fallback : si toujours pas trouvé (la pièce n'était pas dans les alternatives
-    # car elle n'est plus jouable à cette origine dans l'état actuel), utiliser
-    # le score du coup joué simulé précédemment
+    # Fallback : évaluer directement et insérer dans le classement
     if score_joue is None:
-        # Évaluer le coup joué directement via simuler_coup_pour_eval
         score_joue = simuler_coup_pour_eval(etat_avant, {
             "type": "poser",
             "piece_index": piece_idx_joue,
             "origine": origine_joue,
             "piece_data": piece_joue,
         }, couleur)
-        # Le rang est estimé : insérer dans la liste triée
         rang_joue = 0
         for i, ev in enumerate(evaluations):
             if score_joue >= ev["score"]:
@@ -683,7 +669,6 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     score_optimal = evaluations[0]["score"] if evaluations else score_joue
     total_coups = len(evaluations)
 
-    # Ecart relatif
     if score_optimal != 0:
         ecart = (score_optimal - score_joue) / abs(score_optimal)
     else:
@@ -712,20 +697,18 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
         classification = CLASSE_MASSY
     elif rang_joue < max(1, total_coups * 0.25):
         classification = CLASSE_NOTMESSY
-    elif ecart > 0.5:
-        classification = CLASSE_CHESS
     elif ecart > 0.8:
         classification = CLASSE_BLUNDER
+    elif ecart > 0.5:
+        classification = CLASSE_CHESS
     else:
         classification = CLASSE_MISSED
 
-    # Meilleure alternative
     meilleur_alt = evaluations[0] if evaluations else None
     alt_est_elmaas = False
     if meilleur_alt and meilleur_alt["coup"].get("est_elmaas"):
         alt_est_elmaas = True
 
-    # Valeurs decomposees
     val_pos = evaluer_position_complete(etat_apres_joue, couleur)
     val_tac = nb_puzzles * 10.0 + gain_cellules * 2.0 + (serie_apres_joue - serie_avant) * 5.0
     val_strat = val_pos * 0.3
@@ -767,9 +750,7 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     )
 
 
-
 def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
-    """Evalue un coup 'repiocher'."""
     joueur = etat_avant.joueur_actif()
     couleur = joueur.couleur
     scores_avant = calculer_scores(etat_avant)
@@ -778,14 +759,10 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
 
     if etat_apres is None:
         return AnalyseCoup(
-            index=coup_joue.get("index", 0),
-            type_coup="repiocher",
-            couleur=couleur,
-            numero_tour=etat_avant.numero_tour,
-            classification=CLASSE_MISSED,
-            score_joue=0.0,
-            score_optimal=0.0,
-            scores_avant=scores_avant,
+            index=coup_joue.get("index", 0), type_coup="repiocher",
+            couleur=couleur, numero_tour=etat_avant.numero_tour,
+            classification=CLASSE_MISSED, score_joue=0.0,
+            score_optimal=0.0, scores_avant=scores_avant,
         )
 
     scores_apres = calculer_scores(etat_apres)
@@ -799,9 +776,7 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         meilleur_score_poser = float("-inf")
         for idx, orig in coups_poser[:10]:
             score = simuler_coup_pour_eval(etat_avant, {
-                "type": "poser",
-                "piece_index": idx,
-                "origine": orig,
+                "type": "poser", "piece_index": idx, "origine": orig,
             }, couleur)
             meilleur_score_poser = max(meilleur_score_poser, score)
 
@@ -825,25 +800,18 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
     plateau_avant = dict(etat_avant.plateau.pieces) if etat_avant else None
     plateau_apres = dict(etat_apres.plateau.pieces) if etat_apres else None
     return AnalyseCoup(
-        index=coup_joue.get("index", 0),
-        type_coup="repiocher",
-        couleur=couleur,
-        numero_tour=etat_avant.numero_tour,
-        classification=classification,
-        score_joue=score_joue,
-        score_optimal=score_optimal,
-        ecart_relatif=ecart,
+        index=coup_joue.get("index", 0), type_coup="repiocher",
+        couleur=couleur, numero_tour=etat_avant.numero_tour,
+        classification=classification, score_joue=score_joue,
+        score_optimal=score_optimal, ecart_relatif=ecart,
         rang=1 if classification in (CLASSE_MASSY, CLASSE_NOTMESSY) else 2,
         total_coups_possibles=2 if coups_poser else 1,
-        scores_avant=scores_avant,
-        scores_apres=scores_apres,
-        plateau_avant=plateau_avant,
-        plateau_apres=plateau_apres,
+        scores_avant=scores_avant, scores_apres=scores_apres,
+        plateau_avant=plateau_avant, plateau_apres=plateau_apres,
     )
 
 
 def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
-    """Evalue un coup 'scout'."""
     joueur = etat_avant.joueur_actif()
     couleur = joueur.couleur
     scores_avant = calculer_scores(etat_avant)
@@ -852,33 +820,25 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
 
     if etat_apres is None:
         return AnalyseCoup(
-            index=coup_joue.get("index", 0),
-            type_coup="scout",
-            couleur=couleur,
-            numero_tour=etat_avant.numero_tour,
-            classification=CLASSE_MISSED,
-            score_joue=0.0,
-            score_optimal=0.0,
-            scores_avant=scores_avant,
+            index=coup_joue.get("index", 0), type_coup="scout",
+            couleur=couleur, numero_tour=etat_avant.numero_tour,
+            classification=CLASSE_MISSED, score_joue=0.0,
+            score_optimal=0.0, scores_avant=scores_avant,
         )
 
     scores_apres = calculer_scores(etat_apres)
     coups_poser = lister_coups_poser(etat_avant, joueur)
 
-    # Evaluer si le scout ameliore la main
     main_avant = joueur.main_active
     joueur_apres = etat_apres.joueur1 if etat_apres.joueur1.couleur == couleur else etat_apres.joueur2
     main_apres = joueur_apres.main_active
 
     mobilite_avant = compter_mobilite(etat_avant, joueur)
 
-    # Creer joueur temporaire avec nouvelle main
     from game_engine import Joueur
     joueur_temp = Joueur(
-        id=joueur.id,
-        couleur=joueur.couleur,
-        main_active=list(main_apres),
-        reserve=list(joueur.reserve),
+        id=joueur.id, couleur=joueur.couleur,
+        main_active=list(main_apres), reserve=list(joueur.reserve),
         pieces_protegees=set(joueur.pieces_protegees),
     )
     mobilite_apres = compter_mobilite(etat_avant, joueur_temp)
@@ -896,20 +856,13 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
     plateau_avant = dict(etat_avant.plateau.pieces) if etat_avant else None
     plateau_apres = dict(etat_apres.plateau.pieces) if etat_apres else None
     return AnalyseCoup(
-        index=coup_joue.get("index", 0),
-        type_coup="scout",
-        couleur=couleur,
-        numero_tour=etat_avant.numero_tour,
-        classification=classification,
-        score_joue=score_joue,
-        score_optimal=score_optimal,
-        ecart_relatif=0.2,
-        rang=1,
+        index=coup_joue.get("index", 0), type_coup="scout",
+        couleur=couleur, numero_tour=etat_avant.numero_tour,
+        classification=classification, score_joue=score_joue,
+        score_optimal=score_optimal, ecart_relatif=0.2, rang=1,
         total_coups_possibles=3 if coups_poser else 1,
-        scores_avant=scores_avant,
-        scores_apres=scores_apres,
-        plateau_avant=plateau_avant,
-        plateau_apres=plateau_apres,
+        scores_avant=scores_avant, scores_apres=scores_apres,
+        plateau_avant=plateau_avant, plateau_apres=plateau_apres,
     )
 
 
@@ -924,19 +877,6 @@ def analyser_partie_complete(
     profondeur: int = 3,
     timeout_global: int = 30
 ) -> dict:
-    """
-    Analyse complete d'une partie.
-
-    Args:
-        coups_historique: Liste des coups joues
-        etat_initial: Etat initial de la partie
-        couleur_joueur: "rouge", "noir", ou None pour les deux
-        profondeur: 1=rapide, 2=moyen, 3=profond
-        timeout_global: Timeout en secondes
-
-    Returns:
-        dict avec coups analyses, stats, resume, precision
-    """
     deadline_global = time.time() + timeout_global
 
     etat = copier_etat_manuel(etat_initial)
@@ -946,11 +886,9 @@ def analyser_partie_complete(
     resume.nb_coups_total = len(coups_historique)
 
     compteur_classes = {cls: 0 for cls in POIDS_CLASSIFICATION.keys()}
-
     nb_elmaas_joues = 0
     nb_elmaas_opportunites = 0
     serie_max = 0
-
     erreurs_consecutives = 0
     MAX_ERREURS = 5
 
@@ -966,27 +904,20 @@ def analyser_partie_complete(
         doit_analyser = (couleur_joueur is None or couleur_coup == couleur_joueur)
 
         # ═══════════════════════════════════════════════════════════
-        # CORRECTION v4.1 : Synchroniser tour_actuel avec la couleur
+        # CORRECTION v4.2 : Synchronisation robuste du tour
         # ═══════════════════════════════════════════════════════════
-        # Forcer le tour_actuel pour que le bon joueur soit actif AVANT
-        # d'analyser ou de rejouer le coup. Cela évite le déraillement
-        # quand un coup précédent a échoué silencieusement.
         if couleur_coup:
             joueur_attendu = etat.joueur1 if etat.tour_actuel == 0 else etat.joueur2
             if joueur_attendu.couleur != couleur_coup:
-                # Désynchronisation détectée : forcer le basculement
                 etat.tour_actuel = 1 - etat.tour_actuel
-                joueur_attendu = etat.joueur1 if etat.tour_actuel == 0 else etat.joueur2
 
         joueur_actuel = etat.joueur1 if etat.joueur1.couleur == couleur_coup else etat.joueur2
         serie_max = max(serie_max, joueur_actuel.serie_actuelle)
 
         try:
             if coup["type"] == "poser" and doit_analyser:
-                # Verifier si ELMAAS
                 piece_idx = coup.get("piece_index", 0)
                 est_elmaas_coup = False
-                # CORRECTION : chercher par piece_data si disponible
                 piece_data = coup.get("piece_data")
                 if piece_data and piece_data.get("enlevement"):
                     est_elmaas_coup = True
@@ -997,12 +928,9 @@ def analyser_partie_complete(
                         nb_elmaas_joues += 1
 
                 analyse = evaluer_coup_poser(
-                    etat,
-                    {**coup, "index": i},
-                    profondeur=profondeur,
-                    deadline=deadline_global
+                    etat, {**coup, "index": i},
+                    profondeur=profondeur, deadline=deadline_global
                 )
-
                 if analyse.alternative_est_elmaas and not est_elmaas_coup:
                     nb_elmaas_opportunites += 1
 
@@ -1022,32 +950,18 @@ def analyser_partie_complete(
                 compteur_classes[analyse.classification] += 1
                 erreurs_consecutives = 0
 
-            # REJOUER le coup pour avancer l'etat (TOUJOURS)
             # ═══════════════════════════════════════════════════════════
-            # CORRECTION v4.1 : Replay robuste avec fallback
+            # CORRECTION v4.2 : Replay robuste avec recherche de pièce
             # ═══════════════════════════════════════════════════════════
             coup_reussi = False
             if coup["type"] == "poser":
                 piece_data = coup.get("piece_data")
                 idx_replay = coup.get("piece_index", 0)
 
-                # Essayer de trouver l'index actuel de la pièce par piece_data
                 if piece_data:
-                    piece_data_norm = _normaliser_piece(piece_data)
-                    idx_trouve = -1
-                    for idx_main, p in enumerate(joueur_actuel.main_active):
-                        if _normaliser_piece(p) == piece_data_norm:
-                            idx_trouve = idx_main
-                            break
-                    if idx_trouve >= 0:
-                        idx_replay = idx_trouve
-                    else:
-                        # Pièce non trouvée : injecter temporairement
-                        if idx_replay < len(joueur_actuel.main_active):
-                            joueur_actuel.main_active[idx_replay] = piece_data
-                        else:
-                            joueur_actuel.main_active.append(piece_data)
-                            idx_replay = len(joueur_actuel.main_active) - 1
+                    idx_replay = _injecter_piece_robuste(
+                        joueur_actuel, piece_data, idx_replay
+                    )
 
                 res = jouer_tour(etat, "poser", piece_index=idx_replay,
                           origine=tuple(coup.get("origine", [0, 0])),
@@ -1062,10 +976,8 @@ def analyser_partie_complete(
                 res = jouer_tour(etat, "scout")
                 coup_reussi = res.get("succes", False)
 
-            # Si le coup a échoué, forcer le passage de tour pour rester
-            # synchronisé avec l'historique
             if not coup_reussi and coup["type"] in ("poser", "repiocher", "scout"):
-                print(f"[analyse] Coup {i} ({coup['type']}) échoué, passage de tour forcé")
+                print(f"[analyse] Coup {i} ({coup['type']}) échoué, passage forcé")
                 etat.tour_actuel = 1 - etat.tour_actuel
                 etat.numero_tour += 1
 
@@ -1073,13 +985,14 @@ def analyser_partie_complete(
 
         except Exception as e:
             print(f"[analyse] Erreur coup {i} ({coup.get('type')}): {e}")
+            import traceback; traceback.print_exc()
             erreurs_consecutives += 1
             if erreurs_consecutives >= MAX_ERREURS:
                 print("[analyse] Trop d'erreurs consecutives, arret.")
                 break
             continue
 
-    # Calculer les tendances
+    # Resume
     resume.serie_max_atteinte = serie_max
     resume.nb_elmaas_joues = nb_elmaas_joues
     resume.nb_elmaas_opportunites_manquees = nb_elmaas_opportunites
@@ -1101,7 +1014,6 @@ def analyser_partie_complete(
         resume.tendance_milieu = tendance(milieu)
         resume.tendance_fin = tendance(fin)
 
-    # Meilleur et pire coup
     if coups_analyses:
         meilleurs = sorted(coups_analyses, key=lambda c: c.score_joue, reverse=True)
         resume.meilleur_coup = meilleurs[0].to_dict() if meilleurs else None
@@ -1113,7 +1025,6 @@ def analyser_partie_complete(
                          reverse=True)
         resume.coup_decisif = decisifs[0].to_dict() if decisifs else None
 
-    # Precision
     nb_analyses = sum(compteur_classes.values())
     if nb_analyses > 0:
         precision = sum(POIDS_CLASSIFICATION.get(c, 50) * n
@@ -1144,7 +1055,6 @@ def analyser_partie_complete(
 # ═══════════════════════════════════════════════════════════
 
 def formater_analyse_rapide(resultat_analyse: dict) -> str:
-    """Formate le resultat pour un affichage lisible."""
     resume = resultat_analyse.get("resume", {})
     lines = [
         "=" * 50,
@@ -1171,12 +1081,11 @@ def formater_analyse_rapide(resultat_analyse: dict) -> str:
         f"  Opportunites ELMAAS manquees : {resume.get('nb_elmaas_opportunites_manquees', 0)}",
         "=" * 50,
     ])
-
     return "\n".join(lines)
 
 
 if __name__ == "__main__":
-    print("Module analyse_partie.py v4.1 (corrigé) chargé.")
+    print("Module analyse_partie.py v4.2 (corrige) charge.")
     print("Fonctions principales :")
     print("  - analyser_partie_complete(coups, etat_initial, couleur, profondeur)")
     print("  - evaluer_position_complete(etat, couleur)")
