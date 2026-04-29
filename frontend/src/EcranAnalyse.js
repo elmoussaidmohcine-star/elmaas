@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import Board from "./Board";
-import { t } from "./translations";
+import { t, getCitationAttente } from "./translations";
 
 const API = "https://elmaas-backend.onrender.com";
 
@@ -123,7 +123,6 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
   const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
-  // RECONSTRUCTION SEQUENTIELLE DU PLATEAU - ETAT APRES LE COUP
   // Helper : construit un etat compatible Board depuis un dict pieces
   const buildEtatPlateau = useCallback((pieces, numeroTour = 0) => {
     if (!pieces) return null;
@@ -206,13 +205,28 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   }, [precedent, suivant]);
 
   if (chargement) {
+    const [citationAttente, setCitationAttente] = useState(() => getCitationAttente(L));
+    useEffect(() => {
+      const interval = setInterval(() => setCitationAttente(getCitationAttente(L)), 5000);
+      return () => clearInterval(interval);
+    }, [L]);
     return (
-      <div className="popup-overlay">
-        <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16, padding: 40 }}>
-          <div className="popup-titre">{t("analyseTitre", L)}</div>
-          <div className="spinner" style={{ margin: "20px auto" }} />
-          <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
-            {L === 0 ? "Analyse en cours..." : L === 1 ? "Analyzing..." : L === 2 ? "جاري التحليل..." : "Analizando..."}
+      <div className="ecran-analyse-overlay">
+        <div className="ecran-analyse" style={{ justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+          <div style={{ textAlign: "center", maxWidth: 500 }}>
+            <div className="popup-titre" style={{ marginBottom: 24 }}>
+              {L === 0 ? "Analyse en cours" : L === 1 ? "Analysis in progress" : L === 2 ? "التحليل قيد التقدم" : "Análisis en progreso"}
+            </div>
+            <div className="spinner" style={{ margin: "20px auto" }} />
+            <div style={{ fontSize: 15, color: "var(--texte)", fontStyle: "italic", marginTop: 20, lineHeight: 1.6, minHeight: 60 }}>
+              "{citationAttente}"
+            </div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 12 }}>
+              {L === 0 ? "Cela peut prendre quelques secondes..." : 
+               L === 1 ? "This may take a few seconds..." : 
+               L === 2 ? "قد يستغرق هذا بضع ثوانٍ..." : 
+               "Esto puede tardar unos segundos..."}
+            </div>
           </div>
         </div>
       </div>
@@ -325,6 +339,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                 etat={etatPlateau}
                 taille={taille}
                 pixelsPhoto={pixelsPhoto}
+                couleurJoueur={couleurAnalysee}
                 onPoserPiece={null}
               />
             ) : (

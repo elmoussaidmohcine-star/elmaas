@@ -847,6 +847,8 @@ export default function App() {
   const [timerChoisi, setTimerChoisi] = useState(30);
   const [timerRouge, setTimerRouge] = useState(30);
   const [timerNoir, setTimerNoir] = useState(30);
+  const [timerIA, setTimerIA] = useState(0);
+  const timerIARef = useRef(null);
   const [scoresManches, setScoresManches] = useState({ rouge: 0, noir: 0 });
   const [mancheTermineeInfo, setMancheTermineeInfo] = useState(null);
   const [pauseActive, setPauseActive] = useState(false);
@@ -966,13 +968,21 @@ export default function App() {
   useEffect(() => { popupRef.current = popup; }, [popup]);
   const trCouleur = (c) => c === "rouge" ? t("rouge", L) : c === "noir" ? t("noir", L) : c;
 
-  // Timer
+  // Timer joueur
   useEffect(() => {
     clearInterval(timerRef.current);
+    clearInterval(timerIARef.current);
     if (etape !== "jeu" || !etat || etat.manche_terminee) return;
     if (pauseIAActive) return;
     if (modeMultijoueur && statutConnexion !== "connecte") return;
-    if (estTourIA || iaEnCours) return;
+
+    if (estTourIA || iaEnCours) {
+      setTimerIA(0);
+      timerIARef.current = setInterval(() => {
+        setTimerIA(prev => prev + 1);
+      }, 1000);
+      return () => clearInterval(timerIARef.current);
+    }
 
     const tsDebut = etat.timestamp_debut_tour ? etat.timestamp_debut_tour * 1000 : Date.now();
     if (etat.tour_actuel === 0) setTimerRouge(timerChoisi);
@@ -997,7 +1007,7 @@ export default function App() {
         }
       }
     }, 200);
-    return () => clearInterval(timerRef.current);
+    return () => { clearInterval(timerRef.current); clearInterval(timerIARef.current); };
   }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, modeMultijoueur, statutConnexion, timerChoisi, estTourIA, iaEnCours, L, pauseIAActive]);
 
   // WebSocket
@@ -1642,10 +1652,23 @@ export default function App() {
         </div>
 
         <div className="header-centre">
-          <div className="timers">
-            {modeIA !== "j1" && <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !popup && !pauseIAActive} L={L} />}
-            {modeIA !== "j2" && <TimerBloc secondes={timerNoir} couleur="noir" actif={etat?.tour_actuel === 1 && !popup && !pauseIAActive} L={L} />}
-          </div>
+          {estTourIA || iaEnCours ? (
+            <div className="timers">
+              <div className="timer-bloc" style={{ borderColor: "#ffd700", background: "linear-gradient(180deg, #ffd70022, #ffd70011)" }}>
+                <span className="timer-label" style={{ color: "#ffd700" }}>
+                  {L === 0 ? "IA RÉFLÉCHIT" : L === 1 ? "AI THINKING" : L === 2 ? "الذكاء الاصطناعي يفكر" : "IA PENSANDO"}
+                </span>
+                <span className="timer-val" style={{ color: "#ffd700" }}>
+                  {String(Math.floor(timerIA / 60)).padStart(2, "0")}:{String(timerIA % 60).padStart(2, "0")}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="timers">
+              {modeIA !== "j1" && <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !popup && !pauseIAActive} L={L} />}
+              {modeIA !== "j2" && <TimerBloc secondes={timerNoir} couleur="noir" actif={etat?.tour_actuel === 1 && !popup && !pauseIAActive} L={L} />}
+            </div>
+          )}
           {pseudoAdverse && (scoresCumules.moi > 0 || scoresCumules.lui > 0) && (
             <div className="score-cumule">
               {t("scoreContre", L)} {pseudoAdverse}: {scoresCumules.moi}-{scoresCumules.lui}
