@@ -80,6 +80,8 @@ class AnalyseCoup:
     scores_apres: Dict[str, int] = field(default_factory=dict)
     meilleur_alternative: Optional[dict] = None
     alternative_est_elmaas: bool = False
+    puzzles_avant: Optional[List[dict]] = None
+    puzzles_apres: Optional[List[dict]] = None
     plateau_avant: Optional[dict] = None
     plateau_apres: Optional[dict] = None
     valeur_positionnelle: float = 0.0
@@ -113,6 +115,8 @@ class AnalyseCoup:
             "valeur_strategique": round(self.valeur_strategique, 2),
             "meilleur_alternative": self.meilleur_alternative,
             "alternative_est_elmaas": self.alternative_est_elmaas,
+            "puzzles_avant": self.puzzles_avant,
+            "puzzles_apres": self.puzzles_apres,
             "plateau_avant": self.plateau_avant,
             "plateau_apres": self.plateau_apres,
         }
@@ -701,6 +705,25 @@ def simuler_coup_pour_eval(etat: EtatJeu, coup: dict, couleur_perspective: str) 
 # ÉVALUATION DES COUPS
 # ═══════════════════════════════════════════════════════════
 
+def _serialiser_puzzles(etat: EtatJeu) -> List[dict]:
+    """Sérialise les puzzles du plateau pour le frontend."""
+    resultat = []
+    for p in etat.plateau.puzzles.values():
+        resultat.append({
+            "id": p.id,
+            "cellules": [list(c) if isinstance(c, tuple) else c for c in p.cellules],
+            "type_couleur": p.type_couleur,
+            "niveau": p.niveau,
+            "parent_id": p.parent_id,
+            "enfants_ids": p.enfants_ids,
+            "est_chef": p.est_chef,
+            "brise": p.brise,
+            "complete_par": p.complete_par,
+            "protege": p.protege,
+        })
+    return resultat
+
+
 def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
                         profondeur: int = 2, deadline: float = None) -> AnalyseCoup:
     joueur = etat_avant.joueur_actif()
@@ -868,6 +891,8 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
             "score": round(meilleur_alt["score"], 2) if meilleur_alt else 0,
         } if meilleur_alt else None,
         alternative_est_elmaas=alt_est_elmaas,
+        puzzles_avant=_serialiser_puzzles(etat_avant),
+        puzzles_apres=_serialiser_puzzles(etat_apres_joue),
         plateau_avant=plateau_avant_dict,
         plateau_apres=plateau_apres_dict,
     )
@@ -920,6 +945,8 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         rang=1 if classification in (CLASSE_MASSY, CLASSE_NOTMESSY) else 2,
         total_coups_possibles=2 if coups_poser else 1,
         scores_avant=scores_avant, scores_apres=scores_apres,
+        puzzles_avant=_serialiser_puzzles(etat_avant) if hasattr(etat_avant, 'plateau') else None,
+        puzzles_apres=_serialiser_puzzles(etat_apres) if hasattr(etat_apres, 'plateau') else None,
         plateau_avant=plateau_avant, plateau_apres=plateau_apres,
     )
 
