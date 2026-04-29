@@ -1031,3 +1031,4 @@ if __name__ == "__main__":
     print("Classes de classification :")
     for cls, poids in POIDS_CLASSIFICATION.items():
         print(f"  {cls:12} (poids {poids})")
+#k
