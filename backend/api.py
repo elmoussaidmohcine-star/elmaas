@@ -443,23 +443,33 @@ def lancer_analyse(partie_id: str):
     # EXTRAIRE LE JSON DE LA REQUÊTE — CETTE LIGNE MANQUAIT
     data = request.get_json() or {}
     
+    # ═══════════════════════════════════════════════════════════
     # Récupérer historique + etat_initial depuis RAM ou DB
+    # etats_initiaux contient des OBJETS EtatJeu (pas des dicts)
+    # ═══════════════════════════════════════════════════════════
     historique = historique_coups.get(partie_id, [])
-    etat_init_dict = etats_initiaux.get(partie_id)
+    etat_initial = etats_initiaux.get(partie_id)  # EtatJeu ou None
+    etat_init_dict = None  # dict JSON (pour fallback DB/frontend)
 
-    if not historique or not etat_init_dict:
+    # Si etat_initial est un dict (bug ancien), le convertira plus bas
+    if isinstance(etat_initial, dict):
+        etat_init_dict = etat_initial
+        etat_initial = None
+
+    if not historique or not etat_initial:
         from models import PartieDB
         partie_db = PartieDB.query.get(partie_id)
         if partie_db:
             if not historique and partie_db.historique_json:
                 historique = _json.loads(partie_db.historique_json)
                 historique_coups[partie_id] = historique
-            if not etat_init_dict and partie_db.etat_initial_json:
+            if not etat_initial and partie_db.etat_initial_json:
                 etat_init_dict = _json.loads(partie_db.etat_initial_json)
-                etats_initiaux[partie_id] = etat_init_dict
+                # Ne PAS stocker le dict brut dans etats_initiaux
+                # Conversion en EtatJeu faite plus bas
 
-    if not historique or not etat_init_dict:
-        return jsonify({"erreur": "Partie introuvable ou historique manquant"}), 404
+    if not historique:
+        return jsonify({"erreur": "Historique de partie introuvable"}), 404
 
     # Vérif authentification + quotas
     from auth import get_user_from_request
@@ -533,22 +543,35 @@ def lancer_analyse(partie_id: str):
         return etat
 
     try:
-        # Utiliser l'état initial sauvegardé (propre : plateau vide, puzzles frais)
-        etat_initial = etats_initiaux.get(partie_id)
+        # ═══════════════════════════════════════════════════════════
+        # Obtenir un EtatJeu propre (plateau vide, puzzles frais)
+        # ═══════════════════════════════════════════════════════════
 
-        if etat_initial is None:
-            print(f"[analyse] État initial non trouvé en mémoire, fallback sur frontend")
+        # 1. Si on a déjà un EtatJeu en mémoire (nouvelle partie)
+        if etat_initial is not None and hasattr(etat_initial, 'plateau'):
+            print(f"[analyse] Utilisation état initial en mémoire (EtatJeu)")
+
+        # 2. Sinon, convertir depuis le dict JSON (DB ou frontend)
+        elif etat_init_dict is not None:
+            print(f"[analyse] Conversion état depuis dict JSON...")
             try:
                 etat_initial = deserialiser_etat_local(etat_init_dict)
+                # Stocker l'objet EtatJeu (pas le dict) pour les prochaines fois
+                etats_initiaux[partie_id] = etat_initial
             except Exception as e_deser:
                 import traceback; traceback.print_exc()
                 print(f"[analyse] Erreur désérialisation : {e_deser}")
+                # Fallback : essayer l'état en cours dans parties
                 etat_initial = parties.get(partie_id)
 
-        if etat_initial is None:
+        # 3. Dernier fallback
+        else:
+            etat_initial = parties.get(partie_id)
+
+        if etat_initial is None or not hasattr(etat_initial, 'plateau'):
             return jsonify({"erreur": "Impossible de reconstruire l'état initial de la partie"}), 500
 
-        # Debug : vérifier que l'état est propre
+        # Vérifier que c'est bien un EtatJeu propre
         nb_p = len([v for v in etat_initial.plateau.pieces.values() if v is not None])
         print(f"[analyse] État : J1 main={len(etat_initial.joueur1.main_active)} res={len(etat_initial.joueur1.reserve)}")
         print(f"[analyse] État : J2 main={len(etat_initial.joueur2.main_active)} res={len(etat_initial.joueur2.reserve)}")
