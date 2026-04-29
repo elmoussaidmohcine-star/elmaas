@@ -887,7 +887,50 @@ export default function App() {
   }, [mancheTermineeInfo]);
   
   const [showAnalyse, setShowAnalyse] = useState(false);
+  const [analyseJoueur, setAnalyseJoueur] = useState(null);
+  const [analyseAdv, setAnalyseAdv] = useState(null);
+  const [analyseChargement, setAnalyseChargement] = useState(false);
   const [dernierCoupClassif, setDernierCoupClassif] = useState(null);
+
+  const lancerAnalyse = async () => {
+    if (!partieId) return;
+    setAnalyseChargement(true);
+    try {
+      const couleurMoi = modeIA !== "aucune"
+        ? (modeIA === "j1" ? "noir" : "rouge")
+        : (monRole === "joueur2" ? "noir" : "rouge");
+      const couleurAdv = couleurMoi === "rouge" ? "noir" : "rouge";
+      const token = getToken();
+      const res = await axios.post(
+        `${API}/analyse/${partieId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.succes) {
+        const tousCoups = res.data.analyse?.coups || [];
+        const coupsMoi = tousCoups.filter(c => c.couleur === couleurMoi);
+        const coupsAdv = tousCoups.filter(c => c.couleur === couleurAdv);
+        const bon = ["ELMAAS", "ELMAASYON", "MASSY", "NOTMESSY"];
+        const precMoi = coupsMoi.length
+          ? Math.round(coupsMoi.filter(c => bon.includes(c.classification)).length / coupsMoi.length * 100)
+          : 0;
+        const precAdv = coupsAdv.length
+          ? Math.round(coupsAdv.filter(c => bon.includes(c.classification)).length / coupsAdv.length * 100)
+          : 0;
+        setAnalyseJoueur({ coups: coupsMoi, precision_pct: precMoi });
+        setAnalyseAdv({ coups: coupsAdv, precision_pct: precAdv });
+        setMancheTermineeInfo(null);
+        setPopup(null);
+        setShowAnalyse(true);
+      } else {
+        alert(res.data.erreur || "Erreur lors de l'analyse");
+      }
+    } catch (e) {
+      alert("Erreur : " + (e.response?.data?.erreur || e.message));
+    } finally {
+      setAnalyseChargement(false);
+    }
+  };
 
   const changerLangue = (idx) => {
     setIndexLangue(idx);
@@ -1449,6 +1492,8 @@ export default function App() {
       <div className="app">
         <EcranAnalyse
           partieId={partieId}
+          analyseJoueur={analyseJoueur}
+          analyseAdv={analyseAdv}
           couleurJoueur={modeIA !== "aucune" ? (modeIA === "j1" ? "noir" : "rouge") : (monRole === "joueur2" ? "noir" : "rouge")}
           pixelsPhoto={pixelsPhoto}
           taille={taille}
@@ -1520,8 +1565,8 @@ export default function App() {
               </div>
               {/* SUPPRESSION BOUTONS RAPIDE/PROFONDE — UN SEUL BOUTON ANALYSE */}
               <button className="popup-btn" style={{ borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
-                onClick={() => { setMancheTermineeInfo(null); setShowAnalyse(true); }}>
-                {L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo"}
+                onClick={() => { lancerAnalyse(); }} disabled={analyseChargement}>
+                {analyseChargement ? "⏳ Analyse..." : (L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo")}
               </button>
               <button className="popup-btn" onClick={handleReset}>{t("nouvellePartie", L)}</button>
             </div>
@@ -1623,8 +1668,8 @@ export default function App() {
               </div>
               {/* SUPPRESSION BOUTONS RAPIDE/PROFONDE — UN SEUL BOUTON */}
               <button className="popup-btn" style={{ borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
-                onClick={() => { setPopup(null); setShowAnalyse(true); }}>
-                {L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo"}
+                onClick={() => { lancerAnalyse(); }} disabled={analyseChargement}>
+                {analyseChargement ? "⏳ Analyse..." : (L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo")}
               </button>
               <button className="popup-btn" onClick={() => { setPopup(null); handleReset(); }}>{t("fermer", L)}</button>
             </div>
