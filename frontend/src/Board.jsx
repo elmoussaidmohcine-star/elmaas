@@ -292,29 +292,25 @@ export default function Board({
               )}
 
               {/* Pièce posée */}
-              {couleurPiece && (
-                <div className={`piece-posee-v2 ${mapCouleurClasse(couleurPiece)}`} />
-              )}
-
-              {/* Tag type puzzle */}
-              {puzzleAffiche && frontieres.top && frontieres.left && (
-                <div className="tag-puzzle" style={{ color: estEclaire ? "#ffffff" : (estMixte ? C.ROUGE : cFBase) }}>
-                  {puzzleAffiche.type_couleur === "mixte" ? "R+N"
-                    : puzzleAffiche.type_couleur === "mono_rouge" ? "R" : "N"}
-                  {estIntersection ? "+" : ""}
-                  {puzzleAffiche.parent_id !== null && puzzleAffiche.parent_id !== undefined ? "s" : ""}
-                </div>
-              )}
-
-              {/* Point central intersection */}
-              {estIntersection && (
-                <div style={{
-                  position: "absolute", top: "50%", left: "50%",
-                  transform: "translate(-50%,-50%)",
-                  width: 4, height: 4, borderRadius: "50%",
-                  background: cF2, opacity: 0.6, pointerEvents: "none",
-                }} />
-              )}
+          {/* Pièce posée */}
+            {couleurPiece && (
+              <div 
+                className="piece-posee-v2"
+                style={{
+                  position: "absolute",
+                  top: 2, left: 2, right: 2, bottom: 2,
+                  borderRadius: "20%",
+                  backgroundColor: couleurPiece === "rouge" ? C.ROUGE_C : 
+                                  couleurPiece === "noir"  ? C.NOIR_C : 
+                                  couleurPiece === "diamant" ? C.DIAMANT : "#888",
+                  border: couleurPiece === "noir" ? `2px solid ${C.NOIR_B}` : "none",
+                  boxShadow: couleurPiece === "rouge" ? "0 0 4px rgba(255,68,34,0.5)" :
+                            couleurPiece === "noir" ? "0 0 4px rgba(85,85,102,0.5)" :
+                            "0 0 6px rgba(0,191,255,0.6)",
+                  zIndex: 10,
+                }}
+              />
+            )}
             </div>
           );
         })
