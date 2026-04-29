@@ -94,23 +94,50 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
         {utilisateur && (
           <div className="plans-section">
             <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("plans", L)}</div>
-            <div className="plan-welcome">{t("welcomeElmaasyon", L)}</div>
+
+            {/* Plan Gratuit (indicatif) */}
+            <div className={`plan-card ${!utilisateur.plan ? "actif" : ""}`}>
+              <div className="plan-nom">Gratuit</div>
+              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                1 photo personnalisée · 1 analyse/jour<br />
+                Robots : Chess · Amal · ELMAASYON
+              </div>
+              <div className="plan-prix">0€</div>
+            </div>
+
+            {/* Plan ELMAASYON */}
             <div className={`plan-card ${utilisateur.plan === "elmaasyon" ? "actif" : "premium"}`}>
               <div className="plan-nom">{t("planElmaasyon", L)}</div>
-              <div className="plan-desc">{t("planElmaasyonDesc", L)}</div>
+              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                📷 Photos illimitées<br />
+                🔍 3 analyses / jour<br />
+                Robots : Chess · Amal · ELMAASYON
+              </div>
               <div className="plan-prix">Gratuit <small>(lancement)</small></div>
-              {utilisateur.plan !== "elmaasyon" && (
+              {utilisateur.plan !== "elmaasyon" && utilisateur.plan !== "elmaas" && (
                 <button className="btn-valider" style={{ fontSize: 13, padding: "8px 16px" }} onClick={() => onPaiement("elmaasyon")}>
                   {t("passerPremiumBtn", L)}
                 </button>
               )}
             </div>
-            <div className={`plan-card ${utilisateur.plan === "elmaas" ? "actif" : "premium"}`}>
-              <div className="plan-nom">{t("planElmaas", L)}</div>
-              <div className="plan-desc">{t("planElmaasDesc", L)}</div>
+
+            {/* Plan ELMAAS */}
+            <div className={`plan-card ${utilisateur.plan === "elmaas" ? "actif" : "premium"}`} style={{
+              border: utilisateur.plan === "elmaas" ? "1px solid #9933ff" : "1px solid #9933ff44",
+              boxShadow: utilisateur.plan === "elmaas" ? "0 0 12px #9933ff44" : "none",
+            }}>
+              <div className="plan-nom" style={{ color: "#aa77ff" }}>💎 ELMAAS</div>
+              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                📷 Photos illimitées<br />
+                🔍 Analyses illimitées<br />
+                Robots : Chess · Amal · ELMAASYON · <span style={{ color: "#aa77ff", fontWeight: 700 }}>ELMAAS</span><br />
+                <span style={{ color: "#ff9944", fontSize: 11 }}>
+                  ⚠️ ELMAAS : jusqu'à 15s par coup
+                </span>
+              </div>
               <div className="plan-prix">6.99€<small>{t("parMois", L)}</small></div>
               {utilisateur.plan !== "elmaas" && (
-                <button className="btn-valider" style={{ fontSize: 13, padding: "8px 16px" }} onClick={() => onPaiement("elmaas")}>
+                <button className="btn-valider" style={{ fontSize: 13, padding: "8px 16px", background: "linear-gradient(135deg,#6600cc,#9933ff)" }} onClick={() => onPaiement("elmaas")}>
                   {t("passerPremiumBtn", L)}
                 </button>
               )}
@@ -290,30 +317,45 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
         {modeIA !== "aucune" && (
           <div className="ia-niveau">
             <span>{t("niveauIA", L)}</span>
-            {[1,2,3,4].map(n => (
-              <button key={n} className={`ia-btn-niveau ${niveauIA === n ? "actif" : ""}`} onClick={() => setNiveauIA(n)}>
-                {n === 1 ? t("facile", L) : n === 2 ? t("moyen", L) : n === 3 ? t("expert", L) : "GM 2500+"}
+            {[
+              { n: 1, label: "Chess",      locked: false, color: "#cc2200" },
+              { n: 2, label: "Amal",       locked: false, color: "#ddaa00" },
+              { n: 3, label: "ELMAASYON",  locked: false, color: "#4477ff" },
+              { n: 4, label: "ELMAAS",     locked: utilisateur?.plan !== "elmaas", color: "#9933ff" },
+            ].map(({ n, label, locked, color }) => (
+              <button key={n}
+                className={`ia-btn-niveau ${niveauIA === n ? "actif" : ""} ${locked ? "verrouille" : ""}`}
+                onClick={() => { if (!locked) setNiveauIA(n); }}
+                title={locked ? (L === 0 ? "Réservé au plan ELMAAS" : L === 1 ? "ELMAAS plan only" : L === 2 ? "حصري لخطة ELMAAS" : "Solo plan ELMAAS") : ""}
+                style={{
+                  borderColor: niveauIA === n ? color : undefined,
+                  color: locked ? "#555" : (niveauIA === n ? color : undefined),
+                  opacity: locked ? 0.5 : 1,
+                  cursor: locked ? "not-allowed" : "pointer",
+                  position: "relative",
+                }}>
+                {label}
+                {locked && <span style={{ fontSize: 10, marginLeft: 4 }}>🔒</span>}
               </button>
             ))}
           </div>
         )}
         {modeIA !== "aucune" && niveauIA === 4 && (
-          <div style={{ 
-            marginTop: 12, 
-            padding: "10px 14px", 
-            background: "var(--bg3)", 
-            borderRadius: 8, 
-            border: "1px solid #ffd70044",
-            fontSize: 13,
-            color: "#ffd700",
-            textAlign: "center",
-            fontFamily: "var(--brush)",
-            lineHeight: 1.5
+          <div style={{
+            marginTop: 12, padding: "10px 14px",
+            background: "rgba(153,51,255,0.08)",
+            borderRadius: 8, border: "1px solid #9933ff44",
+            fontSize: 13, lineHeight: 1.5
           }}>
-            {L === 0 ? "Le GM 2500+ réfléchit profondément. Chaque coup peut prendre jusqu'à 10 secondes. Ce délai est nécessaire contre ce monstre." :
-             L === 1 ? "The GM 2500+ thinks deeply. Each move may take up to 10 seconds. This delay is necessary against this monster." :
-             L === 2 ? "الـ GM 2500+ يفكر بعمق. كل حركة قد تستغرق حتى 10 ثوانٍ. هذا التأخير ضروري ضد هذا الوحش." :
-             "El GM 2500+ piensa profundamente. Cada movimiento puede tardar hasta 10 segundos. Este retraso es necesario contra este monstruo."}
+            <div style={{ color: "#9933ff", fontWeight: 700, marginBottom: 4 }}>
+              💎 ELMAAS
+            </div>
+            <div style={{ color: "#cc99ff" }}>
+              {L === 0 ? "⚠️ ELMAAS réfléchit profondément. Chaque coup peut prendre jusqu'à 15 secondes. Ce délai est inhérent à sa puissance." :
+               L === 1 ? "⚠️ ELMAAS thinks deeply. Each move may take up to 15 seconds. This delay is inherent to its power." :
+               L === 2 ? "⚠️ ELMAAS يفكر بعمق. كل حركة قد تستغرق حتى 15 ثانية. هذا التأخير جزء من قوته." :
+               "⚠️ ELMAAS piensa profundamente. Cada movimiento puede tardar hasta 15 segundos. Este retraso es parte de su poder."}
+            </div>
           </div>
         )}
       </div>
@@ -866,7 +908,7 @@ export default function App() {
   const lastMsgTime = useRef(0);
   
   const pseudoAdverse = modeIA !== "aucune"
-    ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+")
+    ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS")
     : (etat?.pseudo_adversaire || "ADVERSAIRE");
 
   const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });
@@ -1201,7 +1243,7 @@ export default function App() {
     const tourIA = mode === "j1" ? 0 : 1;
     if (etatCourant.tour_actuel !== tourIA || etatCourant.manche_terminee) return;
     setIaEnCours(true);
-    const iaDelayMs = niveau >= 4 ? 10000 : 800;
+    const iaDelayMs = niveau >= 4 ? 15000 : 800;
     await new Promise(r => setTimeout(r, iaDelayMs));
     try {
       const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
@@ -1681,7 +1723,7 @@ export default function App() {
         <div className="header-gauche">
           <h1 className="titre-jeu-petit">ELMAAS</h1>
           <div className="pseudo-joueur rouge">
-            <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : (utilisateur?.pseudo || "Joueur 1")}</span>
+            <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : (utilisateur?.pseudo || "Joueur 1")}</span>
             <span className="pseudo-score">{etat?.scores?.rouge ?? 0}</span>
           </div>
         </div>
@@ -1713,7 +1755,7 @@ export default function App() {
 
         <div className="header-droite">
           <div className="pseudo-joueur noir">
-            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "CHESS" : niveauIA === 2 ? "ELMAASYON" : niveauIA === 3 ? "ELMAAS" : "GM 2500+") : pseudoAdverse}</span>
+            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}</span>
             <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
           </div>
           {/* Parametres uniquement pendant le jeu */}
