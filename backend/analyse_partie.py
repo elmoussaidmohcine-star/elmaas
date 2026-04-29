@@ -184,8 +184,8 @@ def copier_etat_manuel(etat: EtatJeu) -> EtatJeu:
     """Copie manuelle d'EtatJeu sans deepcopy (evite RecursionError)."""
     plateau_orig = etat.plateau
 
-    # Copier pieces (dict simple)
-    pieces_copy = dict(plateau_orig.pieces)
+    # Copie PROFONDE des pieces (dict de strings)
+    pieces_copy = copy.deepcopy(dict(plateau_orig.pieces))
 
     # Garder les memes puzzles (read-only pendant la simulation)
     puzzles_copy = dict(plateau_orig.puzzles)
@@ -237,6 +237,8 @@ def copier_etat_manuel(etat: EtatJeu) -> EtatJeu:
         piece_initiale_pos=etat.piece_initiale_pos,
         timestamp_debut_tour=etat.timestamp_debut_tour,
     )
+
+
 
 
 # ═══════════════════════════════════════════════════════════
@@ -505,7 +507,7 @@ def simuler_coup_pour_eval(etat: EtatJeu, coup: dict, couleur_perspective: str) 
 # ═══════════════════════════════════════════════════════════
 
 def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict, 
-                        profondeur: int = 1, deadline: float = None) -> AnalyseCoup:
+                        profondeur: int = 2, deadline: float = None) -> AnalyseCoup:
     """Evaluation rigoureuse d'un coup 'poser'."""
     joueur = etat_avant.joueur_actif()
     couleur = joueur.couleur
@@ -521,6 +523,9 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
 
     scores_avant = calculer_scores(etat_avant)
     serie_avant = joueur.serie_actuelle
+
+    # CAPTURER plateau AVANT (copie profonde pour éviter mutation)
+    plateau_avant_dict = copy.deepcopy(dict(etat_avant.plateau.pieces))
 
     # Simuler le coup joue avec piece_data exacte
     etat_apres_joue, resultat_joue = simuler_coup(etat_avant, {
@@ -547,7 +552,12 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
             rang=999,
             total_coups_possibles=1,
             scores_avant=scores_avant,
+            plateau_avant=plateau_avant_dict,
+            plateau_apres=plateau_avant_dict,  # fallback identique si erreur
         )
+
+    # CAPTURER plateau APRÈS (copie profonde)
+    plateau_apres_dict = copy.deepcopy(dict(etat_apres_joue.plateau.pieces))
 
     scores_apres_joue = calculer_scores(etat_apres_joue)
 
@@ -555,11 +565,11 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     joueur_apres = etat_apres_joue.joueur1 if etat_apres_joue.joueur1.couleur == couleur else etat_apres_joue.joueur2
     serie_apres_joue = joueur_apres.serie_actuelle
 
-    # Generer toutes les alternatives
+    # Generer toutes les alternatives — LIMITE selon profondeur
+    MAX_ALTERNATIVES = 15 if profondeur <= 1 else 25
     tous_coups = lister_tous_coups(etat_avant, joueur)
 
-    # Evaluer chaque alternative — LIMITE a 20 pour eviter timeout
-    MAX_ALTERNATIVES = 20
+    # Evaluer chaque alternative
     evaluations = []
     for i, alt in enumerate(tous_coups):
         if deadline and time.time() > deadline:
@@ -632,10 +642,6 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     else:
         classification = CLASSE_MISSED
 
-    # Plateaux avant/apres
-    plateau_avant = dict(etat_avant.plateau.pieces) if etat_avant else None
-    plateau_apres = dict(etat_apres_joue.plateau.pieces) if etat_apres_joue else None
-
     # Meilleure alternative
     meilleur_alt = evaluations[0] if evaluations else None
     alt_est_elmaas = False
@@ -679,9 +685,10 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
             "score": round(meilleur_alt["score"], 2) if meilleur_alt else 0,
         } if meilleur_alt else None,
         alternative_est_elmaas=alt_est_elmaas,
-        plateau_avant=plateau_avant,
-        plateau_apres=plateau_apres,
+        plateau_avant=plateau_avant_dict,
+        plateau_apres=plateau_apres_dict,
     )
+
 
 
 def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:

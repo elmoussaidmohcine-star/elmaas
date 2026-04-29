@@ -1,6 +1,4 @@
-// ELMAAS App.js — VERSION CORRIGÉE (Matchmaking fix)
-// Features : Google OAuth only + choix pseudo + score cumulé + matchmaking
-//            + pause IA + messages chat + popup 5min cheesy + analyse + filtres
+// ELMAAS App.js — VERSION CORRIGÉE (Analyse profonde uniquement)
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
@@ -58,7 +56,7 @@ function setScoresCumules(pseudoAdverse, scores) {
 //  Bouton Paramètres flottant 
 function BtnParamsFlottant({ onClick, L }) {
   return (
-    <button className="btn-params-flottant" onClick={onClick} title={t("parametres", L)}></button>
+    <button className="btn-params-flottant" onClick={onClick} title={t("parametres", L)}>⚙</button>
   );
 }
 
@@ -860,7 +858,8 @@ export default function App() {
   const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
   const [scoutEchanges, setScoutEchanges] = useState([]);
   const [matchmakingActif, setMatchmakingActif] = useState(false);
-  const [modeAnalyse, setModeAnalyse] = useState("rapide");
+  // SUPPRESSION DU MODE RAPIDE — toujours profonde
+  const modeAnalyse = "profonde";
   const [modeCouleur, setModeCouleur] = useState(1); // 1=rouge/noir, 2=cyan/jaune
   const [messageChat, setMessageChat] = useState("");
   const [bullesActives, setBullesActives] = useState([]);
@@ -1322,7 +1321,7 @@ export default function App() {
     const maintenant = Date.now();
     if (maintenant - lastMsgTime.current < 3000) return;
     lastMsgTime.current = maintenant;
-    const couleurMoi = monRole === "joueur1" ? "rouge" : "noir";
+    const couleurMoi = monRole === "joueur2" ? "noir" : "rouge";
     socketRef.current?.emit("message_envoye", {
       partie_id: partieId, texte: messageChat.slice(0, 30), couleur: couleurMoi
     });
@@ -1443,7 +1442,7 @@ export default function App() {
   );
 
   // 
-  // ÉCRAN ANALYSE
+  // ÉCRAN ANALYSE — TOUJOURS PROFONDE
   // 
   if (showAnalyse) {
     return (
@@ -1451,11 +1450,11 @@ export default function App() {
         <EcranAnalyse
           partieId={partieId}
           couleurJoueur={modeIA !== "aucune" ? (modeIA === "j1" ? "noir" : "rouge") : (monRole === "joueur2" ? "noir" : "rouge")}
-          mode={modeAnalyse}
           pixelsPhoto={pixelsPhoto}
           taille={taille}
           L={L}
           onFermer={() => { setShowAnalyse(false); setMancheTermineeInfo(null); }}
+          modeCouleur={modeCouleur}
         />
       </div>
     );
@@ -1519,16 +1518,11 @@ export default function App() {
               <div style={{ fontSize: 14, color: "var(--muted)", textAlign: "center", marginBottom: 4 }}>
                 {L === 0 ? "Analyser la partie" : L === 1 ? "Analyze game" : L === 2 ? "تحليل المباراة" : "Analizar partida"}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="popup-btn" style={{ flex: 1, borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
-                  onClick={() => { setModeAnalyse("rapide"); setMancheTermineeInfo(null); setShowAnalyse(true); }}>
-                  {L === 0 ? "Rapide" : L === 1 ? "Quick" : L === 2 ? "سريع" : "Rápido"}
-                </button>
-                <button className="popup-btn" style={{ flex: 1, borderColor: "#ffaa44", color: "#ffaa44" }}
-                  onClick={() => { setModeAnalyse("profonde"); setMancheTermineeInfo(null); setShowAnalyse(true); }}>
-                  {L === 0 ? "Profonde" : L === 1 ? "Deep" : L === 2 ? "عميق" : "Profundo"}
-                </button>
-              </div>
+              {/* SUPPRESSION BOUTONS RAPIDE/PROFONDE — UN SEUL BOUTON ANALYSE */}
+              <button className="popup-btn" style={{ borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
+                onClick={() => { setMancheTermineeInfo(null); setShowAnalyse(true); }}>
+                {L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo"}
+              </button>
               <button className="popup-btn" onClick={handleReset}>{t("nouvellePartie", L)}</button>
             </div>
           </div>
@@ -1627,16 +1621,11 @@ export default function App() {
               <div style={{ fontSize: 14, color: "var(--muted)", textAlign: "center", marginBottom: 4 }}>
                 {L === 0 ? "Analyser la partie" : L === 1 ? "Analyze game" : L === 2 ? "تحليل المباراة" : "Analizar partida"}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="popup-btn" style={{ flex: 1, borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
-                  onClick={() => { setModeAnalyse("rapide"); setPopup(null); setShowAnalyse(true); }}>
-                  {L === 0 ? "Rapide" : L === 1 ? "Quick" : L === 2 ? "سريع" : "Rápido"}
-                </button>
-                <button className="popup-btn" style={{ flex: 1, borderColor: "#ffaa44", color: "#ffaa44" }}
-                  onClick={() => { setModeAnalyse("profonde"); setPopup(null); setShowAnalyse(true); }}>
-                  {L === 0 ? "Profonde" : L === 1 ? "Deep" : L === 2 ? "عميق" : "Profundo"}
-                </button>
-              </div>
+              {/* SUPPRESSION BOUTONS RAPIDE/PROFONDE — UN SEUL BOUTON */}
+              <button className="popup-btn" style={{ borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
+                onClick={() => { setPopup(null); setShowAnalyse(true); }}>
+                {L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo"}
+              </button>
               <button className="popup-btn" onClick={() => { setPopup(null); handleReset(); }}>{t("fermer", L)}</button>
             </div>
           </div>
@@ -1703,7 +1692,7 @@ export default function App() {
               {dernierCoupClassif}
             </span>
           )}
-          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}></button>
+          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>⚙</button>
           {/* Toggle couleur — uniquement mode local */}
           {!modeMultijoueur && (
             <button 
@@ -1827,7 +1816,7 @@ export default function App() {
               <input type="text" maxLength={30} placeholder={t("envoyerMessage", L)}
                 value={messageChat} onChange={e => setMessageChat(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && envoyerMessage()} />
-              <button onClick={envoyerMessage} disabled={!messageChat.trim()}></button>
+              <button onClick={envoyerMessage} disabled={!messageChat.trim()}>➤</button>
             </div>
           )}
 

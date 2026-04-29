@@ -1,5 +1,5 @@
-// ELMAAS — EcranAnalyse.js v6
-// Analyse statique de partie — CORRIGÉ (coupActuel avant useMemo + robustesse)
+// ELMAAS — EcranAnalyse.js v7
+// Analyse profonde uniquement — plateau APRÈS chaque coup — couleur distincte
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
@@ -42,7 +42,7 @@ function getNomsClasse(L) {
   return NOMS_CLASSE_FR;
 }
 
-export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhoto, taille, onFermer, L, modeCouleur = 1 }) {
+export default function EcranAnalyse({ partieId, couleurJoueur, pixelsPhoto, taille, onFermer, L, modeCouleur = 1 }) {
   const [analyseMoi, setAnalyseMoi] = useState(null);
   const [analyseAdv, setAnalyseAdv] = useState(null);
   const [chargement, setChargement] = useState(true);
@@ -55,7 +55,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
 
   const nomsClasse = getNomsClasse(L);
 
-  // Charger l'analyse au montage
+  // Charger l'analyse au montage — TOUJOURS PROFONDE
   useEffect(() => {
     let cancelled = false;
     const fetchAnalyse = async () => {
@@ -63,10 +63,10 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         const token = localStorage.getItem("elmaas_token");
         const couleurAdv = couleurJoueur === "rouge" ? "noir" : "rouge";
 
-        // Analyse du joueur (avec timeout de 30s côté client pour éviter blocage)
+        // Analyse du joueur
         const resMoi = await axios.post(
           `${API}/analyse/${partieId}`,
-          { couleur: couleurJoueur, mode: "profonde" },
+          { couleur: couleurJoueur },
           { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
         );
         if (cancelled) return;
@@ -75,7 +75,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         // Analyse de l'adversaire
         const resAdv = await axios.post(
           `${API}/analyse/${partieId}`,
-          { couleur: couleurAdv, mode: "profonde" },
+          { couleur: couleurAdv },
           { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
         );
         if (cancelled) return;
@@ -100,7 +100,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     };
     fetchAnalyse();
     return () => { cancelled = true; };
-  }, [partieId, couleurJoueur, mode]);
+  }, [partieId, couleurJoueur]);
 
   // Citation qui change toutes les 5s pendant le chargement
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
   const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
-  // IMPORTANT: coupActuel et totalCoups doivent être définis AVANT les useMemo
+  // IMPORTANT: coupActuel et totalCoups AVANT les useMemo
   const coupsListe = analyseCourante?.coups || [];
   const totalCoups = coupsListe.length;
   const coupActuel = totalCoups > 0 && indexCoup < totalCoups ? coupsListe[indexCoup] : null;
@@ -120,12 +120,14 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   // Helper : construit un etat compatible Board depuis un dict pieces
   const buildEtatPlateau = useCallback((pieces, numeroTour = 0) => {
     if (!pieces || typeof pieces !== "object") return null;
-    const cellulesActives = Object.entries(pieces)
+    // CLONE EXPLICITE pour éviter les mutations partagées
+    const piecesClone = { ...pieces };
+    const cellulesActives = Object.entries(piecesClone)
       .filter(([k, v]) => v != null)
       .map(([k]) => k.split(",").map(Number));
     return {
       plateau: {
-        pieces,
+        pieces: piecesClone,
         puzzles: {},
         cellules_libres: [],
         cellules_actives: cellulesActives,
@@ -154,7 +156,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const etatPlateau = useMemo(() => {
     if (!coupActuel?.plateau_apres) return null;
     return buildEtatPlateau(coupActuel.plateau_apres, coupActuel.numero_tour);
-  }, [coupActuel, buildEtatPlateau]);
+  }, [coupActuel, buildEtatPlateau, indexCoup]); // indexCoup ajouté pour forcer recalc
 
   // PLATEAU DU MEILLEUR COUP (marqueur sur plateau avant)
   const etatPlateauMeilleur = useMemo(() => {
@@ -279,7 +281,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         {/* Header */}
         <div className="analyse-header">
           <div className="analyse-titre">
-            {t("analyseTitre", L)} — {couleurAnalysee.toUpperCase()}
+            {t("analyseTitre", L)} — <span style={{ color: couleurAnalysee === "rouge" ? "var(--rouge-c)" : "#aaaaaa" }}>{couleurAnalysee.toUpperCase()}</span>
           </div>
           <div className="analyse-precision">
             {precision}% <small>{textes.precision}</small>
@@ -287,21 +289,21 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           <button className="btn-reset" onClick={onFermer}>{t("fermer", L)}</button>
         </div>
 
-        {/* Switch joueur */}
+        {/* Switch joueur — COULEUR EXPLICITE */}
         <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "8px" }}>
           <button 
             className={`popup-btn ${coteActif === "moi" ? "popup-btn-revanche" : ""}`}
             onClick={() => { setCoteActif("moi"); setIndexCoup(0); setShowMeilleurCoup(false); }}
             style={{ flex: 1, maxWidth: 200, justifyContent: "center" }}
           >
-            {textes.moi} ({couleurJoueur}) — {analyseMoi?.precision_pct ?? 0}%
+            <span style={{ color: couleurJoueur === "rouge" ? "var(--rouge-c)" : "#aaaaaa" }}>●</span> {textes.moi} ({couleurJoueur}) — {analyseMoi?.precision_pct ?? 0}%
           </button>
           <button 
             className={`popup-btn ${coteActif === "adv" ? "popup-btn-revanche" : ""}`}
             onClick={() => { setCoteActif("adv"); setIndexCoup(0); setShowMeilleurCoup(false); }}
             style={{ flex: 1, maxWidth: 200, justifyContent: "center" }}
           >
-            {textes.adversaire} ({couleurJoueur === "rouge" ? "noir" : "rouge"}) — {analyseAdv?.precision_pct ?? 0}%
+            <span style={{ color: couleurJoueur === "rouge" ? "#aaaaaa" : "var(--rouge-c)" }}>●</span> {textes.adversaire} ({couleurJoueur === "rouge" ? "noir" : "rouge"}) — {analyseAdv?.precision_pct ?? 0}%
           </button>
         </div>
 
@@ -383,8 +385,17 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                 {nomsClasse[classification] || classification || "—"}
               </div>
 
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                {textes.tour} {coupActuel?.numero_tour ?? "?"} — {textes.joueur}: {coupActuel?.couleur ?? "?"}
+              {/* INFO COULEUR DU JOUEUR QUI A JOUÉ CE COUP */}
+              <div style={{ 
+                fontSize: 14, 
+                fontWeight: 600,
+                color: coupActuel?.couleur === "rouge" ? "var(--rouge-c)" : "#aaaaaa",
+                textAlign: "center",
+                marginBottom: 8,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em"
+              }}>
+                {coupActuel?.couleur === "rouge" ? "ROUGE" : "NOIR"} — {textes.tour} {coupActuel?.numero_tour ?? "?"}
               </div>
 
               {coupActuel?.rang > 1 && (

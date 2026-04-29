@@ -431,6 +431,8 @@ def quota_analyse():
         "plan": plan,
         "restant": -1
     })
+
+
 @app.route("/analyse/<partie_id>", methods=["POST"])
 def lancer_analyse(partie_id: str):
     # Récupérer historique + etat_initial depuis RAM ou DB
@@ -466,17 +468,9 @@ def lancer_analyse(partie_id: str):
     plan = getattr(user, "plan", None)
     limite = float("inf") if plan == "elmaas" else (3 if plan == "elmaasyon" else 1)
 
-    data = request.get_json() or {}
-    mode = data.get("mode", "rapide")
-
-    # Mode rapide = profondeur 1, timeout 60s
-    # Mode profonde = profondeur 2, timeout 180s
-    if mode == "profonde":
-        profondeur = 2
-        timeout_analyse = 180
-    else:
-        profondeur = 1
-        timeout_analyse = 60
+    # FORCER PROFONDE — ignorer le mode demandé par le client
+    profondeur = 2
+    timeout_analyse = 25  # Moins que timeout axios (30s)
 
     # Reconstruire EtatJeu depuis le snapshot initial
     def deserialiser_etat_local(d):
@@ -545,7 +539,7 @@ def lancer_analyse(partie_id: str):
         resultat = analyser_partie_complete(
             coups_historique=historique,
             etat_initial=etat_initial,
-            couleur_joueur=None,
+            couleur_joueur=data.get("couleur"),  # "rouge" ou "noir" ou None
             profondeur=profondeur,
             timeout_global=timeout_analyse
         )
@@ -562,7 +556,8 @@ def lancer_analyse(partie_id: str):
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({"erreur": f"Erreur analyse : {str(e)}"}), 500
- 
+
+
 @app.route("/jouer/<partie_id>", methods=["POST"])
 def jouer(partie_id: str):
     etat = parties.get(partie_id)
