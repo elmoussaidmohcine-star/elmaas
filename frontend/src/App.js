@@ -1592,7 +1592,20 @@ export default function App() {
             {popup.gagnant && (
               <div className={`popup-gagnant ${popup.couleurGagnant}`}>{popup.gagnant} {t("gagne", L)}</div>
             )}
-            <div className="popup-options-fin">
+            <div className="popup-options" style={{ flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 14, color: "var(--muted)", textAlign: "center", marginBottom: 4 }}>
+                {L === 0 ? "Analyser la partie" : L === 1 ? "Analyze game" : L === 2 ? "تحليل المباراة" : "Analizar partida"}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="popup-btn" style={{ flex: 1, borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
+                  onClick={() => { setModeAnalyse("rapide"); setPopup(null); setShowAnalyse(true); }}>
+                  {L === 0 ? "Rapide" : L === 1 ? "Quick" : L === 2 ? "سريع" : "Rápido"}
+                </button>
+                <button className="popup-btn" style={{ flex: 1, borderColor: "#ffaa44", color: "#ffaa44" }}
+                  onClick={() => { setModeAnalyse("profonde"); setPopup(null); setShowAnalyse(true); }}>
+                  {L === 0 ? "Profonde" : L === 1 ? "Deep" : L === 2 ? "عميق" : "Profundo"}
+                </button>
+              </div>
               <button className="popup-btn" onClick={() => { setPopup(null); handleReset(); }}>{t("fermer", L)}</button>
             </div>
           </div>

@@ -859,11 +859,13 @@ def choisir_pouvoir_niveau_4(etat, joueur, puzzles_completes):
     if joueur.serie_actuelle >= 3:
         # Chercher les meilleures cases adverses à extraire
         cibles = []
-        for (r, c), val in etat.plateau.pieces.items():
+        for cle, val in etat.plateau.pieces.items():
             if val == couleur_adv:
+                parts = cle.split(",")
+                r, c = int(parts[0]), int(parts[1])
+                pos = (r, c)
                 # Évaluer l'importance de cette case
                 importance = 0
-                pos = (int(r), int(c)) if isinstance(r, str) else (r, c)
                 for puzzle in etat.plateau.puzzles.values():
                     if puzzle.complete_par or puzzle.brise:
                         continue
@@ -884,9 +886,11 @@ def choisir_pouvoir_niveau_4(etat, joueur, puzzles_completes):
     # Sinon : échanger une case adverse importante
     best_cible = None
     best_score = -1
-    for (r, c), val in etat.plateau.pieces.items():
+    for cle, val in etat.plateau.pieces.items():
         if val == couleur_adv:
-            pos = (int(r), int(c)) if isinstance(r, str) else (r, c)
+            parts = cle.split(",")
+            r, c = int(parts[0]), int(parts[1])
+            pos = (r, c)
             score = 0
             for puzzle in etat.plateau.puzzles.values():
                 if puzzle.complete_par or puzzle.brise:

@@ -88,6 +88,9 @@ class AnalyseCoup:
     meilleur_alternative: Optional[dict] = None
     alternative_est_elmaas: bool = False
 
+    plateau_avant: Optional[dict] = None
+    plateau_apres: Optional[dict] = None
+
     valeur_positionnelle: float = 0.0
     valeur_tactique: float = 0.0
     valeur_strategique: float = 0.0
@@ -119,6 +122,8 @@ class AnalyseCoup:
             "valeur_strategique": round(self.valeur_strategique, 2),
             "meilleur_alternative": self.meilleur_alternative,
             "alternative_est_elmaas": self.alternative_est_elmaas,
+            "plateau_avant": self.plateau_avant,
+            "plateau_apres": self.plateau_apres,
         }
 
 
@@ -613,6 +618,10 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     else:
         classification = CLASSE_MISSED
 
+    # Plateaux avant/apres
+    plateau_avant = dict(etat_avant.plateau.pieces) if etat_avant else None
+    plateau_apres = dict(etat_apres_joue.plateau.pieces) if etat_apres_joue else None
+
     # Meilleure alternative
     meilleur_alt = evaluations[0] if evaluations else None
     alt_est_elmaas = False
@@ -656,6 +665,8 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
             "score": round(meilleur_alt["score"], 2) if meilleur_alt else 0,
         } if meilleur_alt else None,
         alternative_est_elmaas=alt_est_elmaas,
+        plateau_avant=plateau_avant,
+        plateau_apres=plateau_apres,
     )
 
 
@@ -713,6 +724,8 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
 
     ecart = (score_optimal - score_joue) / max(abs(score_optimal), 1.0) if score_optimal != 0 else 0.0
 
+    plateau_avant = dict(etat_avant.plateau.pieces) if etat_avant else None
+    plateau_apres = dict(etat_apres.plateau.pieces) if etat_apres else None
     return AnalyseCoup(
         index=coup_joue.get("index", 0),
         type_coup="repiocher",
@@ -726,6 +739,8 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         total_coups_possibles=2 if coups_poser else 1,
         scores_avant=scores_avant,
         scores_apres=scores_apres,
+        plateau_avant=plateau_avant,
+        plateau_apres=plateau_apres,
     )
 
 
@@ -780,6 +795,8 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
     else:
         classification = CLASSE_NOTMESSY
 
+    plateau_avant = dict(etat_avant.plateau.pieces) if etat_avant else None
+    plateau_apres = dict(etat_apres.plateau.pieces) if etat_apres else None
     return AnalyseCoup(
         index=coup_joue.get("index", 0),
         type_coup="scout",
@@ -793,6 +810,8 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         total_coups_possibles=3 if coups_poser else 1,
         scores_avant=scores_avant,
         scores_apres=scores_apres,
+        plateau_avant=plateau_avant,
+        plateau_apres=plateau_apres,
     )
 
 

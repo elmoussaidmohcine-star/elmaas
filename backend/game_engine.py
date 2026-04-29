@@ -842,22 +842,35 @@ def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
                 from pieces_generator import placement_valide
                 taille = etat.plateau.grille_bicolore.shape[0]
                 peut_jouer = False
+                peut_jouer_sur_puzzle = False
+                puzzles_actifs = [p for p in etat.plateau.puzzles.values() if not p.complete_par and not p.brise]
+                cellules_puzzles_actifs = set()
+                for p in puzzles_actifs:
+                    cellules_puzzles_actifs |= p.cellules
+
                 for piece in joueur_suivant.main_active:
-                    if peut_jouer:
+                    if peut_jouer_sur_puzzle:
                         break
                     for r in range(taille):
                         for c in range(taille):
                             valide, _ = placement_valide(piece, (r, c), etat.plateau.pieces, taille)
                             if valide:
                                 peut_jouer = True
-                                break
-                        if peut_jouer:
+                                # Condition intersection : au moins une cellule de la piece touche un puzzle actif
+                                for (pr, pc) in cellules_absolues(piece, (r, c)):
+                                    if (pr, pc) in cellules_puzzles_actifs:
+                                        peut_jouer_sur_puzzle = True
+                                        break
+                                if peut_jouer_sur_puzzle:
+                                    break
+                        if peut_jouer_sur_puzzle:
                             break
-                if not peut_jouer and not joueur_suivant.reserve:
+                # Si le joueur ne peut poser aucune piece intersectant un puzzle (meme s'il peut poser sur zones libres), fin
+                if not peut_jouer_sur_puzzle and not joueur_suivant.reserve:
                     terminer_manche(etat)
                     resultat["manche_terminee"] = True
                     resultat["gagnant"] = etat.gagnant
-                    resultat["motif"] = "no_moves"
+                    resultat["motif"] = "no_moves_puzzle"
 
     return resultat
 
