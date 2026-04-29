@@ -429,12 +429,22 @@ def quota_analyse():
     if quota_user["date"] != aujourd_hui:
         quota_user = {"date": aujourd_hui, "count": 0}
  
-    plan = "elmaas"  # FORCÉ ILLIMITÉ POUR TEST
+    plan = getattr(user, "plan", None) or "gratuit"
+    if plan == "elmaas":
+        limite = -1  # illimité
+    elif plan == "elmaasyon":
+        limite = 3
+    else:
+        limite = 1  # gratuit
+
+    count = quota_user.get("count", 0)
+    restant = -1 if limite == -1 else max(0, limite - count)
+
     return jsonify({
-        "limite": -1,
-        "utilise": 0,
+        "limite": limite,
+        "utilise": count,
         "plan": plan,
-        "restant": -1
+        "restant": restant
     })
 
 
@@ -487,8 +497,13 @@ def lancer_analyse(partie_id: str):
         analyses_quotidiennes[user.id] = {"date": aujourd_hui, "count": 0}
         quota_user = analyses_quotidiennes[user.id]
 
-    plan = getattr(user, "plan", None)
-    limite = float("inf") if plan == "elmaas" else (3 if plan == "elmaasyon" else 1)
+    plan = getattr(user, "plan", None) or "gratuit"
+    if plan == "elmaas":
+        limite = float("inf")
+    elif plan == "elmaasyon":
+        limite = 3
+    else:
+        limite = 1  # gratuit : 1 analyse/jour
 
     # FORCER PROFONDE — ignorer le mode demandé par le client
     profondeur = 2
