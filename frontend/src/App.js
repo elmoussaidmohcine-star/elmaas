@@ -299,6 +299,25 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
             ))}
           </div>
         )}
+        {modeIA !== "aucune" && niveauIA === 4 && (
+          <div style={{ 
+            marginTop: 12, 
+            padding: "10px 14px", 
+            background: "var(--bg3)", 
+            borderRadius: 8, 
+            border: "1px solid #ffd70044",
+            fontSize: 13,
+            color: "#ffd700",
+            textAlign: "center",
+            fontFamily: "var(--brush)",
+            lineHeight: 1.5
+          }}>
+            {L === 0 ? "Le GM 2500+ réfléchit profondément. Chaque coup peut prendre jusqu'à 10 secondes. Ce délai est nécessaire contre ce monstre." :
+             L === 1 ? "The GM 2500+ thinks deeply. Each move may take up to 10 seconds. This delay is necessary against this monster." :
+             L === 2 ? "الـ GM 2500+ يفكر بعمق. كل حركة قد تستغرق حتى 10 ثوانٍ. هذا التأخير ضروري ضد هذا الوحش." :
+             "El GM 2500+ piensa profundamente. Cada movimiento puede tardar hasta 10 segundos. Este retraso es necesario contra este monstruo."}
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
@@ -1129,7 +1148,8 @@ export default function App() {
     const tourIA = mode === "j1" ? 0 : 1;
     if (etatCourant.tour_actuel !== tourIA || etatCourant.manche_terminee) return;
     setIaEnCours(true);
-    await new Promise(r => setTimeout(r, 800));
+    const iaDelayMs = niveau >= 4 ? 10000 : 800;
+    await new Promise(r => setTimeout(r, iaDelayMs));
     try {
       const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
       setEtat(res.data.etat);

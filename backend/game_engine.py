@@ -834,20 +834,19 @@ def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
 
     if not etat.manche_terminee and not attente_pouvoir:
         etat.passer_tour()
-        # Vérifier si le joueur suivant peut poser une pièce
-        # Si non, terminer la manche (le gagnant est celui avec le plus de points)
+        # Vérifier si le joueur suivant peut poser une pièce intersectant un puzzle actif
         if not etat.manche_terminee:
             joueur_suivant = etat.joueur_actif()
             if joueur_suivant.main_active:
-                from pieces_generator import placement_valide
+                from pieces_generator import placement_valide, cellules_absolues
                 taille = etat.plateau.grille_bicolore.shape[0]
-                peut_jouer = False
-                peut_jouer_sur_puzzle = False
                 puzzles_actifs = [p for p in etat.plateau.puzzles.values() if not p.complete_par and not p.brise]
                 cellules_puzzles_actifs = set()
                 for p in puzzles_actifs:
                     cellules_puzzles_actifs |= p.cellules
 
+                peut_jouer = False
+                peut_jouer_sur_puzzle = False
                 for piece in joueur_suivant.main_active:
                     if peut_jouer_sur_puzzle:
                         break
@@ -856,7 +855,6 @@ def jouer_tour(etat: EtatJeu, action: str, **kwargs) -> dict:
                             valide, _ = placement_valide(piece, (r, c), etat.plateau.pieces, taille)
                             if valide:
                                 peut_jouer = True
-                                # Condition intersection : au moins une cellule de la piece touche un puzzle actif
                                 for (pr, pc) in cellules_absolues(piece, (r, c)):
                                     if (pr, pc) in cellules_puzzles_actifs:
                                         peut_jouer_sur_puzzle = True

@@ -123,24 +123,53 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
   const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
-  // PLATEAU APRES LE COUP (données directes du backend)
-  const etatPlateau = useMemo(() => {
-    if (!coupActuel?.plateau_apres) return null;
-    const pieces = coupActuel.plateau_apres;
+  // RECONSTRUCTION SEQUENTIELLE DU PLATEAU - ETAT APRES LE COUP
+  // Helper : construit un etat compatible Board depuis un dict pieces
+  const buildEtatPlateau = useCallback((pieces, numeroTour = 0) => {
+    if (!pieces) return null;
+    const cellulesActives = Object.entries(pieces)
+      .filter(([k, v]) => v != null)
+      .map(([k]) => k.split(",").map(Number));
     return {
       plateau: {
         pieces,
         puzzles: {},
         cellules_libres: [],
-        cellules_actives: Object.keys(pieces),
+        cellules_actives: cellulesActives,
         grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0))
       },
-      joueur1: { couleur: "rouge", main_active: [], nb_pieces_reserve: 0 },
-      joueur2: { couleur: "noir", main_active: [], nb_pieces_reserve: 0 },
+      joueur1: { 
+        couleur: "rouge", 
+        main_active: [], 
+        nb_pieces_reserve: 0,
+        serie_actuelle: 0,
+        nb_pieces_posees_depuis_regen: 0,
+        seuil_regen_actuel: 5,
+        pieces_protegees: []
+      },
+      joueur2: { 
+        couleur: "noir", 
+        main_active: [], 
+        nb_pieces_reserve: 0,
+        serie_actuelle: 0,
+        nb_pieces_posees_depuis_regen: 0,
+        seuil_regen_actuel: 5,
+        pieces_protegees: []
+      },
       tour_actuel: 0,
-      numero_tour: coupActuel?.numero_tour || 0,
+      numero_tour: numeroTour,
+      manche_terminee: false,
+      gagnant: null,
+      victoire_immediate: false,
+      scores: { rouge: 0, noir: 0 },
     };
-  }, [coupActuel, taille]);
+  }, [taille]);
+
+  // PLATEAU APRES LE COUP (données directes du backend)
+  const etatPlateau = useMemo(() => {
+    if (!coupActuel?.plateau_apres) return null;
+    return buildEtatPlateau(coupActuel.plateau_apres, coupActuel.numero_tour);
+  }, [coupActuel, buildEtatPlateau]);
 
   // PLATEAU DU MEILLEUR COUP (marqueur sur plateau avant)
   const etatPlateauMeilleur = useMemo(() => {
@@ -150,20 +179,8 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     if (alt && alt.origine) {
       pieces[`${alt.origine[0]},${alt.origine[1]}`] = "meilleur_coup";
     }
-    return {
-      plateau: {
-        pieces,
-        puzzles: {},
-        cellules_libres: [],
-        cellules_actives: Object.keys(pieces),
-        grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0))
-      },
-      joueur1: { couleur: "rouge", main_active: [], nb_pieces_reserve: 0 },
-      joueur2: { couleur: "noir", main_active: [], nb_pieces_reserve: 0 },
-      tour_actuel: 0,
-      numero_tour: coupActuel?.numero_tour || 0,
-    };
-  }, [showMeilleurCoup, coupActuel, taille]);
+    return buildEtatPlateau(pieces, coupActuel.numero_tour);
+  }, [showMeilleurCoup, coupActuel, buildEtatPlateau]);
 
   const coupActuel = analyseCourante?.coups?.[indexCoup];
   const totalCoups = analyseCourante?.coups?.length || 0;
@@ -299,6 +316,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                   etat={etatPlateauMeilleur}
                   taille={taille}
                   pixelsPhoto={pixelsPhoto}
+                  couleurJoueur={couleurAnalysee}
                   onPoserPiece={null}
                 />
               </div>
