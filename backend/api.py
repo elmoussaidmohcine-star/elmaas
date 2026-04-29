@@ -195,7 +195,7 @@ def serialiser_joueur(joueur) -> dict:
         "id": joueur.id,
         "couleur": joueur.couleur,
         "main_active": [serialiser_piece(p) for p in joueur.main_active],
-        "nb_pieces_reserve": len(joueur.reserve),
+        "reserve": [serialiser_piece(p) for p in joueur.reserve],
         "pieces_protegees": list(joueur.pieces_protegees),
         "serie_actuelle": joueur.serie_actuelle,
         "nb_puzzles_completes": len(joueur.score_puzzles),

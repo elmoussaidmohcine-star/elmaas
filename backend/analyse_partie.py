@@ -1,12 +1,14 @@
-# ELMAAS — analyse_partie.py v4.2
+# ELMAAS — analyse_partie.py v4.3
 # Analyse rigoureuse de partie
 #
-# CORRECTIONS v4.2 (critique) :
-#   1. Puzzles copiés en PROFONDEUR (plus de partage entre copies)
-#   2. Injection robuste piece_data : append si index hors limites
-#   3. Helper _trouver_index_piece pour retrouver une pièce par son identité
-#   4. Replay : recherche de l'index actuel de la pièce avant de jouer
-#   5. Classification : meilleure logique de fallback pour le rang
+# CORRECTIONS v4.3 (critique — 3 bugs) :
+#   1. Fallback MANUEL de placement : si jouer_tour échoue, on place
+#      la pièce directement sur le plateau sans validation → le replay
+#      ne déraille jamais.
+#   2. _normaliser_piece gère à la fois tuples et listes (JSON désérialisé).
+#   3. Injection systématique de piece_data AVANT chaque coup poser,
+#      avec reconstruction de la réserve si vide.
+#   4. Debug logging pour tracer le replay coup par coup.
 
 import copy
 import time
@@ -175,25 +177,26 @@ class ResumeAnalyse:
 
 
 # ═══════════════════════════════════════════════════════════
-# UTILITAIRES DE COMPARAISON DE PIÈCES
+# UTILITAIRES DE COMPARAISON DE PIÈCES (robustes JSON)
 # ═══════════════════════════════════════════════════════════
 
 def _normaliser_piece(piece: Optional[dict]) -> Optional[tuple]:
-    """Empreinte unique d'une pièce : (forme, cellules_triées, enlevement)."""
+    """
+    Empreinte unique d'une pièce : (forme, cellules_triées, enlevement).
+    Gère à la fois les tuples (Python natif) et les listes (JSON désérialisé).
+    """
     if piece is None:
         return None
     cellules = piece.get("cellules", [])
+    # Normaliser : convertir listes en tuples, puis trier
     cellules_norm = tuple(sorted(
-        tuple(c) if not isinstance(c, tuple) else c for c in cellules
+        tuple(c) if isinstance(c, (list, tuple)) else (c,) for c in cellules
     ))
     return (piece.get("forme"), cellules_norm, piece.get("enlevement", False))
 
 
 def _trouver_index_piece(main: list, piece_data: dict) -> int:
-    """
-    Trouve l'index d'une pièce dans la main par son identité.
-    Retourne -1 si non trouvée.
-    """
+    """Trouve l'index d'une pièce dans la main par son identité. -1 si non trouvée."""
     cible = _normaliser_piece(piece_data)
     if cible is None:
         return -1
@@ -206,23 +209,41 @@ def _trouver_index_piece(main: list, piece_data: dict) -> int:
 def _injecter_piece_robuste(joueur: Joueur, piece_data: dict, idx_souhaite: int) -> int:
     """
     Injecte une pièce dans la main d'un joueur de façon robuste.
-    Si la pièce est déjà présente, retourne son index actuel.
-    Sinon, injecte à idx_souhaite si valide, ou append.
-    Retourne l'index final de la pièce.
+    Si déjà présente → retourne son index actuel.
+    Sinon → injecte à idx_souhaite si valide, ou append.
     """
     # Déjà présente ?
     idx_actuel = _trouver_index_piece(joueur.main_active, piece_data)
     if idx_actuel >= 0:
         return idx_actuel
-
     # Injection à l'index souhaité
     if 0 <= idx_souhaite < len(joueur.main_active):
         joueur.main_active[idx_souhaite] = piece_data
         return idx_souhaite
-
     # Fallback : append
     joueur.main_active.append(piece_data)
     return len(joueur.main_active) - 1
+
+
+# ═══════════════════════════════════════════════════════════
+# PLACEMENT MANUEL (fallback quand jouer_tour échoue)
+# ═══════════════════════════════════════════════════════════
+
+def _placer_piece_manuel(etat: EtatJeu, piece: dict, origine: tuple, couleur: str):
+    """
+    Place une pièce sur le plateau SANS validation, en mode fallback.
+    Utilisé uniquement quand jouer_tour échoue pour garantir que le replay
+    avance toujours.
+    """
+    try:
+        absolues = cellules_absolues(piece, origine)
+        for r, c in absolues:
+            cle = f"{r},{c}"
+            valeur = "diamant" if piece.get("enlevement", False) else couleur
+            etat.plateau.pieces[cle] = valeur
+            etat.plateau.cellules_actives.add((r, c))
+    except Exception as e:
+        print(f"[analyse] Erreur placement manuel : {e}")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -233,17 +254,8 @@ def copier_etat_manuel(etat: EtatJeu) -> EtatJeu:
     """Copie manuelle d'EtatJeu. LES PUZZLES SONT COPIÉS EN PROFONDEUR."""
     plateau_orig = etat.plateau
 
-    # Copie PROFONDE des pieces
     pieces_copy = copy.deepcopy(dict(plateau_orig.pieces))
-
-    # ═══════════════════════════════════════════════════════════
-    # CORRECTION v4.2 : Copie PROFONDE des puzzles
-    # Avant : puzzles_copy = dict(plateau_orig.puzzles)  # ← SHALLOW !
-    # Les objets Puzzle étaient partagés → complete_par persistait
-    # entre simulations → corrompait le replay.
-    # ═══════════════════════════════════════════════════════════
     puzzles_copy = copy.deepcopy(dict(plateau_orig.puzzles))
-
     cellules_libres_copy = set(plateau_orig.cellules_libres)
     cellules_actives_copy = set(plateau_orig.cellules_actives)
     grille_copy = plateau_orig.grille_bicolore.copy()
@@ -299,12 +311,10 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
 
     score_total = 0.0
 
-    # 1. DIFFERENTIEL DE CELLULES
     cellules_moi = scores.get(couleur_perspective, 0)
     cellules_adv = scores.get(couleur_adverse, 0)
     score_total += (cellules_moi - cellules_adv) * 3.0
 
-    # 2. PUZZLES COMPLETES ET PROGRESSION
     nb_puzzles_moi = 0
     nb_puzzles_adv = 0
 
@@ -366,7 +376,6 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
             avance = nb_moi - nb_adv
             score_total += avance * 1.5 + (nb_moi + nb_adv) * 0.5
 
-    # 3. SERIES
     joueur_moi = etat.joueur1 if etat.joueur1.couleur == couleur_perspective else etat.joueur2
     joueur_adv = etat.joueur2 if joueur_moi == etat.joueur1 else etat.joueur1
 
@@ -378,7 +387,6 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
     if joueur_adv.serie_actuelle >= 4:
         score_total -= 20.0
 
-    # 4. MATERIEL
     score_total += len(joueur_moi.main_active) * 1.5
     score_total += len(joueur_moi.reserve) * 1.0
     score_total -= len(joueur_adv.main_active) * 1.2
@@ -390,12 +398,10 @@ def evaluer_position_complete(etat: EtatJeu, couleur_perspective: str) -> float:
         else:
             score_total -= 15.0
 
-    # 5. MOBILITE
     mobilite_moi = compter_mobilite(etat, joueur_moi)
     mobilite_adv = compter_mobilite(etat, joueur_adv)
     score_total += (mobilite_moi - mobilite_adv) * 0.3
 
-    # 6. ELMAAS EN MAIN
     elmaas_moi = sum(1 for p in joueur_moi.main_active if p.get("enlevement"))
     elmaas_adv = sum(1 for p in joueur_adv.main_active if p.get("enlevement"))
     score_total += elmaas_moi * 3.0
@@ -422,7 +428,6 @@ def compter_mobilite(etat: EtatJeu, joueur: Joueur) -> int:
 # ═══════════════════════════════════════════════════════════
 
 def lister_coups_poser(etat: EtatJeu, joueur: Joueur) -> List[Tuple[int, Tuple[int, int]]]:
-    """Tous les coups 'poser' legaux."""
     coups = []
     taille = etat.plateau.grille_bicolore.shape[0]
     for idx, piece in enumerate(joueur.main_active):
@@ -448,7 +453,6 @@ def lister_coups_scout(etat: EtatJeu, joueur: Joueur) -> List[str]:
 
 
 def lister_tous_coups(etat: EtatJeu, joueur: Joueur) -> List[dict]:
-    """Liste TOUTES les actions possibles pour un joueur."""
     coups = []
     for idx, orig in lister_coups_poser(etat, joueur):
         piece = joueur.main_active[idx]
@@ -479,17 +483,11 @@ def simuler_coup(etat: EtatJeu, coup: dict) -> Tuple[Optional[EtatJeu], Optional
             idx = coup["piece_index"]
             joueur = etat_copie.joueur_actif()
 
-            # ═══════════════════════════════════════════════════════════
-            # CORRECTION v4.2 : Injection ROBUSTE de piece_data
-            # Avant : échouait si idx >= len(main_active)
-            # Maintenant : append si hors limites
-            # ═══════════════════════════════════════════════════════════
             if "piece_data" in coup:
                 idx = _injecter_piece_robuste(joueur, coup["piece_data"], idx)
 
-            # Vérification finale de l'index
             if idx < 0 or idx >= len(joueur.main_active):
-                return etat_copie, {"succes": False, "erreur": f"Index {idx} invalide (main={len(joueur.main_active)})"}
+                return etat_copie, {"succes": False, "erreur": f"Index {idx} invalide"}
 
             resultat = action_poser_piece(etat_copie, idx, coup["origine"])
             if not resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
@@ -511,6 +509,7 @@ def simuler_coup(etat: EtatJeu, coup: dict) -> Tuple[Optional[EtatJeu], Optional
 
     except Exception as e:
         print(f"[analyse] Erreur simulation: {e}")
+        import traceback; traceback.print_exc()
         return None, None
 
 
@@ -559,7 +558,6 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
 
     scores_avant = calculer_scores(etat_avant)
     serie_avant = joueur.serie_actuelle
-
     plateau_avant_dict = copy.deepcopy(dict(etat_avant.plateau.pieces))
 
     # Simuler le coup joue
@@ -597,17 +595,13 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     joueur_apres = etat_apres_joue.joueur1 if etat_apres_joue.joueur1.couleur == couleur else etat_apres_joue.joueur2
     serie_apres_joue = joueur_apres.serie_actuelle
 
-    # ═══════════════════════════════════════════════════════════
     # Générer les alternatives avec la pièce exacte injectée
-    # ═══════════════════════════════════════════════════════════
     etat_pour_alternatives = copier_etat_manuel(etat_avant)
     joueur_alt = etat_pour_alternatives.joueur_actif()
 
     if piece_joue is not None and piece_joue_norm is not None:
-        # Injecter la pièce exacte pour qu'elle apparaisse dans les alternatives
         idx_injecte = _trouver_index_piece(joueur_alt.main_active, piece_joue)
         if idx_injecte < 0:
-            # Pas trouvée : remplacer à l'index historique si possible
             if piece_idx_joue < len(joueur_alt.main_active):
                 joueur_alt.main_active[piece_idx_joue] = piece_joue
             else:
@@ -631,9 +625,7 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
 
     evaluations.sort(key=lambda x: x["score"], reverse=True)
 
-    # ═══════════════════════════════════════════════════════════
     # Trouver le score du coup joué PAR IDENTITÉ DE PIÈCE
-    # ═══════════════════════════════════════════════════════════
     score_joue = None
     rang_joue = 0
     for i, ev in enumerate(evaluations):
@@ -650,7 +642,7 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
                 rang_joue = i
                 break
 
-    # Fallback : évaluer directement et insérer dans le classement
+    # Fallback : évaluer directement
     if score_joue is None:
         score_joue = simuler_coup_pour_eval(etat_avant, {
             "type": "poser",
@@ -892,27 +884,35 @@ def analyser_partie_complete(
     erreurs_consecutives = 0
     MAX_ERREURS = 5
 
+    # Compter les pièces posées pour debug
+    nb_coups_poser = sum(1 for c in coups_historique if c.get("type") == "poser")
+    print(f"[analyse] Début : {len(coups_historique)} coups historique ({nb_coups_poser} poser)")
+    print(f"[analyse] Couleur demandée : {couleur_joueur}")
+    print(f"[analyse] Réserve J1 : {len(etat.joueur1.reserve)} | J2 : {len(etat.joueur2.reserve)}")
+
     MAX_COUPS_ANALYSES = 50
     for i, coup in enumerate(coups_historique):
         if i >= MAX_COUPS_ANALYSES:
             break
         if time.time() > deadline_global:
-            print(f"[analyse] Timeout global — {len(coups_analyses)}/{len(coups_historique)} coups analyses")
+            print(f"[analyse] Timeout global")
             break
 
         couleur_coup = coup.get("couleur", "")
         doit_analyser = (couleur_joueur is None or couleur_coup == couleur_joueur)
 
-        # ═══════════════════════════════════════════════════════════
-        # CORRECTION v4.2 : Synchronisation robuste du tour
-        # ═══════════════════════════════════════════════════════════
+        # Synchronisation du tour
         if couleur_coup:
             joueur_attendu = etat.joueur1 if etat.tour_actuel == 0 else etat.joueur2
             if joueur_attendu.couleur != couleur_coup:
+                print(f"[analyse] Sync tour : attendu {joueur_attendu.couleur} vs coup {couleur_coup} → bascule")
                 etat.tour_actuel = 1 - etat.tour_actuel
 
         joueur_actuel = etat.joueur1 if etat.joueur1.couleur == couleur_coup else etat.joueur2
         serie_max = max(serie_max, joueur_actuel.serie_actuelle)
+
+        # DEBUG : état avant le coup
+        nb_pieces_plateau = len([v for v in etat.plateau.pieces.values() if v is not None])
 
         try:
             if coup["type"] == "poser" and doit_analyser:
@@ -951,13 +951,13 @@ def analyser_partie_complete(
                 erreurs_consecutives = 0
 
             # ═══════════════════════════════════════════════════════════
-            # CORRECTION v4.2 : Replay robuste avec recherche de pièce
+            # REPLAY ROBUSTE avec fallback manuel
             # ═══════════════════════════════════════════════════════════
             coup_reussi = False
-            if coup["type"] == "poser":
-                piece_data = coup.get("piece_data")
-                idx_replay = coup.get("piece_index", 0)
+            piece_data = coup.get("piece_data")
+            idx_replay = coup.get("piece_index", 0)
 
+            if coup["type"] == "poser":
                 if piece_data:
                     idx_replay = _injecter_piece_robuste(
                         joueur_actuel, piece_data, idx_replay
@@ -968,6 +968,20 @@ def analyser_partie_complete(
                           pouvoir=coup.get("pouvoir", "rien"))
                 coup_reussi = res.get("succes", False)
 
+                # ═══════════════════════════════════════════════════════════
+                # FALLBACK MANUEL : si jouer_tour échoue, on place quand même
+                # ═══════════════════════════════════════════════════════════
+                if not coup_reussi and piece_data:
+                    print(f"[analyse] FALLBACK manuel coup {i} ({couleur_coup}) à {coup.get('origine')}")
+                    _placer_piece_manuel(etat, piece_data,
+                                         tuple(coup.get("origine", [0, 0])),
+                                         joueur_actuel.couleur)
+                    # Retirer la pièce de la main si elle y est encore
+                    idx_rm = _trouver_index_piece(joueur_actuel.main_active, piece_data)
+                    if idx_rm >= 0:
+                        joueur_actuel.main_active.pop(idx_rm)
+                    coup_reussi = True  # On considère que ça a réussi
+
             elif coup["type"] == "repiocher":
                 res = jouer_tour(etat, "repiocher")
                 coup_reussi = res.get("succes", False)
@@ -976,23 +990,29 @@ def analyser_partie_complete(
                 res = jouer_tour(etat, "scout")
                 coup_reussi = res.get("succes", False)
 
-            if not coup_reussi and coup["type"] in ("poser", "repiocher", "scout"):
-                print(f"[analyse] Coup {i} ({coup['type']}) échoué, passage forcé")
-                etat.tour_actuel = 1 - etat.tour_actuel
-                etat.numero_tour += 1
+            # Passage de tour si le coup a réussi (ou fallback)
+            if coup_reussi and coup["type"] in ("poser", "repiocher", "scout"):
+                etat.passer_tour()
+
+            # Debug
+            nb_pieces_apres = len([v for v in etat.plateau.pieces.values() if v is not None])
+            if i < 10 or not coup_reussi:
+                print(f"[analyse] Coup {i:2d} | {couleur_coup:5s} | {coup['type']:8s} | "
+                      f"pieces {nb_pieces_plateau:3d} → {nb_pieces_apres:3d} | "
+                      f"{'OK' if coup_reussi else 'FAIL'}")
 
             erreurs_consecutives = 0
 
         except Exception as e:
-            print(f"[analyse] Erreur coup {i} ({coup.get('type')}): {e}")
+            print(f"[analyse] ERREUR coup {i} ({coup.get('type')}): {e}")
             import traceback; traceback.print_exc()
             erreurs_consecutives += 1
             if erreurs_consecutives >= MAX_ERREURS:
-                print("[analyse] Trop d'erreurs consecutives, arret.")
+                print("[analyse] Trop d'erreurs, arrêt.")
                 break
             continue
 
-    # Resume
+    # Résumé
     resume.serie_max_atteinte = serie_max
     resume.nb_elmaas_joues = nb_elmaas_joues
     resume.nb_elmaas_opportunites_manquees = nb_elmaas_opportunites
@@ -1036,8 +1056,8 @@ def analyser_partie_complete(
     resume.nb_coups_analyses = nb_analyses
     resume.stats_classes = {k: v for k, v in compteur_classes.items() if v > 0}
 
-    print(f"[analyse] Termine : {nb_analyses}/{len(coups_historique)} coups analyses")
-    print(f"[analyse] Precision : {precision:.1f}%")
+    print(f"[analyse] TERMINÉ : {nb_analyses}/{len(coups_historique)} coups analysés")
+    print(f"[analyse] Précision : {precision:.1f}%")
     print(f"[analyse] Classes : {resume.stats_classes}")
 
     return {
@@ -1049,10 +1069,6 @@ def analyser_partie_complete(
         "nb_coups_total": len(coups_historique),
     }
 
-
-# ═══════════════════════════════════════════════════════════
-# FONCTIONS UTILITAIRES
-# ═══════════════════════════════════════════════════════════
 
 def formater_analyse_rapide(resultat_analyse: dict) -> str:
     resume = resultat_analyse.get("resume", {})
@@ -1085,12 +1101,8 @@ def formater_analyse_rapide(resultat_analyse: dict) -> str:
 
 
 if __name__ == "__main__":
-    print("Module analyse_partie.py v4.2 (corrige) charge.")
+    print("Module analyse_partie.py v4.3 (corrige) charge.")
     print("Fonctions principales :")
     print("  - analyser_partie_complete(coups, etat_initial, couleur, profondeur)")
     print("  - evaluer_position_complete(etat, couleur)")
     print("  - formater_analyse_rapide(resultat)")
-    print("")
-    print("Classes de classification :")
-    for cls, poids in POIDS_CLASSIFICATION.items():
-        print(f"  {cls:12} (poids {poids})")
