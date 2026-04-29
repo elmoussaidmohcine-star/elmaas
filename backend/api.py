@@ -581,9 +581,14 @@ def jouer(partie_id: str):
             "couleur": etat.joueur_actif().couleur,
         }
         if action == "poser":
-            coup_enregistre["piece_index"] = int(data.get("piece_index", 0))
+            piece_idx = int(data.get("piece_index", 0))
+            coup_enregistre["piece_index"] = piece_idx
             coup_enregistre["origine"] = list(data.get("origine", [0, 0]))
             coup_enregistre["pouvoir"] = data.get("pouvoir", "rien")
+            # Enregistrer la piece complete pour que l'analyse puisse la rejouer
+            joueur_actuel = etat.joueur_actif()
+            if 0 <= piece_idx < len(joueur_actuel.main_active):
+                coup_enregistre["piece_data"] = serialiser_piece(joueur_actuel.main_active[piece_idx])
         if partie_id not in historique_coups:
             historique_coups[partie_id] = []
         historique_coups[partie_id].append(coup_enregistre)

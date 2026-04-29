@@ -1,6 +1,5 @@
-// ELMAAS — EcranAnalyse.js v5
-// Analyse statique de partie sans IA GM 2500+
-// Analyse de tous les coups des deux joueurs avec proposition du meilleur coup
+// ELMAAS — EcranAnalyse.js v6
+// Analyse statique de partie — CORRIGÉ (coupActuel avant useMemo + robustesse)
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
@@ -20,43 +19,20 @@ const COULEURS_CLASSE = {
 };
 
 const NOMS_CLASSE_FR = {
-  ELMAAS: "ELMAAS",
-  ELMAASYON: "ELMAASYON",
-  MASSY: "MASSY",
-  NOTMESSY: "NOTMESSY",
-  MISSED: "MISSED",
-  CHESS: "CHESS",
-  BLUNDER: "BLUNDER",
+  ELMAAS: "ELMAAS", ELMAASYON: "ELMAASYON", MASSY: "MASSY",
+  NOTMESSY: "NOTMESSY", MISSED: "MISSED", CHESS: "CHESS", BLUNDER: "BLUNDER",
 };
-
 const NOMS_CLASSE_EN = {
-  ELMAAS: "ELMAAS",
-  ELMAASYON: "ELMAASYON",
-  MASSY: "MASSY",
-  NOTMESSY: "NOTMESSY",
-  MISSED: "MISSED",
-  CHESS: "CHESS",
-  BLUNDER: "BLUNDER",
+  ELMAAS: "ELMAAS", ELMAASYON: "ELMAASYON", MASSY: "MASSY",
+  NOTMESSY: "NOTMESSY", MISSED: "MISSED", CHESS: "CHESS", BLUNDER: "BLUNDER",
 };
-
 const NOMS_CLASSE_AR = {
-  ELMAAS: "الماس",
-  ELMAASYON: "الماسيون",
-  MASSY: "ماسي",
-  NOTMESSY: "نوتمسي",
-  MISSED: "ميسد",
-  CHESS: "شيس",
-  BLUNDER: "بلندر",
+  ELMAAS: "الماس", ELMAASYON: "الماسيون", MASSY: "ماسي",
+  NOTMESSY: "نوتمسي", MISSED: "ميسد", CHESS: "شيس", BLUNDER: "بلندر",
 };
-
 const NOMS_CLASSE_ES = {
-  ELMAAS: "ELMAAS",
-  ELMAASYON: "ELMAASYON",
-  MASSY: "MASSY",
-  NOTMESSY: "NOTMESSY",
-  MISSED: "MISSED",
-  CHESS: "CHESS",
-  BLUNDER: "BLUNDER",
+  ELMAAS: "ELMAAS", ELMAASYON: "ELMAASYON", MASSY: "MASSY",
+  NOTMESSY: "NOTMESSY", MISSED: "MISSED", CHESS: "CHESS", BLUNDER: "BLUNDER",
 };
 
 function getNomsClasse(L) {
@@ -75,30 +51,34 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
   const [coteActif, setCoteActif] = useState("moi");
   const [quotaInfo, setQuotaInfo] = useState(null);
   const [showMeilleurCoup, setShowMeilleurCoup] = useState(false);
+  const [citationAttente, setCitationAttente] = useState(() => getCitationAttente(L));
 
   const nomsClasse = getNomsClasse(L);
 
   // Charger l'analyse au montage
   useEffect(() => {
+    let cancelled = false;
     const fetchAnalyse = async () => {
       try {
         const token = localStorage.getItem("elmaas_token");
+        const couleurAdv = couleurJoueur === "rouge" ? "noir" : "rouge";
 
-        // Analyse du joueur
+        // Analyse du joueur (avec timeout de 30s côté client pour éviter blocage)
         const resMoi = await axios.post(
           `${API}/analyse/${partieId}`,
           { couleur: couleurJoueur, mode: mode || "rapide" },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
         );
+        if (cancelled) return;
         setAnalyseMoi(resMoi.data.analyse);
 
         // Analyse de l'adversaire
-        const couleurAdv = couleurJoueur === "rouge" ? "noir" : "rouge";
         const resAdv = await axios.post(
           `${API}/analyse/${partieId}`,
           { couleur: couleurAdv, mode: mode || "rapide" },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
         );
+        if (cancelled) return;
         setAnalyseAdv(resAdv.data.analyse);
 
         setQuotaInfo({
@@ -106,6 +86,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           plan: resMoi.data.plan
         });
       } catch (err) {
+        if (cancelled) return;
         if (err.response?.status === 429) {
           setErreur({ type: "quota", message: err.response.data.erreur });
         } else if (err.response?.status === 401) {
@@ -114,18 +95,31 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
           setErreur({ type: "generic", message: err.response?.data?.erreur || "Erreur d'analyse" });
         }
       } finally {
-        setChargement(false);
+        if (!cancelled) setChargement(false);
       }
     };
     fetchAnalyse();
+    return () => { cancelled = true; };
   }, [partieId, couleurJoueur, mode]);
+
+  // Citation qui change toutes les 5s pendant le chargement
+  useEffect(() => {
+    if (!chargement) return;
+    const interval = setInterval(() => setCitationAttente(getCitationAttente(L)), 5000);
+    return () => clearInterval(interval);
+  }, [chargement, L]);
 
   const analyseCourante = coteActif === "moi" ? analyseMoi : analyseAdv;
   const couleurAnalysee = coteActif === "moi" ? couleurJoueur : (couleurJoueur === "rouge" ? "noir" : "rouge");
 
+  // IMPORTANT: coupActuel et totalCoups doivent être définis AVANT les useMemo
+  const coupsListe = analyseCourante?.coups || [];
+  const totalCoups = coupsListe.length;
+  const coupActuel = totalCoups > 0 && indexCoup < totalCoups ? coupsListe[indexCoup] : null;
+
   // Helper : construit un etat compatible Board depuis un dict pieces
   const buildEtatPlateau = useCallback((pieces, numeroTour = 0) => {
-    if (!pieces) return null;
+    if (!pieces || typeof pieces !== "object") return null;
     const cellulesActives = Object.entries(pieces)
       .filter(([k, v]) => v != null)
       .map(([k]) => k.split(",").map(Number));
@@ -138,22 +132,14 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         grille_bicolore: Array(taille).fill().map(() => Array(taille).fill(0))
       },
       joueur1: { 
-        couleur: "rouge", 
-        main_active: [], 
-        nb_pieces_reserve: 0,
-        serie_actuelle: 0,
-        nb_pieces_posees_depuis_regen: 0,
-        seuil_regen_actuel: 5,
-        pieces_protegees: []
+        couleur: "rouge", main_active: [], nb_pieces_reserve: 0,
+        serie_actuelle: 0, nb_pieces_posees_depuis_regen: 0,
+        seuil_regen_actuel: 5, pieces_protegees: []
       },
       joueur2: { 
-        couleur: "noir", 
-        main_active: [], 
-        nb_pieces_reserve: 0,
-        serie_actuelle: 0,
-        nb_pieces_posees_depuis_regen: 0,
-        seuil_regen_actuel: 5,
-        pieces_protegees: []
+        couleur: "noir", main_active: [], nb_pieces_reserve: 0,
+        serie_actuelle: 0, nb_pieces_posees_depuis_regen: 0,
+        seuil_regen_actuel: 5, pieces_protegees: []
       },
       tour_actuel: 0,
       numero_tour: numeroTour,
@@ -181,9 +167,6 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     return buildEtatPlateau(pieces, coupActuel.numero_tour);
   }, [showMeilleurCoup, coupActuel, buildEtatPlateau]);
 
-  const coupActuel = analyseCourante?.coups?.[indexCoup];
-  const totalCoups = analyseCourante?.coups?.length || 0;
-
   const precedent = useCallback(() => {
     setIndexCoup(prev => Math.max(0, prev - 1));
     setShowMeilleurCoup(false);
@@ -204,12 +187,8 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [precedent, suivant]);
 
+  // ÉCRAN DE CHARGEMENT
   if (chargement) {
-    const [citationAttente, setCitationAttente] = useState(() => getCitationAttente(L));
-    useEffect(() => {
-      const interval = setInterval(() => setCitationAttente(getCitationAttente(L)), 5000);
-      return () => clearInterval(interval);
-    }, [L]);
     return (
       <div className="ecran-analyse-overlay">
         <div className="ecran-analyse" style={{ justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
@@ -233,6 +212,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     );
   }
 
+  // ÉCRAN D'ERREUR
   if (erreur) {
     return (
       <div className="popup-overlay" onClick={onFermer}>
@@ -247,12 +227,29 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
     );
   }
 
+  // Si pas de coups analysés
+  if (!analyseCourante || totalCoups === 0) {
+    return (
+      <div className="popup-overlay" onClick={onFermer}>
+        <div className="popup-pouvoir" onClick={e => e.stopPropagation()}>
+          <div className="popup-titre">{t("analyseTitre", L)}</div>
+          <div className="popup-sous-titre">
+            {L === 0 ? "Aucun coup à analyser pour cette partie." : 
+             L === 1 ? "No moves to analyze for this game." :
+             L === 2 ? "لا توجد حركات لتحليلها في هذه المباراة." :
+             "No hay movimientos para analizar en esta partida."}
+          </div>
+          <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
+        </div>
+      </div>
+    );
+  }
+
   const precision = analyseCourante?.precision_pct ?? 0;
   const stats = analyseCourante?.stats || {};
   const classification = coupActuel?.classification;
   const couleurClasse = COULEURS_CLASSE[classification] || "var(--muted)";
 
-  // Textes selon langue
   const textes = {
     coup: L === 0 ? "Coup" : L === 1 ? "Move" : L === 2 ? "الحركة" : "Movimiento",
     sur: L === 0 ? "sur" : L === 1 ? "of" : L === 2 ? "من" : "de",
@@ -385,7 +382,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
               </div>
 
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                {textes.tour} {coupActuel?.numero_tour} — {textes.joueur}: {coupActuel?.couleur}
+                {textes.tour} {coupActuel?.numero_tour ?? "?"} — {textes.joueur}: {coupActuel?.couleur ?? "?"}
               </div>
 
               {coupActuel?.rang > 1 && (
@@ -450,7 +447,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                         {textes.origine}: [{coupActuel.meilleur_alternative.origine?.join(",")}]
                       </div>
                       {coupActuel.meilleur_alternative.est_elmaas && (
-                        <div style={{ color: "#00BFFF" }}>⚡ {textes.elmaas}</div>
+                        <div style={{ color: "#00BFFF" }}>ELMAAS {textes.elmaas}</div>
                       )}
                       <div style={{ color: "var(--muted)", marginTop: 4, fontSize: 11 }}>
                         Score: {coupActuel.meilleur_alternative.score} vs {Math.round(coupActuel.score_joue)}

@@ -506,18 +506,31 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
 
     piece_idx_joue = coup_joue.get("piece_index", 0)
     origine_joue = tuple(coup_joue.get("origine", [0, 0]))
-    piece_joue = joueur.main_active[piece_idx_joue] if piece_idx_joue < len(joueur.main_active) else None
+
+    # Utiliser piece_data si disponible (enregistree par api.py)
+    piece_joue = coup_joue.get("piece_data")
+    if piece_joue is None and piece_idx_joue < len(joueur.main_active):
+        piece_joue = joueur.main_active[piece_idx_joue]
     est_elmaas = piece_joue.get("enlevement", False) if piece_joue else False
 
     scores_avant = calculer_scores(etat_avant)
     serie_avant = joueur.serie_actuelle
 
-    # Simuler le coup joue
+    # Simuler le coup joue — injecter piece_data dans la main si necessaire
+    if piece_joue and piece_idx_joue < len(joueur.main_active):
+        # Remplacer temporairement la piece a l'index par la piece historique
+        piece_originale = joueur.main_active[piece_idx_joue]
+        joueur.main_active[piece_idx_joue] = piece_joue
+
     etat_apres_joue, resultat_joue = simuler_coup(etat_avant, {
         "type": "poser",
         "piece_index": piece_idx_joue,
         "origine": origine_joue,
     })
+
+    # Restaurer la piece originale
+    if piece_joue and piece_idx_joue < len(joueur.main_active):
+        joueur.main_active[piece_idx_joue] = piece_originale
 
     if etat_apres_joue is None:
         return AnalyseCoup(
@@ -547,10 +560,13 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     # Generer toutes les alternatives
     tous_coups = lister_tous_coups(etat_avant, joueur)
 
-    # Evaluer chaque alternative
+    # Evaluer chaque alternative — LIMITE a 20 pour eviter timeout
+    MAX_ALTERNATIVES = 20
     evaluations = []
-    for alt in tous_coups:
+    for i, alt in enumerate(tous_coups):
         if deadline and time.time() > deadline:
+            break
+        if i >= MAX_ALTERNATIVES:
             break
 
         score = simuler_coup_pour_eval(etat_avant, alt, couleur)
@@ -839,7 +855,7 @@ def analyser_partie_complete(
     Returns:
         dict avec coups analyses, stats, resume, precision
     """
-    deadline_global = time.time() + timeout_global
+    deadline_global = time.time() + min(timeout_global, 30)  # Max 30s pour eviter timeout HTTP
 
     etat = copier_etat_manuel(etat_initial)
     coups_analyses = []
@@ -856,7 +872,10 @@ def analyser_partie_complete(
     erreurs_consecutives = 0
     MAX_ERREURS = 5
 
+    MAX_COUPS_ANALYSES = 50
     for i, coup in enumerate(coups_historique):
+        if i >= MAX_COUPS_ANALYSES:
+            break
         if time.time() > deadline_global:
             print(f"[analyse] Timeout global — {len(coups_analyses)}/{len(coups_historique)} coups analyses")
             break
