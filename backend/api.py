@@ -435,6 +435,9 @@ def quota_analyse():
 
 @app.route("/analyse/<partie_id>", methods=["POST"])
 def lancer_analyse(partie_id: str):
+    # EXTRAIRE LE JSON DE LA REQUÊTE — CETTE LIGNE MANQUAIT
+    data = request.get_json() or {}
+    
     # Récupérer historique + etat_initial depuis RAM ou DB
     historique = historique_coups.get(partie_id, [])
     etat_init_dict = etats_initiaux.get(partie_id)
@@ -556,8 +559,6 @@ def lancer_analyse(partie_id: str):
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({"erreur": f"Erreur analyse : {str(e)}"}), 500
-
-
 @app.route("/jouer/<partie_id>", methods=["POST"])
 def jouer(partie_id: str):
     etat = parties.get(partie_id)
