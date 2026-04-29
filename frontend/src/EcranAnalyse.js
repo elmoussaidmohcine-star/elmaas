@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Board } from "../components/Board";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import Board from "./Board";
 
 const taille = 14;
 
