@@ -26,7 +26,7 @@ from auth import auth_bp
 from stripe_routes import stripe_bp
 from filter_mots_sacres import contient_mot_sacre, message_blocage
 from ocr_check import verifier_photo
-from analyse_partie import analyser_partie_complete
+from analyse_partie import analyser_partie_complete, copier_etat_manuel
 from matchmaking import matchmaking_bp, FileAttente
 
 # Google OAuth (optionnel)
@@ -81,6 +81,9 @@ if GOOGLE_OAUTH_DISPO:
     init_google_oauth(app)
 
 app.register_blueprint(matchmaking_bp)
+
+# Stockage des états initiaux pour analyse correcte
+etats_initiaux = {}
 
 with app.app_context():
     db.create_all()
@@ -195,7 +198,7 @@ def serialiser_joueur(joueur) -> dict:
         "id": joueur.id,
         "couleur": joueur.couleur,
         "main_active": [serialiser_piece(p) for p in joueur.main_active],
-        "reserve": [serialiser_piece(p) for p in joueur.reserve],
+        "nb_pieces_reserve": len(joueur.reserve),
         "pieces_protegees": list(joueur.pieces_protegees),
         "serie_actuelle": joueur.serie_actuelle,
         "nb_puzzles_completes": len(joueur.score_puzzles),
@@ -368,6 +371,8 @@ def nouvelle_partie():
         else:
             partie_id = str(uuid.uuid4())
         parties[partie_id] = etat
+        etats_initiaux[partie_id] = copier_etat_manuel(etat)
+        print(f"[api] État initial sauvegardé : {partie_id}")
         pixels_par_partie[partie_id] = pixels
         historique_coups[partie_id] = []
         etats_initiaux[partie_id] = serialiser_etat(etat)
@@ -528,21 +533,31 @@ def lancer_analyse(partie_id: str):
         return etat
 
     try:
-        etat_initial = None
-        try:
-            etat_initial = deserialiser_etat_local(etat_init_dict)
-        except Exception as e_deser:
-            import traceback; traceback.print_exc()
-            print(f"[analyse] Erreur désérialisation : {e_deser}")
-            etat_initial = parties.get(partie_id)
+        # Utiliser l'état initial sauvegardé (propre : plateau vide, puzzles frais)
+        etat_initial = etats_initiaux.get(partie_id)
+
+        if etat_initial is None:
+            print(f"[analyse] État initial non trouvé en mémoire, fallback sur frontend")
+            try:
+                etat_initial = deserialiser_etat_local(etat_init_dict)
+            except Exception as e_deser:
+                import traceback; traceback.print_exc()
+                print(f"[analyse] Erreur désérialisation : {e_deser}")
+                etat_initial = parties.get(partie_id)
 
         if etat_initial is None:
             return jsonify({"erreur": "Impossible de reconstruire l'état initial de la partie"}), 500
 
+        # Debug : vérifier que l'état est propre
+        nb_p = len([v for v in etat_initial.plateau.pieces.values() if v is not None])
+        print(f"[analyse] État : J1 main={len(etat_initial.joueur1.main_active)} res={len(etat_initial.joueur1.reserve)}")
+        print(f"[analyse] État : J2 main={len(etat_initial.joueur2.main_active)} res={len(etat_initial.joueur2.reserve)}")
+        print(f"[analyse] État : plateau={nb_p} pièces posées (doit être proche de 0)")
+
         resultat = analyser_partie_complete(
             coups_historique=historique,
             etat_initial=etat_initial,
-            couleur_joueur=data.get("couleur"),  # "rouge" ou "noir" ou None
+            couleur_joueur=data.get("couleur"),
             profondeur=profondeur,
             timeout_global=timeout_analyse
         )
