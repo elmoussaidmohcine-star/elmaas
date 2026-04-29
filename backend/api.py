@@ -585,7 +585,7 @@ def jouer(partie_id: str):
             coup_enregistre["piece_index"] = piece_idx
             coup_enregistre["origine"] = list(data.get("origine", [0, 0]))
             coup_enregistre["pouvoir"] = data.get("pouvoir", "rien")
-            # Enregistrer la piece complete pour que l'analyse puisse la rejouer
+            # Enregistrer la piece complete pour que l'analyse puisse la rejouer exactement
             joueur_actuel = etat.joueur_actif()
             if 0 <= piece_idx < len(joueur_actuel.main_active):
                 coup_enregistre["piece_data"] = serialiser_piece(joueur_actuel.main_active[piece_idx])

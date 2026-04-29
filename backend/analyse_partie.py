@@ -441,6 +441,12 @@ def simuler_coup(etat: EtatJeu, coup: dict) -> Tuple[Optional[EtatJeu], Optional
 
     try:
         if coup["type"] == "poser":
+            # Si piece_data fourni (historique exact), injecter temporairement
+            if "piece_data" in coup:
+                idx = coup["piece_index"]
+                joueur = etat_copie.joueur_actif()
+                if 0 <= idx < len(joueur.main_active):
+                    joueur.main_active[idx] = coup["piece_data"]
             resultat = action_poser_piece(
                 etat_copie,
                 coup["piece_index"],
@@ -507,7 +513,7 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     piece_idx_joue = coup_joue.get("piece_index", 0)
     origine_joue = tuple(coup_joue.get("origine", [0, 0]))
 
-    # Utiliser piece_data si disponible (enregistree par api.py)
+    # Utiliser piece_data si disponible (historique exact), sinon fallback sur main_active
     piece_joue = coup_joue.get("piece_data")
     if piece_joue is None and piece_idx_joue < len(joueur.main_active):
         piece_joue = joueur.main_active[piece_idx_joue]
@@ -516,21 +522,13 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     scores_avant = calculer_scores(etat_avant)
     serie_avant = joueur.serie_actuelle
 
-    # Simuler le coup joue — injecter piece_data dans la main si necessaire
-    if piece_joue and piece_idx_joue < len(joueur.main_active):
-        # Remplacer temporairement la piece a l'index par la piece historique
-        piece_originale = joueur.main_active[piece_idx_joue]
-        joueur.main_active[piece_idx_joue] = piece_joue
-
+    # Simuler le coup joue avec piece_data exacte
     etat_apres_joue, resultat_joue = simuler_coup(etat_avant, {
         "type": "poser",
         "piece_index": piece_idx_joue,
         "origine": origine_joue,
+        "piece_data": piece_joue,
     })
-
-    # Restaurer la piece originale
-    if piece_joue and piece_idx_joue < len(joueur.main_active):
-        joueur.main_active[piece_idx_joue] = piece_originale
 
     if etat_apres_joue is None:
         return AnalyseCoup(
@@ -839,8 +837,8 @@ def analyser_partie_complete(
     coups_historique: list,
     etat_initial: EtatJeu,
     couleur_joueur: Optional[str] = None,
-    profondeur: int = 1,
-    timeout_global: int = 120
+    profondeur: int = 3,
+    timeout_global: int = 30
 ) -> dict:
     """
     Analyse complete d'une partie.
@@ -855,7 +853,7 @@ def analyser_partie_complete(
     Returns:
         dict avec coups analyses, stats, resume, precision
     """
-    deadline_global = time.time() + min(timeout_global, 30)  # Max 30s pour eviter timeout HTTP
+    deadline_global = time.time() + timeout_global
 
     etat = copier_etat_manuel(etat_initial)
     coups_analyses = []
@@ -926,6 +924,9 @@ def analyser_partie_complete(
             # REJOUER le coup pour avancer l'etat (TOUJOURS)
             if coup["type"] == "poser":
                 idx_safe = min(coup.get("piece_index", 0), len(joueur_actuel.main_active) - 1)
+                # Injecter piece_data historique si disponible
+                if "piece_data" in coup and idx_safe < len(joueur_actuel.main_active):
+                    joueur_actuel.main_active[idx_safe] = coup["piece_data"]
                 jouer_tour(etat, "poser", piece_index=idx_safe,
                           origine=tuple(coup.get("origine", [0, 0])),
                           pouvoir=coup.get("pouvoir", "rien"))

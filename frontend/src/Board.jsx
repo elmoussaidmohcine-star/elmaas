@@ -8,25 +8,26 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import "./Board.css";
 
-const ROUGE   = "#cc2200";
-const ROUGE_C = "#ff4422";
-const NOIR_B  = "#222222";
-const NOIR_C  = "#555566";
+const COULEURS = {
+  1: { ROUGE: "#cc2200", ROUGE_C: "#ff4422", NOIR_B: "#222222", NOIR_C: "#555566", DIAMANT: "#00BFFF" },
+  2: { ROUGE: "#00CED1", ROUGE_C: "#40E0D0", NOIR_B: "#F0E68C", NOIR_C: "#FFFACD", DIAMANT: "#FFFFFF" },
+};
 
-function couleurFrontierePuzzle(puzzle) {
+// C passé en paramètre car défini dans le composant
+function couleurFrontierePuzzle(puzzle, C) {
   if (!puzzle) return "#1a1a2a";
   if (puzzle.brise) return "#884400";
-  if (puzzle.complete_par === "rouge") return ROUGE_C;
+  if (puzzle.complete_par === "rouge") return C.ROUGE_C;
   if (puzzle.complete_par === "noir")  return "#aaaaaa";
-  if (puzzle.type_couleur === "mono_rouge") return ROUGE;
-  if (puzzle.type_couleur === "mono_noir")  return NOIR_C;
+  if (puzzle.type_couleur === "mono_rouge") return C.ROUGE;
+  if (puzzle.type_couleur === "mono_noir")  return C.NOIR_C;
   if (puzzle.type_couleur === "mixte")      return "mixte";
   return "#2a2a4a";
 }
 
-function couleurFrontiereMixte(r, c, dir) {
+function couleurFrontiereMixte(r, c, dir, C) {
   const pair = (r + c + (dir === "top" || dir === "bottom" ? 0 : 1)) % 2 === 0;
-  return pair ? ROUGE : NOIR_C;
+  return pair ? C.ROUGE : C.NOIR_C;
 }
 
 function couleurBgComplete(puzzle) {
@@ -47,10 +48,8 @@ function positionValide(cellules, origine, pieces, taille, estEnlevement = false
     if (r < 0 || r >= taille || c < 0 || c >= taille) return false;
     const contenu = pieces[`${r},${c}`];
     if (estEnlevement) {
-      // ELMAAS : interdit sur diamant existant
       if (contenu === "diamant") return false;
     } else {
-      // Normale : interdit sur rouge ou noir, OK sur vide ou diamant
       if (contenu !== undefined && contenu !== null && contenu !== "diamant") return false;
     }
   }
@@ -60,8 +59,19 @@ function positionValide(cellules, origine, pieces, taille, estEnlevement = false
 export default function Board({
   etat, taille = 16, couleurJoueur,
   pieceSelectionnee, pieceIdx, pixelsPhoto,
-  onPoserPiece, modeCible, onCibleSelectionnee, extractionsEnCours
+  onPoserPiece, modeCible, onCibleSelectionnee, extractionsEnCours,
+  modeCouleur = 1
 }) {
+  const C = COULEURS[modeCouleur] || COULEURS[1];
+  const mapCouleurClasse = (couleur) => {
+    if (modeCouleur === 2) {
+      if (couleur === "rouge") return "cyan";
+      if (couleur === "noir") return "jaune";
+      if (couleur === "diamant") return "diamant-mode2";
+    }
+    return couleur;
+  };
+
   const [survol, setSurvol] = useState(null);
   const [puzzleEclaire, setPuzzleEclaire] = useState(null);
   const [animPuzzles, setAnimPuzzles] = useState({});
@@ -205,8 +215,6 @@ export default function Board({
 
           const estEclaire = cellulesEclairees.has(key);
 
-          // ✅ FIX : si la cellule est éclairée, utiliser le puzzle éclairé
-          // pour les frontières et le style, pas forcément le puzzle principal
           const pidAffiche = estEclaire && puzzleEclaire !== null
             ? puzzleEclaire
             : pidPrinc;
@@ -216,37 +224,33 @@ export default function Board({
           const brise = puzzleAffiche?.brise;
           const anime = pidPrinc !== undefined && animPuzzles[pidPrinc] === true;
 
-          // ✅ Frontières basées sur le puzzle affiché (éclairé ou principal)
           const frontieres = puzzleAffiche
             ? getFrontieres(r, c, pidAffiche)
             : {};
 
-          const cFBase = couleurFrontierePuzzle(puzzleAffiche);
+          const cFBase = couleurFrontierePuzzle(puzzleAffiche, C);  // ← C passé
           const estMixte = puzzleAffiche?.type_couleur === "mixte";
           let epaisseur = puzzleAffiche?.complete_par ? "3px" : "2px";
           if (estEclaire) epaisseur = "3px";
 
           const getCF = (dir) => {
             if (estEclaire) return "#ffffff";
-            if (estMixte) return couleurFrontiereMixte(r, c, dir);
+            if (estMixte) return couleurFrontiereMixte(r, c, dir, C);  // ← C passé
             return cFBase;
           };
 
-          // Puzzle secondaire pour intersection (toujours le non-affiché)
           const pid2 = estIntersection
             ? (pidAffiche === pids[0] ? pids[1] : pids[0])
             : null;
           const puzzle2 = pid2 !== null ? puzzles[pid2] : null;
           const frontieres2 = puzzle2 ? getFrontieres(r, c, pid2) : {};
-          const cF2 = couleurFrontierePuzzle(puzzle2);
+          const cF2 = couleurFrontierePuzzle(puzzle2, C);  // ← C passé
 
-          // Background
           const px = pixelsPhoto?.[r]?.[c];
           let bgColor = px
             ? `rgba(${px[0]},${px[1]},${px[2]},0.18)`
             : "rgba(10,10,20,0.18)";
 
-          // ✅ bg basé sur puzzleAffiche
           const bgComplete = couleurBgComplete(puzzleAffiche);
           if (bgComplete) bgColor = bgComplete;
           if (estEclaire) bgColor = "rgba(255,255,255,0.12)";
@@ -288,16 +292,13 @@ export default function Board({
               )}
 
               {/* Pièce posée */}
-              {couleurPiece && couleurPiece !== "diamant" && (
-                <div className={`piece-posee-v2 ${couleurPiece}`} />
-              )}
-              {couleurPiece === "diamant" && (
-                <div className="piece-posee-v2 diamant" />
+              {couleurPiece && (
+                <div className={`piece-posee-v2 ${mapCouleurClasse(couleurPiece)}`} />
               )}
 
               {/* Tag type puzzle */}
               {puzzleAffiche && frontieres.top && frontieres.left && (
-                <div className="tag-puzzle" style={{ color: estEclaire ? "#ffffff" : (estMixte ? ROUGE : cFBase) }}>
+                <div className="tag-puzzle" style={{ color: estEclaire ? "#ffffff" : (estMixte ? C.ROUGE : cFBase) }}>
                   {puzzleAffiche.type_couleur === "mixte" ? "R+N"
                     : puzzleAffiche.type_couleur === "mono_rouge" ? "R" : "N"}
                   {estIntersection ? "+" : ""}
@@ -323,7 +324,7 @@ export default function Board({
       {Object.entries(animPuzzles).map(([pid]) => {
         const puzz = puzzles[pid];
         if (!puzz) return null;
-        const coul = puzz.complete_par === "rouge" ? ROUGE_C : NOIR_C;
+        const coul = puzz.complete_par === "rouge" ? C.ROUGE_C : C.NOIR_C;
         return (puzz.cellules || []).map(([r, c]) => (
           <div key={`fx-${pid}-${r}-${c}`} style={{
             position: "absolute",

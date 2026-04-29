@@ -861,6 +861,7 @@ export default function App() {
   const [scoutEchanges, setScoutEchanges] = useState([]);
   const [matchmakingActif, setMatchmakingActif] = useState(false);
   const [modeAnalyse, setModeAnalyse] = useState("rapide");
+  const [modeCouleur, setModeCouleur] = useState(1); // 1=rouge/noir, 2=cyan/jaune
   const [messageChat, setMessageChat] = useState("");
   const [bullesActives, setBullesActives] = useState([]);
   const lastMsgTime = useRef(0);
@@ -1703,6 +1704,17 @@ export default function App() {
             </span>
           )}
           <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}></button>
+          {/* Toggle couleur — uniquement mode local */}
+          {!modeMultijoueur && (
+            <button 
+              className="btn-manuel" 
+              onClick={() => setModeCouleur(prev => prev === 1 ? 2 : 1)}
+              title={modeCouleur === 1 ? "Mode Cyan/Jaune" : "Mode Rouge/Noir"}
+              style={{ fontSize: 16, padding: "4px 8px" }}
+            >
+              {modeCouleur === 1 ? "🔴⚫" : "🔵🟡"}
+            </button>
+          )}
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
           <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
         </div>
@@ -1778,7 +1790,8 @@ export default function App() {
             pieceIdx={pieceIdx} pixelsPhoto={pixelsPhoto}
             onPoserPiece={!enModeCible && !attenteChoixPouvoir ? handlePoserPiece : null}
             modeCible={enModeCible} extractionsEnCours={extractionsEnCours}
-            onCibleSelectionnee={enModeCible ? handleCiblePouvoir : null} />
+            onCibleSelectionnee={enModeCible ? handleCiblePouvoir : null}
+            modeCouleur={modeCouleur} />
         </div>
 
         <div className="panneau-actions">

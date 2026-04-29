@@ -42,7 +42,7 @@ function getNomsClasse(L) {
   return NOMS_CLASSE_FR;
 }
 
-export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhoto, taille, onFermer, L }) {
+export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhoto, taille, onFermer, L, modeCouleur = 1 }) {
   const [analyseMoi, setAnalyseMoi] = useState(null);
   const [analyseAdv, setAnalyseAdv] = useState(null);
   const [chargement, setChargement] = useState(true);
@@ -66,7 +66,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         // Analyse du joueur (avec timeout de 30s côté client pour éviter blocage)
         const resMoi = await axios.post(
           `${API}/analyse/${partieId}`,
-          { couleur: couleurJoueur, mode: mode || "rapide" },
+          { couleur: couleurJoueur, mode: "profonde" },
           { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
         );
         if (cancelled) return;
@@ -75,7 +75,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
         // Analyse de l'adversaire
         const resAdv = await axios.post(
           `${API}/analyse/${partieId}`,
-          { couleur: couleurAdv, mode: mode || "rapide" },
+          { couleur: couleurAdv, mode: "profonde" },
           { headers: { Authorization: `Bearer ${token}` }, timeout: 30000 }
         );
         if (cancelled) return;
@@ -329,6 +329,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                   pixelsPhoto={pixelsPhoto}
                   couleurJoueur={couleurAnalysee}
                   onPoserPiece={null}
+                  modeCouleur={modeCouleur}
                 />
               </div>
             ) : etatPlateau ? (
@@ -338,6 +339,7 @@ export default function EcranAnalyse({ partieId, couleurJoueur, mode, pixelsPhot
                 pixelsPhoto={pixelsPhoto}
                 couleurJoueur={couleurAnalysee}
                 onPoserPiece={null}
+                modeCouleur={modeCouleur}
               />
             ) : (
               <div style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>
