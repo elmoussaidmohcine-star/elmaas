@@ -444,18 +444,24 @@ def lancer_analyse(partie_id: str):
     data = request.get_json() or {}
     
     # ═══════════════════════════════════════════════════════════
-    # Récupérer historique + etat_initial depuis RAM ou DB
-    # etats_initiaux contient des OBJETS EtatJeu (pas des dicts)
+    # Récupérer historique + etat_initial depuis RAM, DB, ou BODY
     # ═══════════════════════════════════════════════════════════
     historique = historique_coups.get(partie_id, [])
     etat_initial = etats_initiaux.get(partie_id)  # EtatJeu ou None
-    etat_init_dict = None  # dict JSON (pour fallback DB/frontend)
+    etat_init_dict = None  # dict JSON
 
     # Si etat_initial est un dict (bug ancien), le convertira plus bas
     if isinstance(etat_initial, dict):
         etat_init_dict = etat_initial
         etat_initial = None
 
+    # 1. Fallback : body de la requête (frontend envoie l'état)
+    if not etat_initial and not etat_init_dict:
+        etat_init_dict = data.get("etat_initial")
+        if etat_init_dict:
+            print(f"[analyse] État reçu du frontend (body)")
+
+    # 2. Fallback : base de données
     if not historique or not etat_initial:
         from models import PartieDB
         partie_db = PartieDB.query.get(partie_id)
@@ -463,10 +469,8 @@ def lancer_analyse(partie_id: str):
             if not historique and partie_db.historique_json:
                 historique = _json.loads(partie_db.historique_json)
                 historique_coups[partie_id] = historique
-            if not etat_initial and partie_db.etat_initial_json:
+            if not etat_initial and not etat_init_dict and partie_db.etat_initial_json:
                 etat_init_dict = _json.loads(partie_db.etat_initial_json)
-                # Ne PAS stocker le dict brut dans etats_initiaux
-                # Conversion en EtatJeu faite plus bas
 
     if not historique:
         return jsonify({"erreur": "Historique de partie introuvable"}), 404
