@@ -511,6 +511,43 @@ html[dir="rtl"] .manuel-content { text-align: right; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   PSEUDO JOUEURS (desktop)
+   ══════════════════════════════════════════════════════════ */
+.pseudo-joueur {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: var(--bg3);
+  border: 1px solid var(--bord);
+}
+.pseudo-nom {
+  font-family: var(--brush);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  color: var(--texte);
+}
+.pseudo-score {
+  font-family: var(--brush);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pseudo-joueur.rouge .pseudo-score { color: var(--rouge-c); }
+.pseudo-joueur.noir  .pseudo-score { color: #aaaaaa; }
+.score-cumule {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--brush);
+  white-space: nowrap;
+}
+
+/* ══════════════════════════════════════════════════════════
    RESPONSIVE MOBILE — Style Chess.com
    Header compact / timers très visibles / plateau centré
    ══════════════════════════════════════════════════════════ */
@@ -522,426 +559,323 @@ html[dir="rtl"] .manuel-content { text-align: right; }
    ══════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-  /* ── Base ── */
+
+  /* ════════════════════════════════════
+     BASE
+     ════════════════════════════════════ */
   .app.jeu {
     padding: 0;
-    overflow: hidden;
     height: 100dvh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
-  /* ── Header ultra-compact ── */
+  /* ════════════════════════════════════
+     HEADER — 2 lignes compactes
+     Ligne 1 : pseudo rouge | timers | pseudo noir
+     Ligne 2 : tour + badges + boutons
+     ════════════════════════════════════ */
   .app-header {
+    flex-wrap: wrap;
     padding: 4px 8px;
-    gap: 4px;
+    gap: 0;
     min-height: auto;
-    flex-wrap: nowrap;
-    border-bottom: 1px solid var(--bord);
     background: var(--bg2);
+    border-bottom: 1px solid var(--bord);
     flex-shrink: 0;
+    row-gap: 2px;
   }
   .header-gauche {
-    gap: 6px;
-    flex: 0 0 auto;
+    flex: 1 1 0;
     min-width: 0;
+    gap: 0;
+    justify-content: flex-start;
+    align-items: center;
   }
   .header-centre {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     justify-content: center;
+    align-items: center;
     gap: 4px;
     order: 0;
-    flex-basis: auto;
-    border: none;
-    margin: 0;
     padding: 0;
     background: transparent;
+    border: none;
+    margin: 0;
   }
   .header-droite {
+    flex: 1 1 0;
+    min-width: 0;
     gap: 4px;
-    flex: 0 0 auto;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  /* Cache le titre ELMAAS dans le header jeu */
+  .app-header .titre-jeu-petit { display: none; }
+
+  /* ── Pseudos joueurs ── */
+  .pseudo-joueur {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--bord);
     min-width: 0;
   }
-
-  .titre-jeu-petit {
-    font-size: 14px;
-    letter-spacing: 0.05em;
+  .pseudo-nom {
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 72px;
+    color: var(--texte);
+    font-family: var(--brush);
   }
+  .pseudo-score {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+    font-family: var(--brush);
+  }
+  .pseudo-joueur.rouge .pseudo-score { color: var(--rouge-c); }
+  .pseudo-joueur.noir  .pseudo-score { color: #aaaaaa; }
 
-  /* ── Timers très visibles ── */
+  /* ── Timers ── */
   .timers {
     gap: 4px;
-    padding: 2px 4px;
+    padding: 2px 6px;
     background: var(--bg3);
     border-radius: 8px;
     border: 1px solid var(--bord);
   }
   .timer-bloc {
-    padding: 3px 8px;
-    min-width: 56px;
+    padding: 3px 10px;
+    min-width: 58px;
     border-radius: 6px;
+    border-width: 2px;
   }
-  .timer-val {
-    font-size: 18px;
-  }
-  .timer-label {
-    font-size: 8px;
-  }
-
-  /* ── Pseudos / Scores ── */
-  .pseudo-joueur {
-    padding: 2px 6px;
-    min-width: 60px;
-  }
-  .pseudo-nom {
-    font-size: 11px;
-    max-width: 70px;
-  }
-  .pseudo-score {
-    font-size: 18px;
-  }
-  .score-cumule {
-    font-size: 9px;
-    margin-top: 2px;
-  }
+  .timer-val   { font-size: 19px; }
+  .timer-label { font-size: 7px; letter-spacing: 0.1em; }
 
   /* ── Tour info / badges ── */
   .tour-info {
     font-size: 10px;
     display: flex;
-    gap: 4px;
+    gap: 3px;
     align-items: center;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    max-width: 110px;
   }
   .badge-ia, .badge-serie, .badge-classif {
     font-size: 9px;
     padding: 1px 4px;
     margin-left: 0;
+    white-space: nowrap;
   }
+  .score-cumule { display: none; }
 
-  /* ── Boutons header ── */
-  .btn-manuel {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-  }
+  /* ── Boutons header compacts ── */
+  .btn-manuel { width: 30px; height: 30px; font-size: 13px; flex-shrink: 0; }
   .btn-reset {
-    font-size: 11px;
-    padding: 6px 10px;
-    min-height: 32px;
+    font-size: 0;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
+  .btn-reset::before { content: "\21BA"; font-size: 16px; color: var(--muted); }
 
-  /* ── Zone adverse (compacte) ── */
+  /* ════════════════════════════════════
+     ZONE ADVERSE — bande fine
+     ════════════════════════════════════ */
   .zone-adverse {
-    padding: 4px 8px;
+    padding: 3px 8px;
     gap: 6px;
     flex-shrink: 0;
-    min-height: 36px;
+    min-height: 26px;
+    border-bottom: 1px solid var(--bord);
+    background: var(--bg3);
   }
-  .adverse-label {
-    font-size: 10px;
-  }
-  .piece-cachee {
-    width: 14px;
-    height: 14px;
-  }
+  .adverse-label { font-size: 9px; color: var(--muted); white-space: nowrap; }
+  .piece-cachee  { width: 12px; height: 12px; }
 
-  /* ── Zone jeu : colonne verticale ── */
+  /* ════════════════════════════════════
+     ZONE JEU
+     ════════════════════════════════════ */
   .zone-jeu {
-    flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
     flex: 1;
+    flex-direction: column;
+    overflow: hidden;
     min-height: 0;
+    display: flex;
   }
 
-  /* ── Panneau main (HAUT sur mobile) ── */
+  /* ════════════════════════════════════
+     PANNEAU MAIN — barre fine (HAUT)
+     ════════════════════════════════════ */
   .panneau-main {
     width: 100%;
     min-width: unset;
+    max-height: 76px;
     flex-direction: row;
     flex-wrap: nowrap;
-    padding: 6px 8px;
+    padding: 4px 8px;
     gap: 6px;
     border-right: none;
     border-left: none;
     border-bottom: 1px solid var(--bord);
-    max-height: 110px;
-    overflow-y: hidden;
     overflow-x: auto;
+    overflow-y: hidden;
     flex-shrink: 0;
     -webkit-overflow-scrolling: touch;
+    align-items: center;
   }
   .panneau-titre {
-    width: auto;
-    margin-top: 0;
-    font-size: 10px;
+    font-size: 9px;
     white-space: nowrap;
     flex-shrink: 0;
-    align-self: center;
     padding-bottom: 0;
     border-bottom: none;
-    opacity: 0.7;
+    align-self: center;
+    opacity: 0.6;
   }
   .main-pieces-list {
     flex-wrap: nowrap;
     overflow-x: auto;
-    gap: 8px;
-    padding-bottom: 2px;
+    gap: 6px;
     align-items: center;
     -webkit-overflow-scrolling: touch;
   }
-  .serie-info {
-    font-size: 11px;
-    white-space: nowrap;
-    align-self: center;
-  }
+  .serie-info { font-size: 10px; white-space: nowrap; align-self: center; flex-shrink: 0; }
 
-  /* ── Mini-pièces : plus grosses pour le doigt ── */
-  .mini-piece {
-    min-width: 40px;
-    min-height: 40px;
-    transform: scale(1);
-  }
-  .mini-piece.sel {
-    transform: scale(1.12);
-  }
+  /* ── Mini-pieces tactiles ── */
+  .mini-piece { min-width: 44px; min-height: 44px; }
+  .mini-piece.sel { transform: scale(1.12); }
 
-  /* ── Plateau central ── */
+  /* ════════════════════════════════════
+     PLATEAU CENTRAL — espace max
+     ════════════════════════════════════ */
   .plateau-central {
-    padding: 8px;
     flex: 1;
+    padding: 6px;
     width: 100%;
     overflow: auto;
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
     -webkit-overflow-scrolling: touch;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
   }
 
-  /* ── Panneau actions (BAS sur mobile) ── */
+  /* ════════════════════════════════════
+     PANNEAU ACTIONS — barre du bas
+     ════════════════════════════════════ */
   .panneau-actions {
     width: 100%;
     min-width: unset;
     flex-direction: row;
-    flex-wrap: wrap;
-    padding: 6px 8px;
-    gap: 6px;
+    flex-wrap: nowrap;
+    padding: 4px 6px;
+    gap: 4px;
     border-right: none;
     border-left: none;
     border-top: 1px solid var(--bord);
-    border-bottom: none;
-    max-height: none;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
+    overflow-x: auto;
+    background: var(--bg2);
   }
-  .panneau-actions .panneau-titre {
-    display: none; /* On cache le titre pour gagner de la place */
-  }
-
+  .panneau-actions .panneau-titre { display: none; }
   .btn-action {
-    padding: 10px 14px;
-    font-size: 14px;
-    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 13px;
+    min-height: 42px;
     flex: 1 1 auto;
-    min-width: 80px;
+    min-width: 68px;
+    max-width: 115px;
     text-align: center;
     justify-content: center;
   }
-  .hint-action {
-    font-size: 11px;
-    width: 100%;
-    text-align: center;
-    padding: 6px;
-  }
+  .hint-action { font-size: 10px; width: 100%; text-align: center; padding: 4px 6px; }
 
-  /* ── Chat ── */
-  .chat-zone {
-    width: 100%;
-    order: 99;
-  }
-  .chat-zone input {
-    font-size: 16px; /* évite zoom iOS */
-    padding: 8px;
-  }
-  .chat-zone button {
-    min-height: 36px;
-    min-width: 36px;
-  }
+  /* ════════════════════════════════════
+     CHAT
+     ════════════════════════════════════ */
+  .chat-zone { width: 100%; flex-shrink: 0; border-top: 1px solid var(--bord); }
+  .chat-zone input { font-size: 16px; padding: 8px; }
+  .chat-zone button { min-height: 36px; min-width: 36px; }
 
-  /* ── Popups : plein écran tactile ── */
+  /* ════════════════════════════════════
+     POPUPS
+     ════════════════════════════════════ */
   .popup-pouvoir, .popup-scout {
     min-width: unset;
     width: 94vw;
     max-width: 420px;
-    padding: 20px 16px;
-    gap: 14px;
-    max-height: 85vh;
+    padding: 18px 14px;
+    gap: 12px;
+    max-height: 88vh;
     overflow-y: auto;
   }
-  .popup-titre {
-    font-size: 20px;
-  }
-  .popup-btn {
-    font-size: 15px;
-    padding: 12px 14px;
-    min-height: 48px;
-  }
-  .popup-options {
-    gap: 8px;
-  }
+  .popup-titre { font-size: 20px; }
+  .popup-btn   { font-size: 15px; padding: 12px 14px; min-height: 48px; }
+  .popup-options { gap: 8px; }
+  .popup-options-fin { gap: 8px; }
 
-  /* ── Bandeau cible ── */
+  /* ════════════════════════════════════
+     BANDEAU CIBLE
+     ════════════════════════════════════ */
   .bandeau-cible {
     width: 94vw;
     flex-wrap: wrap;
-    font-size: 13px;
-    padding: 8px 12px;
-    gap: 8px;
+    font-size: 12px;
+    padding: 8px 10px;
+    gap: 6px;
     top: auto;
-    bottom: 80px;
+    bottom: 90px;
     left: 3vw;
     transform: none;
   }
-  .bandeau-cible button {
-    min-height: 40px;
-    padding: 8px 14px;
-    font-size: 13px;
-  }
+  .bandeau-cible button { min-height: 40px; padding: 8px 12px; font-size: 13px; }
 
-  /* ── Écran taille / lobby ── */
-  .ecran-taille {
-    padding: 20px 16px;
-    gap: 16px;
-  }
-  .ecran-taille h1 {
-    font-size: clamp(32px, 12vw, 56px);
-  }
-  .taille-inputs {
-    gap: 16px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  .taille-final {
-    font-size: 48px;
-  }
-  .lobby-card {
-    padding: 24px 16px;
-    min-width: unset;
-    width: calc(100% - 32px);
-    max-width: 420px;
-  }
+  /* ════════════════════════════════════
+     ECRANS TAILLE / LOBBY
+     ════════════════════════════════════ */
+  .ecran-taille { padding: 20px 16px; gap: 14px; }
+  .taille-inputs { gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .taille-final  { font-size: 48px; }
+  .lobby-card { padding: 24px 16px; min-width: unset; width: calc(100% - 32px); max-width: 420px; }
 
-  /* ── Écran analyse ── */
-  .ecran-analyse {
-    padding: 8px;
-    gap: 8px;
-  }
-  .analyse-header {
-    padding: 6px 10px;
-  }
-  .analyse-titre {
-    font-size: 18px;
-  }
-  .analyse-precision {
-    font-size: 22px;
-  }
-  .analyse-corps {
-    flex-direction: column;
-    gap: 10px;
-  }
-  .analyse-panneau {
-    width: 100%;
-    min-width: unset;
-    gap: 10px;
-    padding: 10px;
-  }
-  .analyse-badge-classe {
-    font-size: 16px;
-    padding: 8px 12px;
-  }
+  /* ════════════════════════════════════
+     ECRAN ANALYSE
+     ════════════════════════════════════ */
+  .ecran-analyse     { padding: 8px; gap: 8px; }
+  .analyse-titre     { font-size: 18px; }
+  .analyse-precision { font-size: 22px; }
+  .analyse-corps     { flex-direction: column; gap: 10px; }
+  .analyse-plateau   { min-width: unset; width: 100%; align-items: center; }
+  .analyse-panneau   { width: 100%; min-width: unset; gap: 10px; padding: 10px; }
+  .analyse-badge-classe { font-size: 16px; padding: 8px 12px; }
 
-  /* ── Paramètres flottant ── */
-  .btn-params-flottant {
-    top: 8px;
-    right: 8px;
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-  html[dir="rtl"] .btn-params-flottant {
-    right: auto;
-    left: 8px;
-  }
-
-  /* ── Bulles messages ── */
-  .bulle-message {
-    width: 90vw;
-    text-align: center;
-    font-size: 14px;
-    padding: 10px 16px;
-  }
+  /* ════════════════════════════════════
+     BULLES + PARAMS
+     ════════════════════════════════════ */
+  .bulle-message { width: 90vw; text-align: center; font-size: 13px; padding: 8px 14px; }
+  .btn-params-flottant { top: 8px; right: 8px; width: 38px; height: 38px; font-size: 16px; }
+  html[dir="rtl"] .btn-params-flottant { right: auto; left: 8px; }
 }
 
-/* ══════════════════════════════════════════════════════════
-   TRÈS PETITS ÉCRANS (téléphones < 400px)
-   ══════════════════════════════════════════════════════════ */
-@media (max-width: 480px) {
-  .titre-jeu {
-    font-size: clamp(28px, 10vw, 44px);
-  }
-  .timer-val {
-    font-size: 16px;
-  }
-  .timer-label {
-    font-size: 7px;
-    letter-spacing: 0.1em;
-  }
-  .pseudo-score {
-    font-size: 16px;
-  }
-  .pseudo-nom {
-    font-size: 10px;
-    max-width: 60px;
-  }
-  .tour-info {
-    font-size: 9px;
-  }
-  .btn-manuel {
-    width: 28px;
-    height: 28px;
-    font-size: 12px;
-  }
-  .btn-reset {
-    font-size: 10px;
-    padding: 4px 8px;
-    min-height: 28px;
-  }
-  .mini-piece {
-    min-width: 36px;
-    min-height: 36px;
-  }
-  .panneau-main {
-    max-height: 90px;
-    padding: 4px 6px;
-  }
-  .popup-gagnant {
-    font-size: 20px;
-    padding: 10px 16px;
-  }
-  .popup-options-fin {
-    flex-direction: column;
-  }
-  .btn-action {
-    font-size: 13px;
-    padding: 8px 10px;
-    min-height: 40px;
-  }
-}
-
-/* ══════════════════════════════════════════════════════════
-   MODE PAYSAGE MOBILE — Header latéral, plateau max
-   ══════════════════════════════════════════════════════════ */
 @media (max-width: 768px) and (orientation: landscape) {
   .app.jeu {
     flex-direction: row;
@@ -1112,4 +1046,40 @@ html[dir="rtl"] .manuel-content { text-align: right; }
 @keyframes mini-elmaas-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(0, 191, 255, 0.3); }
   50% { box-shadow: 0 0 16px rgba(0, 191, 255, 0.6), 0 0 24px rgba(0, 191, 255, 0.2); }
+}
+/* ══════════════════════════════════════════════════════════
+   TRÈS PETITS ÉCRANS (< 480px)
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .titre-jeu { font-size: clamp(28px, 10vw, 44px); }
+  .timer-val  { font-size: 16px; }
+  .timer-label { font-size: 7px; letter-spacing: 0.08em; }
+  .pseudo-score { font-size: 18px; }
+  .pseudo-nom { font-size: 9px; max-width: 58px; }
+  .tour-info { font-size: 8px; max-width: 90px; }
+  .btn-manuel { width: 26px; height: 26px; font-size: 12px; }
+  .mini-piece { min-width: 38px; min-height: 38px; }
+  .panneau-main { max-height: 66px; padding: 3px 6px; }
+  .btn-action { font-size: 12px; padding: 7px 8px; min-height: 38px; min-width: 58px; }
+  .popup-gagnant { font-size: 20px; padding: 10px 16px; }
+  .popup-options-fin { flex-direction: column; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   ROBOT VERROUILLÉ (plan ELMAAS)
+   ══════════════════════════════════════════════════════════ */
+.ia-btn-niveau.verrouille {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.ia-btn-niveau.verrouille:hover {
+  border-color: var(--bord) !important;
+  color: var(--muted) !important;
+  background: var(--bg) !important;
+}
+.plan-card.actif .plan-nom::after {
+  content: " ✓";
+  color: #88ff88;
+  font-size: 14px;
 }
