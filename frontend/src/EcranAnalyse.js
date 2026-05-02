@@ -343,6 +343,78 @@ export default function EcranAnalyse({
                 {t("analyseChargement", L)}
               </div>
             )}
+
+            {/* ── PIÈCES EN MAIN — sous le plateau ── */}
+            <div style={{
+              width: "100%", marginTop: 14,
+              display: "flex", flexDirection: "column", gap: 10
+            }}>
+              {/* Joueur analysé */}
+              <div style={{
+                padding: "8px 12px", borderRadius: 8,
+                background: "rgba(255,255,255,0.02)",
+                border: `1px solid ${couleurAnalysee === "rouge" ? "rgba(220,60,60,0.2)" : "rgba(160,160,200,0.2)"}`,
+              }}>
+                <div style={{
+                  fontSize: 10, color: "var(--muted)", textTransform: "uppercase",
+                  letterSpacing: "0.15em", fontFamily: "var(--titre)",
+                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6
+                }}>
+                  <div style={{
+                    width: 7, height: 7, borderRadius: "50%",
+                    background: couleurAnalysee === "rouge" ? "var(--rouge-c)" : "var(--noir-c)"
+                  }} />
+                  {coteActif === "moi" ? t("analyseMesPieces", L) : t("analysePiecesAdv", L)}
+                  <span style={{ color: couleurAnalysee === "rouge" ? "var(--rouge-c)" : "var(--noir-c)", fontWeight: 600 }}>
+                    ({couleurAnalysee})
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 22 }}>
+                  {(coupActuel?.main_joueur || []).length > 0 ? (
+                    coupActuel.main_joueur.map((piece, i) => (
+                      <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAnalysee} />
+                    ))
+                  ) : (
+                    <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)", fontStyle: "italic" }}>
+                      {t("analyseAucuneDonneeMain", L)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Adversaire */}
+              <div style={{
+                padding: "8px 12px", borderRadius: 8,
+                background: "rgba(255,255,255,0.02)",
+                border: `1px solid ${couleurAdv === "rouge" ? "rgba(220,60,60,0.2)" : "rgba(160,160,200,0.2)"}`,
+              }}>
+                <div style={{
+                  fontSize: 10, color: "var(--muted)", textTransform: "uppercase",
+                  letterSpacing: "0.15em", fontFamily: "var(--titre)",
+                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6
+                }}>
+                  <div style={{
+                    width: 7, height: 7, borderRadius: "50%",
+                    background: couleurAdv === "rouge" ? "var(--rouge-c)" : "var(--noir-c)"
+                  }} />
+                  {coteActif === "moi" ? t("analysePiecesAdv", L) : t("analyseMesPieces", L)}
+                  <span style={{ color: couleurAdv === "rouge" ? "var(--rouge-c)" : "var(--noir-c)", fontWeight: 600 }}>
+                    ({couleurAdv})
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 22 }}>
+                  {(coupActuel?.main_adversaire || []).length > 0 ? (
+                    coupActuel.main_adversaire.map((piece, i) => (
+                      <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAdv} />
+                    ))
+                  ) : (
+                    <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)", fontStyle: "italic" }}>
+                      {t("analyseAucuneDonneeMain", L)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Colonne info */}
@@ -472,57 +544,6 @@ export default function EcranAnalyse({
                   )}
                 </div>
               )}
-            </div>
-
-            {/* MAINS DES JOUEURS */}
-            <div className="analyse-mains">
-              {/* Main du joueur analyse */}
-              <div style={{
-                fontSize: 10, color: "var(--muted)", textTransform: "uppercase",
-                letterSpacing: "0.15em", fontFamily: "var(--titre)",
-                borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 8
-              }}>
-                {coteActif === "moi" ? t("analyseMesPieces", L) : t("analysePiecesAdv", L)}
-                {" "}
-                <span style={{ color: couleurAnalysee === "rouge" ? "var(--rouge-c)" : "var(--noir-c)" }}>
-                  ({couleurAnalysee})
-                </span>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 28 }}>
-                {(coupActuel?.main_joueur || []).length > 0 ? (
-                  (coupActuel.main_joueur).map((piece, i) => (
-                    <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAnalysee} />
-                  ))
-                ) : (
-                  <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)", fontStyle: "italic" }}>
-                    {t("analyseAucuneDonneeMain", L)}
-                  </span>
-                )}
-              </div>
-
-              {/* Main adverse */}
-              <div style={{
-                fontSize: 10, color: "var(--muted)", textTransform: "uppercase",
-                letterSpacing: "0.15em", fontFamily: "var(--titre)",
-                borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 8, marginTop: 12
-              }}>
-                {coteActif === "moi" ? t("analysePiecesAdv", L) : t("analyseMesPieces", L)}
-                {" "}
-                <span style={{ color: couleurAdv === "rouge" ? "var(--rouge-c)" : "var(--noir-c)" }}>
-                  ({couleurAdv})
-                </span>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 28 }}>
-                {(coupActuel?.main_adversaire || []).length > 0 ? (
-                  (coupActuel.main_adversaire).map((piece, i) => (
-                    <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAdv} />
-                  ))
-                ) : (
-                  <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)", fontStyle: "italic" }}>
-                    {t("analyseAucuneDonneeMain", L)}
-                  </span>
-                )}
-              </div>
             </div>
 
             {/* Bouton meilleur coup */}

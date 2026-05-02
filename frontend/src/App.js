@@ -1104,6 +1104,8 @@ export default function App() {
         setTimerRouge(restant);
         if (restant <= 0) {
           clearInterval(timerRef.current);
+          // "noir" gagne car rouge n'a pas joué
+          setMancheTermineeInfo({ gagnant: "noir", scores: etat?.scores || {} });
           setPopup({ type: "temps_ecoule", titre: t("tempsEcoule", L),
             message: t("rougeNonJoue", L), gagnant: t("noir", L), couleurGagnant: "noir" });
         }
@@ -1111,6 +1113,8 @@ export default function App() {
         setTimerNoir(restant);
         if (restant <= 0) {
           clearInterval(timerRef.current);
+          // "rouge" gagne car noir n'a pas joué
+          setMancheTermineeInfo({ gagnant: "rouge", scores: etat?.scores || {} });
           setPopup({ type: "temps_ecoule", titre: t("tempsEcoule", L),
             message: t("noirNonJoue", L), gagnant: t("rouge", L), couleurGagnant: "rouge" });
         }
