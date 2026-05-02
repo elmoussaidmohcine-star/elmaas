@@ -75,15 +75,16 @@ class PartieHistorique(db.Model):
     __tablename__ = "parties_historique"
 
     id            = db.Column(db.Integer, primary_key=True)
+    partie_id     = db.Column(db.String(36), unique=True, nullable=True)   # anti-double
     joueur1_id    = db.Column(db.Integer, db.ForeignKey("utilisateurs.id"))
-    joueur2_id    = db.Column(db.Integer, db.ForeignKey("utilisateurs.id"))
+    joueur2_id    = db.Column(db.Integer, db.ForeignKey("utilisateurs.id"), nullable=True)
     gagnant_id    = db.Column(db.Integer, db.ForeignKey("utilisateurs.id"), nullable=True)
     elo_j1_avant  = db.Column(db.Integer)
-    elo_j2_avant  = db.Column(db.Integer)
+    elo_j2_avant  = db.Column(db.Integer, nullable=True)
     elo_j1_apres  = db.Column(db.Integer)
-    elo_j2_apres  = db.Column(db.Integer)
-    score_j1      = db.Column(db.Integer)  # cellules
-    score_j2      = db.Column(db.Integer)
+    elo_j2_apres  = db.Column(db.Integer, nullable=True)
+    score_j1      = db.Column(db.Integer)
+    score_j2      = db.Column(db.Integer, nullable=True)
     jouee_le      = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 

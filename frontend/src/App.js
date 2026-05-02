@@ -904,7 +904,9 @@ export default function App() {
     : (etat?.pseudo_adversaire || "ADVERSAIRE");
 
   const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });
-  
+  const [eloInfo, setEloInfo] = useState(null); // { avant, apres, delta }
+  const finPartieEnvoyee = useRef(new Set()); // anti-double par partie_id
+
   useEffect(() => {
     if (!mancheTermineeInfo) return;
     const g = mancheTermineeInfo.gagnant;
@@ -918,6 +920,36 @@ export default function App() {
       setScoresCumulesState(nouveauScore);
       setScoresCumules(pseudoAdverse, nouveauScore);
     }
+
+    // ── Mise à jour ELM ──────────────────────────────────────
+    const token = getToken();
+    const user  = getUser();
+    if (!token || !user || !partieId) return;
+    if (finPartieEnvoyee.current.has(partieId)) return;
+    finPartieEnvoyee.current.add(partieId);
+
+    const maCouleur   = monRole === "joueur2" ? "noir" : "rouge";
+    const egalite     = g === "egalite";
+    const jaiGagne    = !egalite && g === maCouleur;
+    const gagnantCode = egalite ? 0 : jaiGagne ? 1 : 2;
+    const scores      = mancheTermineeInfo.scores || {};
+
+    axios.post(`${API}/fin_partie`, {
+      partie_id:        partieId,
+      adversaire_pseudo: pseudoAdverse,
+      gagnant:          gagnantCode,
+      score_j1:         maCouleur === "rouge" ? (scores.rouge ?? 0) : (scores.noir ?? 0),
+      score_j2:         maCouleur === "rouge" ? (scores.noir  ?? 0) : (scores.rouge ?? 0),
+    }, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        if (res.data.succes && !res.data.deja_traite) {
+          setEloInfo({ avant: res.data.elo_avant, apres: res.data.elo_apres, delta: res.data.delta });
+          // Mettre à jour l'utilisateur en localStorage
+          const updatedUser = { ...user, elo: res.data.elo_apres };
+          localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
+        }
+      })
+      .catch(() => {});
   }, [mancheTermineeInfo]);
   
   const [showAnalyse, setShowAnalyse] = useState(false);
@@ -1371,6 +1403,7 @@ export default function App() {
     setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null);
     setMancheTermineeInfo(null); setPauseActive(false); setPauseIAActive(false); setDemandePauseRecue(null);
     setIaEnCours(false);
+    setEloInfo(null);
     setEtape(utilisateur?.pseudo ? "taille" : (utilisateur ? "pseudo" : "auth"));
   };
 
@@ -1593,6 +1626,27 @@ export default function App() {
             <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
               Score cumulé vs {pseudoAdverse} : {scoresCumules.moi}-{scoresCumules.lui}
             </div>
+
+            {/* Delta ELM */}
+            {eloInfo && (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                padding: "8px 16px", borderRadius: 8,
+                background: eloInfo.delta >= 0 ? "rgba(68,204,136,0.08)" : "rgba(204,34,0,0.08)",
+                border: `1px solid ${eloInfo.delta >= 0 ? "#44cc8844" : "#cc220044"}`,
+              }}>
+                <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--brush)" }}>ELM</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "var(--texte)", fontFamily: "var(--titre)" }}>
+                  {eloInfo.apres}
+                </span>
+                <span style={{
+                  fontSize: 13, fontWeight: 700, fontFamily: "var(--titre)",
+                  color: eloInfo.delta >= 0 ? "#44cc88" : "#ff6644",
+                }}>
+                  {eloInfo.delta >= 0 ? "+" : ""}{eloInfo.delta}
+                </span>
+              </div>
+            )}
             <div className="popup-options" style={{ flexDirection: "column", gap: 8 }}>
               <div style={{ fontSize: 14, color: "var(--muted)", textAlign: "center", marginBottom: 4 }}>
                 {L === 0 ? "Analyser la partie" : L === 1 ? "Analyze game" : L === 2 ? "تحليل المباراة" : "Analizar partida"}

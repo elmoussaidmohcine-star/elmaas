@@ -79,31 +79,129 @@ def classement():
         "ratio": round(u.victoires / u.parties_jouees * 100) if u.parties_jouees > 0 else 0,
     } for i, u in enumerate(top)])
 
+
+# ELO fictifs des robots (non stockés en DB, utilisés pour le calcul seulement)
+IA_ELO = {
+    "Chess":     400,
+    "Amal":      650,
+    "ELMAASYON": 850,
+    "ELMAAS":    1100,
+}
+
 @auth_bp.route("/fin_partie", methods=["POST"])
 def fin_partie():
     data = request.json or {}
     user = get_user_from_request()
     if not user:
         return jsonify({"erreur": "Non authentifie"}), 401
-    adversaire = Utilisateur.query.filter_by(pseudo=data.get("adversaire_pseudo")).first()
+
+    partie_id     = data.get("partie_id")          # UUID de la partie
+    adversaire_ps = data.get("adversaire_pseudo", "")
+    gagnant       = int(data.get("gagnant", 0))    # 1=moi gagne, 2=adversaire gagne, 0=égalité
+    score_j1      = int(data.get("score_j1", 0))
+    score_j2      = int(data.get("score_j2", 0))
+
+    # ── Anti-double : si partie_id déjà enregistrée → renvoyer l'ancien résultat ──
+    if partie_id:
+        existant = PartieHistorique.query.filter_by(partie_id=partie_id).first()
+        if existant:
+            return jsonify({
+                "succes": True,
+                "deja_traite": True,
+                "elo_avant": existant.elo_j1_avant,
+                "elo_apres": existant.elo_j1_apres,
+                "delta": existant.elo_j1_apres - existant.elo_j1_avant,
+            })
+
+    elo_user_avant = user.elo
+
+    # ── Cas IA : adversaire fictif, ELO fixe ──
+    est_ia = adversaire_ps in IA_ELO
+    if est_ia:
+        elo_ia = IA_ELO[adversaire_ps]
+        nv_elo_user, _ = calculer_elo(user.elo, elo_ia, gagnant)
+        user.elo = nv_elo_user
+        user.parties_jouees += 1
+        if gagnant == 1:   user.victoires += 1
+        elif gagnant == 2: user.defaites  += 1
+
+        db.session.add(PartieHistorique(
+            partie_id=partie_id,
+            joueur1_id=user.id,
+            joueur2_id=None,
+            gagnant_id=user.id if gagnant == 1 else None,
+            elo_j1_avant=elo_user_avant,
+            elo_j2_avant=elo_ia,
+            elo_j1_apres=nv_elo_user,
+            elo_j2_apres=elo_ia,
+            score_j1=score_j1,
+            score_j2=score_j2,
+        ))
+        db.session.commit()
+        return jsonify({
+            "succes": True,
+            "elo_avant": elo_user_avant,
+            "elo_apres": nv_elo_user,
+            "delta": nv_elo_user - elo_user_avant,
+        })
+
+    # ── Cas multijoueur : chercher l'adversaire en DB ──
+    adversaire = Utilisateur.query.filter_by(pseudo=adversaire_ps).first()
     if not adversaire:
-        return jsonify({"erreur": "Adversaire introuvable"}), 404
-    gagnant = int(data.get("gagnant", 0))
+        # Adversaire sans compte : mise à jour solo seulement
+        elo_virtuel = 500
+        nv_elo_user, _ = calculer_elo(user.elo, elo_virtuel, gagnant)
+        user.elo = nv_elo_user
+        user.parties_jouees += 1
+        if gagnant == 1:   user.victoires += 1
+        elif gagnant == 2: user.defaites  += 1
+        db.session.add(PartieHistorique(
+            partie_id=partie_id,
+            joueur1_id=user.id,
+            joueur2_id=None,
+            gagnant_id=user.id if gagnant == 1 else None,
+            elo_j1_avant=elo_user_avant,
+            elo_j2_avant=elo_virtuel,
+            elo_j1_apres=nv_elo_user,
+            elo_j2_apres=elo_virtuel,
+            score_j1=score_j1,
+            score_j2=score_j2,
+        ))
+        db.session.commit()
+        return jsonify({
+            "succes": True,
+            "elo_avant": elo_user_avant,
+            "elo_apres": nv_elo_user,
+            "delta": nv_elo_user - elo_user_avant,
+        })
+
+    # ── Deux joueurs avec comptes ──
     elo_j1_avant, elo_j2_avant = user.elo, adversaire.elo
     nv_elo_j1, nv_elo_j2 = calculer_elo(elo_j1_avant, elo_j2_avant, gagnant)
-    user.elo = nv_elo_j1; user.parties_jouees += 1
-    adversaire.elo = nv_elo_j2; adversaire.parties_jouees += 1
-    if gagnant == 1: user.victoires += 1; adversaire.defaites += 1
-    elif gagnant == 2: adversaire.victoires += 1; user.defaites += 1
+
+    user.elo = nv_elo_j1;        user.parties_jouees      += 1
+    adversaire.elo = nv_elo_j2;  adversaire.parties_jouees += 1
+    if gagnant == 1:
+        user.victoires += 1;       adversaire.defaites  += 1
+    elif gagnant == 2:
+        adversaire.victoires += 1; user.defaites        += 1
+
     db.session.add(PartieHistorique(
-        joueur1_id=user.id, joueur2_id=adversaire.id,
-        gagnant_id=user.id if gagnant==1 else (adversaire.id if gagnant==2 else None),
+        partie_id=partie_id,
+        joueur1_id=user.id,
+        joueur2_id=adversaire.id,
+        gagnant_id=user.id if gagnant == 1 else (adversaire.id if gagnant == 2 else None),
         elo_j1_avant=elo_j1_avant, elo_j2_avant=elo_j2_avant,
-        elo_j1_apres=nv_elo_j1, elo_j2_apres=nv_elo_j2,
-        score_j1=data.get("score_j1",0), score_j2=data.get("score_j2",0),
+        elo_j1_apres=nv_elo_j1,   elo_j2_apres=nv_elo_j2,
+        score_j1=score_j1, score_j2=score_j2,
     ))
     db.session.commit()
-    return jsonify({"succes": True, "elo_avant": elo_j1_avant, "elo_apres": nv_elo_j1, "delta": nv_elo_j1 - elo_j1_avant})
+    return jsonify({
+        "succes": True,
+        "elo_avant": elo_j1_avant,
+        "elo_apres": nv_elo_j1,
+        "delta": nv_elo_j1 - elo_j1_avant,
+    })
 
 @auth_bp.route("/check_upload", methods=["GET"])
 def check_upload():
