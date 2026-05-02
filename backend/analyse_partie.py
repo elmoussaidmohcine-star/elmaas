@@ -941,8 +941,9 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
     ecart = (score_optimal - score_joue) / max(abs(score_optimal), 1.0) if score_optimal != 0 else 0.0
     plateau_avant = dict(etat_avant.plateau.pieces)
     plateau_apres = dict(etat_apres.plateau.pieces)
-    joueur_avant = etat_avant.joueur_actif()
-    adverse_avant = etat_avant.joueur_adverse()
+    couleur_coup = coup_joue.get("couleur") or couleur
+    joueur_avant = etat_avant.joueur1 if etat_avant.joueur1.couleur == couleur_coup else etat_avant.joueur2
+    adverse_avant = etat_avant.joueur2 if joueur_avant == etat_avant.joueur1 else etat_avant.joueur1
     return AnalyseCoup(
         index=coup_joue.get("index", 0), type_coup="repiocher",
         couleur=couleur, numero_tour=etat_avant.numero_tour,
@@ -994,8 +995,9 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
 
     plateau_avant = dict(etat_avant.plateau.pieces)
     plateau_apres = dict(etat_apres.plateau.pieces)
-    joueur_avant = etat_avant.joueur_actif()
-    adverse_avant = etat_avant.joueur_adverse()
+    couleur_coup = coup_joue.get("couleur") or couleur
+    joueur_avant = etat_avant.joueur1 if etat_avant.joueur1.couleur == couleur_coup else etat_avant.joueur2
+    adverse_avant = etat_avant.joueur2 if joueur_avant == etat_avant.joueur1 else etat_avant.joueur1
     return AnalyseCoup(
         index=coup_joue.get("index", 0), type_coup="scout",
         couleur=couleur, numero_tour=etat_avant.numero_tour,

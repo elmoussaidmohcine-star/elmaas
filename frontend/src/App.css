@@ -1170,3 +1170,85 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     gap: 8px;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   ANALYSE — Antiquite & Modernite (v3)
+   ════════════════════════════════════════════════════════════ */
+
+.ecran-analyse {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.analyse-corps {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.analyse-plateau {
+  flex: 1 1 0;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.analyse-panneau {
+  width: 320px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.analyse-mains {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: rgba(255,255,255,0.015);
+  border-radius: 6;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Responsive mobile */
+@media (max-width: 768px) {
+  .ecran-analyse {
+    padding: 8px;
+    gap: 8px;
+  }
+  .analyse-corps {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .analyse-plateau {
+    min-width: unset;
+    width: 100%;
+    align-items: center;
+  }
+  .analyse-panneau {
+    width: 100%;
+    min-width: unset;
+    gap: 8px;
+    padding: 0;
+  }
+  .analyse-mains {
+    gap: 6px;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ecran-analyse {
+    padding: 6px;
+  }
+  .analyse-panneau {
+    gap: 6px;
+  }
+}
