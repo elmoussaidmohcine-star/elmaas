@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Board from "./Board";
+import { t } from "./translations";
 
 // ─── Classifications : chiffres romains, style antiquité ───
 const CLASSIF = {
-  ELMAAS:    { bg: "#1a0a2e", border: "#9933ff", text: "#d4aaff", label: "Coup parfait", mark: "I" },
-  ELMAASYON: { bg: "#0a1a3e", border: "#4477ff", text: "#aaccff", label: "Excellent coup", mark: "II" },
-  MASSY:     { bg: "#0a2e2e", border: "#00aacc", text: "#aaffee", label: "Bon coup", mark: "III" },
-  NOTMESSY:  { bg: "#1a2e0a", border: "#44aa00", text: "#ccffaa", label: "Coup correct", mark: "IV" },
-  MISSED:    { bg: "#2e1a0a", border: "#ddaa00", text: "#ffeeaa", label: "Opportunite ratee", mark: "V" },
-  CHESS:     { bg: "#2e0a0a", border: "#cc2200", text: "#ffaaaa", label: "Mauvais coup", mark: "VI" },
+  ELMAAS:    { bg: "#1a0a2e", border: "#9933ff", text: "#d4aaff", labelKey: "classifElmaasLabel",    mark: "I"   },
+  ELMAASYON: { bg: "#0a1a3e", border: "#4477ff", text: "#aaccff", labelKey: "classifElmaasyonLabel", mark: "II"  },
+  MASSY:     { bg: "#0a2e2e", border: "#00aacc", text: "#aaffee", labelKey: "classifMassyLabel",     mark: "III" },
+  NOTMESSY:  { bg: "#1a2e0a", border: "#44aa00", text: "#ccffaa", labelKey: "classifNotmessyLabel",  mark: "IV"  },
+  MISSED:    { bg: "#2e1a0a", border: "#ddaa00", text: "#ffeeaa", labelKey: "classifMissedLabel",    mark: "V"   },
+  CHESS:     { bg: "#2e0a0a", border: "#cc2200", text: "#ffaaaa", labelKey: "classifChessLabel",     mark: "VI"  },
 };
 
 const ORDRE_CLASSIF = ["ELMAAS", "ELMAASYON", "MASSY", "NOTMESSY", "MISSED", "CHESS"];
@@ -161,18 +162,14 @@ export default function EcranAnalyse({
   }, [coupActuel]);
 
   const classif = coupActuel?.classification;
-  const classifInfo = CLASSIF[classif] || { bg: "#222", border: "#666", text: "#fff", label: classif || "?", mark: "?" };
-
-  const txtPiecesMoi = ["Mes pieces", "My pieces", "Qati", "Mis piezas"];
-  const txtPiecesAdv = ["Pieces adverses", "Opponent pieces", "Qaa al khasm", "Piezas rival"];
-  const txtAucune = ["Aucune donnee", "No data", "La bayanat", "Sin datos"];
+  const classifInfo = CLASSIF[classif] || { bg: "#222", border: "#666", text: "#fff", labelKey: null, mark: "?" };
 
   if (!analyseJoueur && !analyseAdv) {
     return (
       <div className="ecran-analyse-overlay">
         <div className="ecran-analyse" style={{ justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
           <div style={{ color: "var(--muted)", fontSize: 15, textAlign: "center", fontFamily: "var(--brush)" }}>
-            Aucune donnee d analyse disponible.
+            {t("analyseAucunePartie", L)}
           </div>
         </div>
       </div>
@@ -192,7 +189,7 @@ export default function EcranAnalyse({
             margin: 0, fontSize: 22, color: "var(--texte)",
             fontFamily: "var(--titre)", letterSpacing: "0.08em", fontWeight: 400
           }}>
-            {L === 0 ? "Analyse de partie" : L === 1 ? "Game Analysis" : L === 2 ? "Tahlil al mubaraa" : "Analisis de partida"}
+            {t("analyseTitre", L)}
           </h2>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
@@ -204,7 +201,7 @@ export default function EcranAnalyse({
                 color: "var(--texte)", cursor: "pointer", fontFamily: "var(--titre)",
                 letterSpacing: "0.1em", textTransform: "uppercase"
               }}>
-              {showLegende ? "Cacher" : "Legende"}
+              {showLegende ? t("analyseCacher", L) : t("analyseLegende", L)}
             </button>
             <button onClick={onFermer} style={{
               fontSize: 20, cursor: "pointer", background: "none", border: "none",
@@ -225,7 +222,7 @@ export default function EcranAnalyse({
               fontSize: 10, color: "var(--muted)", marginBottom: 10,
               fontWeight: 600, letterSpacing: "0.2em", fontFamily: "var(--titre)", textTransform: "uppercase"
             }}>
-              Classification des coups
+            {t("analyseClassification", L)}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {ORDRE_CLASSIF.map(cl => {
@@ -250,7 +247,7 @@ export default function EcranAnalyse({
                         fontWeight: 700, fontSize: 12, color: info.text,
                         letterSpacing: 0.5, fontFamily: "var(--titre)"
                       }}>{cl}</div>
-                      <div style={{ fontSize: 10, color: `${info.text}aa`, fontFamily: "var(--brush)" }}>{info.label}</div>
+                      <div style={{ fontSize: 10, color: `${info.text}aa`, fontFamily: "var(--brush)" }}>{t(info.labelKey, L)}</div>
                     </div>
                   </div>
                 );
@@ -260,7 +257,7 @@ export default function EcranAnalyse({
               <div style={{
                 fontSize: 10, color: "var(--muted)", fontWeight: 600,
                 fontFamily: "var(--titre)", letterSpacing: "0.15em", textTransform: "uppercase"
-              }}>Plateau :</div>
+              }}>{t("analysePlateau", L)} :</div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--rouge-c)" }} />
                 <span style={{ fontSize: 10, color: "var(--rouge-c)", fontWeight: 600, fontFamily: "var(--brush)" }}>Rouge</span>
@@ -317,7 +314,7 @@ export default function EcranAnalyse({
                   fontSize: 11, color: "#aa88ff", fontWeight: 600,
                   fontFamily: "var(--titre)", letterSpacing: "0.1em", textTransform: "uppercase"
                 }}>
-                  {L === 0 ? "Meilleur coup possible" : "Best possible move"}
+                  {t("analyseMeilleurCoupPossible", L)}
                 </div>
                 <div style={{ overflow: "auto", maxWidth: "100%" }}>
                   <Board
@@ -343,7 +340,7 @@ export default function EcranAnalyse({
               </div>
             ) : (
               <div style={{ color: "var(--muted)", textAlign: "center", padding: 40, fontFamily: "var(--brush)" }}>
-                Chargement du plateau...
+                {t("analyseChargement", L)}
               </div>
             )}
           </div>
@@ -369,7 +366,7 @@ export default function EcranAnalyse({
                 <div style={{
                   fontSize: 10, color: "var(--muted)", fontFamily: "var(--titre)",
                   letterSpacing: "0.15em", textTransform: "uppercase"
-                }}>Coup</div>
+                }}>{t("coupSur", L)}</div>
                 <div style={{
                   fontSize: 22, fontWeight: 700, color: "var(--texte)", fontFamily: "var(--titre)"
                 }}>
@@ -398,7 +395,7 @@ export default function EcranAnalyse({
                 fontSize: 11, color: "var(--muted)", marginBottom: 8,
                 fontFamily: "var(--brush)"
               }}>
-                Tour <strong style={{ color: "var(--texte)" }}>{coupActuel?.numero_tour ?? "?"}</strong>
+                {t("analyseTour", L)} <strong style={{ color: "var(--texte)" }}>{coupActuel?.numero_tour ?? "?"}</strong>
                 {" — "}
                 <span style={{
                   color: coupActuel?.couleur === "rouge" ? "var(--rouge-c)" : "var(--noir-c)",
@@ -429,26 +426,26 @@ export default function EcranAnalyse({
                     fontWeight: 700, fontSize: 14, color: classifInfo.text,
                     letterSpacing: 1, fontFamily: "var(--titre)"
                   }}>{classif || "?"}</div>
-                  <div style={{ fontSize: 10, color: `${classifInfo.text}aa`, fontFamily: "var(--brush)" }}>{classifInfo.label}</div>
+                  <div style={{ fontSize: 10, color: `${classifInfo.text}aa`, fontFamily: "var(--brush)" }}>{classifInfo.labelKey ? t(classifInfo.labelKey, L) : (classif || "?")}</div>
                 </div>
               </div>
 
               {coupActuel?.rang && (
                 <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 4, fontFamily: "var(--brush)" }}>
-                  Rang : <strong style={{ color: "var(--texte)" }}>{coupActuel.rang}</strong> / {coupActuel.total_coups_possibles} coups possibles
+                  {t("analyseRang", L)} : <strong style={{ color: "var(--texte)" }}>{coupActuel.rang}</strong> / {coupActuel.total_coups_possibles} {t("analyseCoupsPossibles", L)}
                 </div>
               )}
 
               {coupActuel?.scores_avant && coupActuel?.scores_apres && (
                 <div style={{ display: "flex", gap: 10, fontSize: 10, marginBottom: 4, fontFamily: "var(--brush)" }}>
                   <div>
-                    <span style={{ color: "var(--muted)" }}>Avant </span>
+                    <span style={{ color: "var(--muted)" }}>{t("analyseAvant", L)} </span>
                     <span style={{ color: "var(--rouge-c)" }}>R:{coupActuel.scores_avant.rouge ?? 0}</span>
                     {" "}<span style={{ color: "var(--noir-c)" }}>N:{coupActuel.scores_avant.noir ?? 0}</span>
                   </div>
                   <span style={{ color: "var(--muted)" }}>&rarr;</span>
                   <div>
-                    <span style={{ color: "var(--muted)" }}>Apres </span>
+                    <span style={{ color: "var(--muted)" }}>{t("analyseApres", L)} </span>
                     <span style={{ color: "var(--rouge-c)" }}>R:{coupActuel.scores_apres.rouge ?? 0}</span>
                     {" "}<span style={{ color: "var(--noir-c)" }}>N:{coupActuel.scores_apres.noir ?? 0}</span>
                   </div>
@@ -457,19 +454,19 @@ export default function EcranAnalyse({
 
               {coupActuel?.gain_cellules > 0 && (
                 <div style={{ fontSize: 10, color: "#44cc88", marginBottom: 2, fontFamily: "var(--brush)" }}>
-                  +{coupActuel.gain_cellules} cellules
+                  +{coupActuel.gain_cellules} {t("analyseCellules", L)}
                 </div>
               )}
 
               {coupActuel?.serie_apres > 0 && (
                 <div style={{ fontSize: 10, color: "#ffaa44", marginBottom: 2, fontFamily: "var(--brush)" }}>
-                  Serie : {coupActuel.serie_avant} &rarr; <strong>{coupActuel.serie_apres}</strong>
+                  {t("analyseSerie", L)} : {coupActuel.serie_avant} &rarr; <strong>{coupActuel.serie_apres}</strong>
                 </div>
               )}
 
               {coupActuel?.piece_forme && (
                 <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)" }}>
-                  Forme : <span style={{ color: "var(--texte)" }}>{coupActuel.piece_forme}</span>
+                  {t("analyseForme", L)} : <span style={{ color: "var(--texte)" }}>{coupActuel.piece_forme}</span>
                   {coupActuel.piece_est_elmaas && (
                     <span style={{ color: "#00BFFF", marginLeft: 6, fontWeight: 600 }}>ELMAAS</span>
                   )}
@@ -483,22 +480,22 @@ export default function EcranAnalyse({
               <div style={{
                 fontSize: 10, color: "var(--muted)", textTransform: "uppercase",
                 letterSpacing: "0.15em", fontFamily: "var(--titre)",
-                borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 6
+                borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 8
               }}>
-                {coteActif === "moi" ? txtPiecesMoi[L] || txtPiecesMoi[0] : txtPiecesAdv[L] || txtPiecesAdv[0]}
+                {coteActif === "moi" ? t("analyseMesPieces", L) : t("analysePiecesAdv", L)}
                 {" "}
                 <span style={{ color: couleurAnalysee === "rouge" ? "var(--rouge-c)" : "var(--noir-c)" }}>
                   ({couleurAnalysee})
                 </span>
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 24 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 28 }}>
                 {(coupActuel?.main_joueur || []).length > 0 ? (
                   (coupActuel.main_joueur).map((piece, i) => (
                     <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAnalysee} />
                   ))
                 ) : (
                   <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)", fontStyle: "italic" }}>
-                    {txtAucune[L] || txtAucune[0]}
+                    {t("analyseAucuneDonneeMain", L)}
                   </span>
                 )}
               </div>
@@ -507,22 +504,22 @@ export default function EcranAnalyse({
               <div style={{
                 fontSize: 10, color: "var(--muted)", textTransform: "uppercase",
                 letterSpacing: "0.15em", fontFamily: "var(--titre)",
-                borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 6, marginTop: 10
+                borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 8, marginTop: 12
               }}>
-                {coteActif === "moi" ? txtPiecesAdv[L] || txtPiecesAdv[0] : txtPiecesMoi[L] || txtPiecesMoi[0]}
+                {coteActif === "moi" ? t("analysePiecesAdv", L) : t("analyseMesPieces", L)}
                 {" "}
                 <span style={{ color: couleurAdv === "rouge" ? "var(--rouge-c)" : "var(--noir-c)" }}>
                   ({couleurAdv})
                 </span>
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 24 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 28 }}>
                 {(coupActuel?.main_adversaire || []).length > 0 ? (
                   (coupActuel.main_adversaire).map((piece, i) => (
                     <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAdv} />
                   ))
                 ) : (
                   <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)", fontStyle: "italic" }}>
-                    {txtAucune[L] || txtAucune[0]}
+                    {t("analyseAucuneDonneeMain", L)}
                   </span>
                 )}
               </div>
@@ -541,8 +538,8 @@ export default function EcranAnalyse({
                     width: "100%", fontFamily: "var(--titre)", letterSpacing: "0.05em"
                   }}>
                   {showMeilleurCoup
-                    ? (L === 0 ? "Retour au coup joue" : "Back to played move")
-                    : (L === 0 ? "Voir le meilleur coup" : "See best move")}
+                    ? t("analyseRetourCoup", L)
+                    : t("analyseVoirMeilleur", L)}
                 </button>
 
                 {showMeilleurCoup && (
@@ -554,14 +551,14 @@ export default function EcranAnalyse({
                     <div style={{
                       color: "#aa88ff", fontWeight: 600, marginBottom: 4,
                       fontFamily: "var(--titre)", letterSpacing: "0.05em"
-                    }}>Meilleur coup :</div>
-                    <div>Piece #{(coupActuel.meilleur_alternative.piece_index ?? 0) + 1}</div>
+                    }}>{t("analyseMeilleurCoupLabel", L)} :</div>
+                    <div>{t("analysePiece", L)} #{(coupActuel.meilleur_alternative.piece_index ?? 0) + 1}</div>
                     <div style={{ color: "#ffaa44" }}>
-                      Origine : [{coupActuel.meilleur_alternative.origine?.join(", ")}]
+                      {t("analyseOrigine", L)} : [{coupActuel.meilleur_alternative.origine?.join(", ")}]
                     </div>
                     {coupActuel.meilleur_alternative.est_elmaas && (
                       <div style={{ color: "#00BFFF", marginTop: 4, fontWeight: 600 }}>
-                        Coup ELMAAS disponible
+                        {t("analyseElmaasDisponible", L)}
                       </div>
                     )}
                   </div>
@@ -583,7 +580,7 @@ export default function EcranAnalyse({
                 marginTop: 6, fontSize: 9, color: "var(--muted)",
                 textAlign: "center", fontFamily: "var(--brush)"
               }}>
-                &larr; &rarr; pour naviguer
+                &larr; &rarr; {t("analyseNaviguer", L)}
               </div>
             </div>
           </div>
@@ -603,7 +600,7 @@ export default function EcranAnalyse({
                 fontWeight: 600, fontFamily: "var(--titre)",
                 letterSpacing: "0.15em", textTransform: "uppercase"
               }}>
-                Resume — {couleurAnalysee?.toUpperCase()} — {analyseEnCours?.precision_pct ?? 0}% precision
+                {t("analyseResume", L)} — {couleurAnalysee?.toUpperCase()} — {analyseEnCours?.precision_pct ?? 0}% {t("analysePrecision", L)}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {ORDRE_CLASSIF.map(cl => {
@@ -617,7 +614,7 @@ export default function EcranAnalyse({
                         const idx = coups.findIndex(c => c.classification === cl);
                         if (idx >= 0) { setIndexCoup(idx); setShowMeilleurCoup(false); }
                       }}
-                      title={`Aller au premier coup ${cl}`}
+                      title={L === 0 ? `Aller au premier coup ${cl}` : L === 1 ? `Go to first ${cl} move` : L === 2 ? `انتقل إلى أول حركة ${cl}` : `Ir al primer movimiento ${cl}`}
                       style={{
                         display: "flex", alignItems: "center", gap: 6,
                         padding: "5px 10px", borderRadius: 4, cursor: "pointer",

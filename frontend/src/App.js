@@ -56,7 +56,7 @@ function setScoresCumules(pseudoAdverse, scores) {
 //  Bouton Paramètres flottant 
 function BtnParamsFlottant({ onClick, L }) {
   return (
-    <button className="btn-params-flottant" onClick={onClick} title={t("parametres", L)}>⚙</button>
+    <button className="btn-params-flottant" onClick={onClick} title={t("parametres", L)}>&#x2699;</button>
   );
 }
 
@@ -97,10 +97,9 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
 
             {/* Plan Gratuit (indicatif) */}
             <div className={`plan-card ${!utilisateur.plan ? "actif" : ""}`}>
-              <div className="plan-nom">Gratuit</div>
+              <div className="plan-nom">{t("planGratuit", L)}</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                1 photo personnalisée · 1 analyse/jour<br />
-                Robots : Chess · Amal · ELMAASYON
+                {t("planGratuitDesc", L)}
               </div>
               <div className="plan-prix">0€</div>
             </div>
@@ -109,11 +108,9 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
             <div className={`plan-card ${utilisateur.plan === "elmaasyon" ? "actif" : "premium"}`}>
               <div className="plan-nom">{t("planElmaasyon", L)}</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                📷 Photos illimitées<br />
-                🔍 3 analyses / jour<br />
-                Robots : Chess · Amal · ELMAASYON
+                {t("planElmaasyonDescFull", L)}
               </div>
-              <div className="plan-prix">Gratuit <small>(lancement)</small></div>
+              <div className="plan-prix">{t("planGratuitLancement", L)}</div>
               {utilisateur.plan !== "elmaasyon" && utilisateur.plan !== "elmaas" && (
                 <button className="btn-valider" style={{ fontSize: 13, padding: "8px 16px" }} onClick={() => onPaiement("elmaasyon")}>
                   {t("passerPremiumBtn", L)}
@@ -126,14 +123,9 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
               border: utilisateur.plan === "elmaas" ? "1px solid #9933ff" : "1px solid #9933ff44",
               boxShadow: utilisateur.plan === "elmaas" ? "0 0 12px #9933ff44" : "none",
             }}>
-              <div className="plan-nom" style={{ color: "#aa77ff" }}>💎 ELMAAS</div>
+              <div className="plan-nom" style={{ color: "#aa77ff" }}>ELMAAS</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                📷 Photos illimitées<br />
-                🔍 Analyses illimitées<br />
-                Robots : Chess · Amal · ELMAASYON · <span style={{ color: "#aa77ff", fontWeight: 700 }}>ELMAAS</span><br />
-                <span style={{ color: "#ff9944", fontSize: 11 }}>
-                  ⚠️ ELMAAS : jusqu'à 15s par coup
-                </span>
+                {t("planElmaasDescFull", L)}
               </div>
               <div className="plan-prix">6.99€<small>{t("parMois", L)}</small></div>
               {utilisateur.plan !== "elmaas" && (
@@ -348,13 +340,13 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
             fontSize: 13, lineHeight: 1.5
           }}>
             <div style={{ color: "#9933ff", fontWeight: 700, marginBottom: 4 }}>
-              💎 ELMAAS
+              ELMAAS
             </div>
             <div style={{ color: "#cc99ff" }}>
-              {L === 0 ? "⚠️ ELMAAS réfléchit profondément. Chaque coup peut prendre jusqu'à 15 secondes. Ce délai est inhérent à sa puissance." :
-               L === 1 ? "⚠️ ELMAAS thinks deeply. Each move may take up to 15 seconds. This delay is inherent to its power." :
-               L === 2 ? "⚠️ ELMAAS يفكر بعمق. كل حركة قد تستغرق حتى 15 ثانية. هذا التأخير جزء من قوته." :
-               "⚠️ ELMAAS piensa profundamente. Cada movimiento puede tardar hasta 15 segundos. Este retraso es parte de su poder."}
+              {L === 0 ? "ELMAAS réfléchit profondément. Chaque coup peut prendre jusqu'à 15 secondes. Ce délai est inhérent à sa puissance." :
+               L === 1 ? "ELMAAS thinks deeply. Each move may take up to 15 seconds. This delay is inherent to its power." :
+               L === 2 ? "ELMAAS يفكر بعمق. كل حركة قد تستغرق حتى 15 ثانية. هذا التأخير جزء من قوته." :
+               "ELMAAS piensa profundamente. Cada movimiento puede tardar hasta 15 segundos. Este retraso es parte de su poder."}
             </div>
           </div>
         )}
@@ -1779,7 +1771,7 @@ export default function App() {
               {dernierCoupClassif}
             </span>
           )}
-          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>⚙</button>
+          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>&#x2699;</button>
           {/* Toggle couleur — uniquement mode local */}
           {!modeMultijoueur && (
             <button 

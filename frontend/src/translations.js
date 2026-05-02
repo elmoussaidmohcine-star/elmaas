@@ -1259,6 +1259,67 @@ export const T = {
   rejouerCoup: ["Rejouer ce coup", "Replay this move", "إعادة هذه الحركة", "Reproducir"],
   retourAnalyse: ["Retour à l'analyse", "Back to analysis", "العودة للتحليل", "Volver al análisis"],
   coupSur: ["Coup", "Move", "الحركة", "Movimiento"],
+
+  // ── Analyse ──────────────────────────────────────────────────
+  analyseLegende: ["Légende", "Legend", "الأسطورة", "Leyenda"],
+  analyseCacher: ["Cacher", "Hide", "إخفاء", "Ocultar"],
+  analyseClassification: ["Classification des coups", "Move classification", "تصنيف الحركات", "Clasificación de jugadas"],
+  analysePlateau: ["Plateau", "Board", "اللوحة", "Tablero"],
+  analyseMeilleurCoupPossible: ["Meilleur coup possible", "Best possible move", "أفضل حركة ممكنة", "Mejor jugada posible"],
+  analyseChargement: ["Chargement du plateau...", "Loading board...", "جار تحميل اللوحة...", "Cargando tablero..."],
+  analyseTour: ["Tour", "Turn", "الدور", "Turno"],
+  analyseRang: ["Rang", "Rank", "الترتيب", "Rango"],
+  analyseCoupsPossibles: ["coups possibles", "possible moves", "حركات ممكنة", "jugadas posibles"],
+  analyseAvant: ["Avant", "Before", "قبل", "Antes"],
+  analyseApres: ["Après", "After", "بعد", "Después"],
+  analyseCellules: ["cellules", "cells", "خلايا", "celdas"],
+  analyseSerie: ["Série", "Streak", "السلسلة", "Racha"],
+  analyseForme: ["Forme", "Shape", "الشكل", "Forma"],
+  analyseVoirMeilleur: ["Voir le meilleur coup", "See best move", "رؤية أفضل حركة", "Ver mejor jugada"],
+  analyseRetourCoup: ["Retour au coup joué", "Back to played move", "العودة للحركة المُلعبة", "Volver a la jugada"],
+  analyseMeilleurCoupLabel: ["Meilleur coup", "Best move", "أفضل حركة", "Mejor jugada"],
+  analysePiece: ["Pièce", "Piece", "القطعة", "Pieza"],
+  analyseOrigine: ["Origine", "Origin", "الأصل", "Origen"],
+  analyseElmaasDisponible: ["Coup ELMAAS disponible", "ELMAAS move available", "حركة ELMAAS متاحة", "Jugada ELMAAS disponible"],
+  analyseNaviguer: ["pour naviguer", "to navigate", "للتنقل", "para navegar"],
+  analyseResume: ["Résumé", "Summary", "الملخص", "Resumen"],
+  analysePrecision: ["précision", "accuracy", "دقة", "precisión"],
+  analyseAucuneDonnee: ["Aucune donnée d'analyse disponible.", "No analysis data available.", "لا توجد بيانات تحليل.", "Sin datos de análisis."],
+  analyseMesPieces: ["Mes pièces", "My pieces", "قطعي", "Mis piezas"],
+  analysePiecesAdv: ["Pièces adverses", "Opponent pieces", "قطع الخصم", "Piezas rivales"],
+  analyseAucuneDonneeMain: ["Aucune donnée", "No data", "لا توجد بيانات", "Sin datos"],
+  analyseAucunePartie: ["Aucune donnée d'analyse.", "No analysis available.", "لا يوجد تحليل.", "Sin análisis."],
+
+  // ── Labels CLASSIF multilangues ───────────────────────────────
+  classifElmaasLabel: ["Coup parfait", "Perfect move", "الحركة المثالية", "Jugada perfecta"],
+  classifElmaasyonLabel: ["Excellent coup", "Excellent move", "حركة ممتازة", "Jugada excelente"],
+  classifMassyLabel: ["Bon coup", "Good move", "حركة جيدة", "Buena jugada"],
+  classifNotmessyLabel: ["Coup correct", "Correct move", "حركة صحيحة", "Jugada correcta"],
+  classifMissedLabel: ["Opportunité ratée", "Missed opportunity", "فرصة ضائعة", "Oportunidad perdida"],
+  classifChessLabel: ["Mauvais coup", "Bad move", "حركة سيئة", "Mala jugada"],
+
+  // ── Paramètres / Settings ────────────────────────────────────
+  planGratuit: ["Gratuit", "Free", "مجاني", "Gratis"],
+  planGratuitDesc: [
+    "1 photo personnalisée · 1 analyse / jour · Robots : Chess, Amal, ELMAASYON",
+    "1 custom photo · 1 analysis / day · Bots: Chess, Amal, ELMAASYON",
+    "صورة مخصصة · تحليل واحد / يوم · روبوتات: Chess, Amal, ELMAASYON",
+    "1 foto · 1 análisis / día · Bots: Chess, Amal, ELMAASYON"
+  ],
+  planElmaasyonDescFull: [
+    "Uploads illimités · 3 analyses / jour · Robots : Chess, Amal, ELMAASYON",
+    "Unlimited uploads · 3 analyses / day · Bots: Chess, Amal, ELMAASYON",
+    "تحميلات غير محدودة · 3 تحاليل / يوم · روبوتات: Chess, Amal, ELMAASYON",
+    "Subidas ilimitadas · 3 análisis / día · Bots: Chess, Amal, ELMAASYON"
+  ],
+  planElmaasDescFull: [
+    "Uploads illimités · Analyses illimitées · Robots : Chess, Amal, ELMAASYON, ELMAAS · Jusqu'à 15s par coup",
+    "Unlimited uploads · Unlimited analyses · Bots: Chess, Amal, ELMAASYON, ELMAAS · Up to 15s per move",
+    "تحميلات غير محدودة · تحاليل غير محدودة · روبوتات: Chess, Amal, ELMAASYON, ELMAAS · حتى 15 ثانية لكل حركة",
+    "Subidas ilimitadas · Análisis ilimitados · Bots: Chess, Amal, ELMAASYON, ELMAAS · Hasta 15s por jugada"
+  ],
+  planGratuitLancement: ["Gratuit (lancement)", "Free (launch)", "مجاني (إطلاق)", "Gratis (lanzamiento)"],
+  planElmaasyonBienvenue: ["Mois de bienvenue — Gratuit", "Welcome month — Free", "شهر الترحيب — مجاني", "Mes de bienvenida — Gratis"],
 };
 
 // ═══════════════════════════════════════════════════════════
