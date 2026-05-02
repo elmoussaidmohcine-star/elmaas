@@ -87,6 +87,8 @@ class AnalyseCoup:
     valeur_positionnelle: float = 0.0
     valeur_tactique: float = 0.0
     valeur_strategique: float = 0.0
+    main_joueur: Optional[list] = None
+    main_adversaire: Optional[list] = None
 
     def to_dict(self) -> dict:
         return {
@@ -119,6 +121,8 @@ class AnalyseCoup:
             "puzzles_apres": self.puzzles_apres,
             "plateau_avant": self.plateau_avant,
             "plateau_apres": self.plateau_apres,
+            "main_joueur": self.main_joueur,
+            "main_adversaire": self.main_adversaire,
         }
 
 
@@ -937,6 +941,8 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
     ecart = (score_optimal - score_joue) / max(abs(score_optimal), 1.0) if score_optimal != 0 else 0.0
     plateau_avant = dict(etat_avant.plateau.pieces)
     plateau_apres = dict(etat_apres.plateau.pieces)
+    joueur_avant = etat_avant.joueur_actif()
+    adverse_avant = etat_avant.joueur_adverse()
     return AnalyseCoup(
         index=coup_joue.get("index", 0), type_coup="repiocher",
         couleur=couleur, numero_tour=etat_avant.numero_tour,
@@ -948,6 +954,8 @@ def evaluer_coup_repiocher(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         puzzles_avant=_serialiser_puzzles(etat_avant) if hasattr(etat_avant, 'plateau') else None,
         puzzles_apres=_serialiser_puzzles(etat_apres) if hasattr(etat_apres, 'plateau') else None,
         plateau_avant=plateau_avant, plateau_apres=plateau_apres,
+        main_joueur=[serialiser_piece(p) for p in joueur_avant.main_active],
+        main_adversaire=[serialiser_piece(p) for p in adverse_avant.main_active],
     )
 
 
@@ -986,6 +994,8 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
 
     plateau_avant = dict(etat_avant.plateau.pieces)
     plateau_apres = dict(etat_apres.plateau.pieces)
+    joueur_avant = etat_avant.joueur_actif()
+    adverse_avant = etat_avant.joueur_adverse()
     return AnalyseCoup(
         index=coup_joue.get("index", 0), type_coup="scout",
         couleur=couleur, numero_tour=etat_avant.numero_tour,
@@ -994,6 +1004,8 @@ def evaluer_coup_scout(etat_avant: EtatJeu, coup_joue: dict) -> AnalyseCoup:
         total_coups_possibles=3 if coups_poser else 1,
         scores_avant=scores_avant, scores_apres=scores_apres,
         plateau_avant=plateau_avant, plateau_apres=plateau_apres,
+        main_joueur=[serialiser_piece(p) for p in joueur_avant.main_active],
+        main_adversaire=[serialiser_piece(p) for p in adverse_avant.main_active],
     )
 
 
