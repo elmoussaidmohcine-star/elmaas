@@ -1608,22 +1608,28 @@ export default function App() {
       onDeconnecter={onDeconnecter} onPaiement={handlePaiement} />
   );
 
+  // Style inline pour les écrans hors-jeu sur mobile — aligne en haut
+  const isMobileDevice = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const appStyleMobile = isMobileDevice
+    ? { alignItems: 'flex-start', justifyContent: 'flex-start', background: 'var(--bg)' }
+    : {};
+
   if (etape === "auth") return (
-    <div className="app">
+    <div className="app" style={appStyleMobile}>
       {boutonParamsFlottant}{popupParams}
       <EcranAuth onConnecte={(user) => { setUtilisateur(user); setEtape(user?.pseudo ? "taille" : (user ? "pseudo" : "taille")); }} L={L} />
     </div>
   );
 
   if (etape === "pseudo") return (
-    <div className="app">
+    <div className="app" style={appStyleMobile}>
       {boutonParamsFlottant}{popupParams}
       <EcranPseudo L={L} onPseudoDefini={(user) => { setUtilisateur(user); setEtape("taille"); }} />
     </div>
   );
 
   if (etape === "taille") return (
-    <div className="app">
+    <div className="app" style={appStyleMobile}>
       {boutonParamsFlottant}{popupParams}
       {matchmakingActif && (
         <PopupMatchmaking L={L} timerSec={timerChoisi} utilisateur={utilisateur}
@@ -1682,7 +1688,7 @@ export default function App() {
   );
 
   if (etape === "photo") return (
-    <div className="app">
+    <div className="app" style={appStyleMobile}>
       {boutonParamsFlottant}{popupParams}
       {modeIA === "aucune" && (
         <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
@@ -1699,7 +1705,7 @@ export default function App() {
   );
 
   if (etape === "lobby") return (
-    <div className="app">
+    <div className="app" style={appStyleMobile}>
       {boutonParamsFlottant}{popupParams}
       <EcranLobby 
         partieId={partieId} 
@@ -1718,7 +1724,7 @@ export default function App() {
   // 
   if (showAnalyse) {
     return (
-      <div className="app">
+      <div className="app" style={appStyleMobile}>
         <EcranAnalyse
           partieId={partieId}
           analyseJoueur={analyseJoueur}
