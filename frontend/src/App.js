@@ -1011,7 +1011,16 @@ export default function App() {
 
     // ── Mise à jour ELM ──────────────────────────────────────
     const token = getToken();
-    if (!token || !utilisateur || !partieId) return;
+    if (!token || !partieId) {
+      console.warn("[ELM] Pas de token ou partieId, ELM non mis à jour");
+      return;
+    }
+    // Lire utilisateur frais depuis localStorage (évite le stale closure)
+    const userFrais = getUser();
+    if (!userFrais) {
+      console.warn("[ELM] Pas d'utilisateur, ELM non mis à jour");
+      return;
+    }
     if (finPartieEnvoyee.current.has(partieId)) return;
     finPartieEnvoyee.current.add(partieId);
 
@@ -1033,23 +1042,22 @@ export default function App() {
     }, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         if (res.data.succes) {
-          const delta = res.data.delta;
           const eloApres = res.data.elo_apres;
-          setEloInfo({ avant: res.data.elo_avant, apres: eloApres, delta });
-          if (!res.data.deja_traite) {
-            const updatedUser = { ...utilisateur, elo: eloApres };
-            localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
-            setUtilisateur(updatedUser);
-          } else {
-            // deja_traite : mettre à jour l'affichage local avec l'ELO correct du serveur
-            const updatedUser = { ...utilisateur, elo: eloApres };
-            localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
-            setUtilisateur(updatedUser);
-          }
+          setEloInfo({ avant: res.data.elo_avant, apres: eloApres, delta: res.data.delta });
+          const updatedUser = { ...userFrais, elo: eloApres };
+          localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
+          setUtilisateur(updatedUser);
+        } else {
+          console.error("[ELM] Réponse serveur non-succes:", res.data);
+          setEloInfo({ avant: userFrais.elo, apres: userFrais.elo, delta: 0, erreur: res.data.erreur || "Erreur serveur" });
         }
       })
-      .catch(err => console.warn("[fin_partie]", err?.response?.data || err.message));
-  }, [mancheTermineeInfo]);
+      .catch(err => {
+        console.error("[ELM] Erreur appel fin_partie:", err?.response?.status, err?.response?.data || err.message);
+        // Afficher l'erreur à l'utilisateur dans le popup
+        setEloInfo({ avant: userFrais.elo, apres: userFrais.elo, delta: 0, erreur: err?.response?.data?.erreur || "Erreur réseau" });
+      });
+  }, [mancheTermineeInfo, modeIA, monRole, partieId, pseudoAdverse]);
   
   const [showAnalyse, setShowAnalyse] = useState(false);
   const [analyseJoueur, setAnalyseJoueur] = useState(null);
@@ -1784,7 +1792,7 @@ export default function App() {
             </div>
 
             {/* Delta ELM */}
-            {eloInfo && (
+            {eloInfo && !eloInfo.erreur && (
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                 padding: "8px 16px", borderRadius: 8,
@@ -1801,6 +1809,20 @@ export default function App() {
                 }}>
                   {eloInfo.delta >= 0 ? "+" : ""}{eloInfo.delta}
                 </span>
+              </div>
+            )}
+            {eloInfo && eloInfo.erreur && (
+              <div style={{
+                padding: "6px 12px", borderRadius: 8, fontSize: 12,
+                background: "rgba(204,34,0,0.08)", border: "1px solid var(--couleur-j1-glow)",
+                color: "var(--erreur)", textAlign: "center",
+              }}>
+                ELM non mis à jour : {eloInfo.erreur}
+              </div>
+            )}
+            {!eloInfo && getToken() && (
+              <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center" }}>
+                ELM en cours...
               </div>
             )}
             <div className="popup-options" style={{ flexDirection: "column", gap: 8 }}>

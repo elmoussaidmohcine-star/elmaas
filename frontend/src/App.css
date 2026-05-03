@@ -2171,24 +2171,14 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     display: flex;
   }
 
-  /* ── Panneau main : colonne avec sections ordonnées ── */
+  /* ── Panneau main : ÉCLATE ses enfants dans zone-jeu via display:contents ── */
   .panneau-main {
-    width: 100%;
-    min-width: unset;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    gap: 0;
-    border-right: none;
-    border-left: none;
-    overflow: visible;
-    flex-shrink: 0;
-    order: 1;
+    display: contents !important;
   }
 
-  /* Section mes pièces : bande horizontale en haut */
+  /* Section mes pièces : bande horizontale en haut — ORDER 1 */
   .section-mes-pieces {
-    display: flex;
+    display: flex !important;
     flex-direction: row;
     align-items: center;
     gap: 6px;
@@ -2199,6 +2189,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     flex-shrink: 0;
     -webkit-overflow-scrolling: touch;
     max-height: 60px;
+    order: 1;
   }
   .section-mes-pieces .panneau-titre {
     font-size: 8px;
@@ -2219,9 +2210,9 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     flex: 1;
   }
 
-  /* Section info : compacte, une ligne */
+  /* Section info : compacte, une ligne — ORDER 2 */
   .section-info-pieces {
-    display: flex;
+    display: flex !important;
     flex-direction: row;
     align-items: center;
     gap: 8px;
@@ -2230,6 +2221,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     flex-shrink: 0;
     background: var(--bg3);
     overflow: hidden;
+    order: 2;
   }
   .section-info-pieces .panneau-titre {
     font-size: 9px;
@@ -2248,9 +2240,47 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     white-space: nowrap;
   }
 
-  /* Section adversaire : en BAS de la page */
-  .section-adv-pieces {
+  /* ── Plateau central : MAXIMUM de place — ORDER 3 ── */
+  .plateau-central {
+    flex: 1;
+    padding: 4px;
+    width: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
     display: flex;
+    justify-content: center;
+    align-items: center;
+    order: 3;
+    min-height: 0;
+  }
+
+  /* Board : pas de transition sur les cellules (perf) */
+  .board-v3 .cell-v3 {
+    transition: none !important;
+  }
+
+  /* ── Actions : barre compacte — ORDER 4 ── */
+  .panneau-actions {
+    width: 100%;
+    min-width: unset;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    padding: 3px 6px;
+    gap: 4px;
+    border-right: none;
+    border-left: none;
+    border-top: 1px solid var(--bord);
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow-x: auto;
+    background: var(--bg2);
+    order: 4;
+  }
+
+  /* Section adversaire : en BAS de la page — ORDER 5 */
+  .section-adv-pieces {
+    display: flex !important;
     flex-direction: row;
     align-items: center;
     gap: 6px;
@@ -2262,7 +2292,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     -webkit-overflow-scrolling: touch;
     max-height: 50px;
     background: var(--bg3);
-    order: 10;
+    order: 5;
   }
   .section-adv-pieces .panneau-titre {
     font-size: 8px;
@@ -2282,6 +2312,17 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     -webkit-overflow-scrolling: touch;
     flex: 1;
   }
+  .panneau-actions .panneau-titre { display: none; }
+  .btn-action {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-height: 36px;
+    flex: 1 1 auto;
+    min-width: 60px;
+    max-width: 110px;
+    text-align: center;
+    justify-content: center;
+  }
 
   .panneau-titre {
     font-size: 9px;
@@ -2300,58 +2341,9 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     -webkit-overflow-scrolling: touch;
   }
   .serie-info { font-size: 9px; white-space: nowrap; align-self: center; flex-shrink: 0; }
-
   .mini-piece { min-width: 40px; min-height: 40px; }
   .mini-piece.sel { transform: scale(1.1); }
 
-  /* ── Plateau central : MAXIMUM de place ── */
-  .plateau-central {
-    flex: 1;
-    padding: 4px;
-    width: 100%;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    order: 2;
-    min-height: 0;
-  }
-
-  /* Board : pas de transition sur les cellules (perf) */
-  .board-v3 .cell-v3 {
-    transition: none !important;
-  }
-
-  /* ── Actions : barre compacte en bas ── */
-  .panneau-actions {
-    width: 100%;
-    min-width: unset;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    padding: 3px 6px;
-    gap: 4px;
-    border-right: none;
-    border-left: none;
-    border-top: 1px solid var(--bord);
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    overflow-x: auto;
-    background: var(--bg2);
-    order: 3;
-  }
-  .panneau-actions .panneau-titre { display: none; }
-  .btn-action {
-    padding: 6px 10px;
-    font-size: 12px;
-    min-height: 36px;
-    flex: 1 1 auto;
-    min-width: 60px;
-    max-width: 110px;
-    text-align: center;
-    justify-content: center;
-  }
   .hint-action { font-size: 10px; width: 100%; text-align: center; padding: 3px 6px; }
   .chat-zone { width: 100%; flex-shrink: 0; border-top: 1px solid var(--bord); }
   .chat-zone input { font-size: 14px; padding: 6px; }
@@ -2400,6 +2392,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     flex-direction: row;
   }
   .panneau-main {
+    display: flex !important;
     width: 90px;
     min-width: 90px;
     flex-direction: column;
@@ -2412,6 +2405,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     max-height: none;
     border-bottom: 1px solid var(--bord);
     border-right: none;
+    order: unset;
   }
   .section-mes-pieces .main-pieces-list {
     flex-wrap: wrap;
@@ -2422,6 +2416,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     flex-direction: column;
     gap: 2px;
     padding: 4px;
+    order: unset;
   }
   .section-adv-pieces {
     flex-direction: column;
