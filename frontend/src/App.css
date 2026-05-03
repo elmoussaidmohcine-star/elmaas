@@ -929,15 +929,15 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
 }
 
 .piece-cachee.rouge { 
-  border-color: var(--couleur-j1); 
-  background: var(--couleur-j1-glow); 
-  box-shadow: 0 0 4px var(--couleur-j1-glow);
+  border-color: #cc2200; 
+  background: #cc220022; 
+  box-shadow: 0 0 4px #cc220044;
 }
 
 .piece-cachee.noir  { 
-  border-color: var(--couleur-j2-clair); 
-  background: var(--couleur-j2-glow); 
-  box-shadow: 0 0 4px var(--couleur-j2-glow);
+  border-color: #888888; 
+  background: #44444422; 
+  box-shadow: 0 0 4px #44444444;
 }
 
 .zone-jeu { 
@@ -1209,19 +1209,19 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
 }
 
 .piece-v3.rouge { 
-  background: radial-gradient(circle at 35% 35%, var(--couleur-j1-clair), var(--couleur-j1)); 
-  box-shadow: var(--shadow-piece) var(--couleur-j1-glow); 
+  background: radial-gradient(circle at 35% 35%, #ff4422, #cc2200); 
+  box-shadow: 0 0 8px #cc220088; 
 }
 
 .piece-v3.noir { 
-  background: radial-gradient(circle at 35% 35%, var(--couleur-j2-clair), var(--couleur-j2)); 
-  box-shadow: var(--shadow-piece) var(--couleur-j2-glow); 
+  background: radial-gradient(circle at 35% 35%, #666666, #111111); 
+  box-shadow: 0 0 8px #44444488; 
 }
 
 /* ELMAAS / Diamant */
 .piece-v3.diamant, .piece-v3.elmaas {
-  background: radial-gradient(circle at 35% 35%, var(--diamant-clair), var(--diamant));
-  box-shadow: var(--shadow-piece) var(--diamant-glow), 0 0 16px var(--diamant-glow);
+  background: radial-gradient(circle at 35% 35%, #80D8FF, #00BFFF);
+  box-shadow: 0 0 8px #00BFFF44, 0 0 16px #00BFFF44;
   animation: pop 0.25s cubic-bezier(0.34,1.56,0.64,1), diamant-pulse 2s ease-in-out infinite;
 }
 
