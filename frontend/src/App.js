@@ -611,11 +611,12 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
         </div>
       )}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600 }}>
+      <div className="grille-photos-jeu" style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600 }}>
         {photosFixees.map((url, i) => (
           <div key={i} onClick={() => { setPhotoSelectionnee({ url, estFichier: false }); setApercu(null); }}
+            className="photo-miniature"
             style={{
-              width: 100, height: 100, borderRadius: 8, overflow: "hidden", cursor: "pointer",
+              borderRadius: 8, overflow: "hidden", cursor: "pointer",
               border: photoSelectionnee?.url === url ? "3px solid var(--rouge-c)" : "2px solid var(--bord)",
               transition: "all 0.2s",
             }}>

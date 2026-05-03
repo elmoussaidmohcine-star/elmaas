@@ -992,6 +992,9 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
 
 .main-pieces-list { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; }
 
+/* Photo grid */
+.photo-miniature { width: 100px; height: 100px; }
+
 /* Section wrappers — transparent on desktop */
 .section-mes-pieces, .section-info-pieces, .section-adv-pieces {
   display: contents; /* transparent wrapper on desktop, styled on mobile */
@@ -2102,6 +2105,8 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   .ia-btn { font-size: 12px; padding: 8px 10px; }
   .ia-btn-niveau { font-size: 11px; }
   .nom-photo-section { width: 100%; padding: 0 8px; }
+  .photo-miniature { width: calc(30vw - 10px); height: calc(30vw - 10px); max-width: 120px; max-height: 120px; }
+  .grille-photos-jeu { gap: 6px !important; max-width: 100% !important; padding: 0 6px; }
 
   /* ── GAME SCREEN ── */
   .app.jeu {
@@ -2157,27 +2162,35 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   }
   .btn-reset::before { content: "\21BA"; font-size: 14px; color: var(--muted); }
 
-  /* ── Zone adverse au TOP → cachée, on utilise celle du panneau-main en bas ── */
+  /* ── Zone adverse au TOP → cachée, on utilise celle du panneau-main ── */
   .zone-adverse {
     display: none;
   }
 
-  /* ── Zone de jeu : colonne verticale, tout visible ── */
+  /* ── Zone de jeu : CSS GRID pour placement précis ── */
   .zone-jeu {
     flex: 1;
-    flex-direction: column;
+    display: grid !important;
+    grid-template-rows: auto auto 1fr auto auto;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "mes-pieces"
+      "info"
+      "board"
+      "actions"
+      "adv-pieces";
     overflow: hidden;
     min-height: 0;
-    display: flex;
   }
 
-  /* ── Panneau main : ÉCLATE ses enfants dans zone-jeu via display:contents ── */
+  /* ── Panneau main : éclate ses enfants dans la grille ── */
   .panneau-main {
     display: contents !important;
   }
 
-  /* Section mes pièces : bande horizontale en haut — ORDER 1 */
+  /* Section mes pièces : bande horizontale en haut */
   .section-mes-pieces {
+    grid-area: mes-pieces;
     display: flex !important;
     flex-direction: row;
     align-items: center;
@@ -2186,10 +2199,8 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     border-bottom: 1px solid var(--bord);
     overflow-x: auto;
     overflow-y: hidden;
-    flex-shrink: 0;
     -webkit-overflow-scrolling: touch;
     max-height: 60px;
-    order: 1;
   }
   .section-mes-pieces .panneau-titre {
     font-size: 8px;
@@ -2210,18 +2221,17 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     flex: 1;
   }
 
-  /* Section info : compacte, une ligne — ORDER 2 */
+  /* Section info : compacte, une ligne */
   .section-info-pieces {
+    grid-area: info;
     display: flex !important;
     flex-direction: row;
     align-items: center;
     gap: 8px;
     padding: 2px 8px;
     border-bottom: 1px solid var(--bord);
-    flex-shrink: 0;
     background: var(--bg3);
     overflow: hidden;
-    order: 2;
   }
   .section-info-pieces .panneau-titre {
     font-size: 9px;
@@ -2240,17 +2250,16 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     white-space: nowrap;
   }
 
-  /* ── Plateau central : MAXIMUM de place — ORDER 3 ── */
+  /* ── Plateau central : MAXIMUM de place ── */
   .plateau-central {
-    flex: 1;
-    padding: 4px;
+    grid-area: board;
+    padding: 2px;
     width: 100%;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     display: flex;
     justify-content: center;
     align-items: center;
-    order: 3;
     min-height: 0;
   }
 
@@ -2259,8 +2268,9 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     transition: none !important;
   }
 
-  /* ── Actions : barre compacte — ORDER 4 ── */
+  /* ── Actions : barre compacte ── */
   .panneau-actions {
+    grid-area: actions;
     width: 100%;
     min-width: unset;
     flex-direction: row;
@@ -2270,16 +2280,15 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     border-right: none;
     border-left: none;
     border-top: 1px solid var(--bord);
-    flex-shrink: 0;
     align-items: center;
     justify-content: center;
     overflow-x: auto;
     background: var(--bg2);
-    order: 4;
   }
 
-  /* Section adversaire : en BAS de la page — ORDER 5 */
+  /* Section adversaire : en BAS de la page */
   .section-adv-pieces {
+    grid-area: adv-pieces;
     display: flex !important;
     flex-direction: row;
     align-items: center;
@@ -2288,11 +2297,9 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     border-top: 1px solid var(--bord);
     overflow-x: auto;
     overflow-y: hidden;
-    flex-shrink: 0;
     -webkit-overflow-scrolling: touch;
     max-height: 50px;
     background: var(--bg3);
-    order: 5;
   }
   .section-adv-pieces .panneau-titre {
     font-size: 8px;
@@ -2389,6 +2396,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     flex-shrink: 0;
   }
   .zone-jeu {
+    display: flex !important;
     flex-direction: row;
   }
   .panneau-main {
@@ -2400,12 +2408,8 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     overflow-y: auto;
     overflow-x: hidden;
   }
-  .section-mes-pieces {
-    flex-direction: column;
-    max-height: none;
-    border-bottom: 1px solid var(--bord);
-    border-right: none;
-    order: unset;
+  .section-mes-pieces, .section-info-pieces, .section-adv-pieces {
+    display: contents !important;
   }
   .section-mes-pieces .main-pieces-list {
     flex-wrap: wrap;
