@@ -496,7 +496,6 @@ export const SLOGANS = {
     accueil: [
       "الشطرنج قديمٌ كملوكه — وإلماس أحدثُ من أفكارهم.",
       "لا ملكَ هنا يحتاج حمايتك. أنتَ الحكمة.",
-      "قيل «لعبة الملوك»، قلنا: الملوك أفقرُ الناس عقلاً.",
       "في الشطرنج يتحرك الحصان على شكل حرف. قرونٌ ولم يسأل أحدٌ لماذا.",
       "الوزيرُ يفعل كل شيء، والملك يقف. هذا ليس ذكاءً، هذا عجز.",
       "الجندي يحلم بأن يصبح وزيراً. في إلماس، أنتَ تختار ما تصبح.",
@@ -543,6 +542,7 @@ export const SLOGANS = {
       "هذه اللعبة تتذكر كل ما تفعله. وأنتَ؟",
       "الإجابة الصحيحة ليست دائماً المتوقعة.",
       "مرحباً في اللعبة التي أراد الشطرنج أن يكونها.",
+      "",
       "تأتي للعب وتغادر وقد فهمتَ أكثر مما كنتَ تعرف.",
     ],
 
@@ -1010,7 +1010,7 @@ export const T = {
   tailleDuPlateau: ["Taille du plateau", "Board size", "حجم اللوحة", "Tamaño del tablero"],
   plateau: ["plateau", "board", "اللوحة", "tablero"],
   tempsParTour: ["Temps par tour", "Time per turn", "الوقت لكل دور", "Tiempo por turno"],
-  modeIA: ["Mode IA", "AI mode", "وضع الذكاء الاصطناعي", "Modo IA"],
+  modeIA: ["Mode", "mode", "اختيار الخصم", "Modo"],
   deuxJoueurs: ["2 joueurs", "2 players", "لاعبان", "2 jugadores"],
   iaJoueNoir: ["IA joue Noir", "AI plays Black", "الذكاء الاصطناعي يلعب الأسود", "IA juega Negro"],
   iaJoueRouge: ["IA joue Rouge", "AI plays Red", "الذكاء الاصطناعي يلعب الأحمر", "IA juega Rojo"],
