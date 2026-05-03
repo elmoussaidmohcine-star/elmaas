@@ -1,6 +1,9 @@
 # ============================================================
 #  ELMAAS — api.py
 # ============================================================
+import eventlet
+eventlet.monkey_patch()  # DOIT être en tout premier avant tous les imports
+
 import os
 import json
 import uuid
@@ -68,7 +71,7 @@ CORS(app,
 # SocketIO
 socketio = SocketIO(app,
     cors_allowed_origins="*",
-    async_mode="threading",
+    async_mode="eventlet",
     transports=["polling", "websocket"])
 # Extensions
 db.init_app(app)
@@ -235,27 +238,22 @@ def enregistrer_elo_fin_partie(partie_id: str, gagnant_couleur: str):
             db.session.commit()
             elo_deja_mis_a_jour.add(partie_id)
             print(f"[ELO] {partie_id} rouge:{elo_rouge_avant}->{new_rouge} noir:{elo_noir_avant}->{new_noir} gagnant:{gagnant_couleur}")
-            # Libérer les pixels de mémoire après la fin (économie RAM)
-            pixels_par_partie.pop(partie_id, None)
-            historique_coups.pop(partie_id, None)
     except Exception as e:
         print(f"[ELO] Erreur mise à jour ELO: {e}")
         import traceback; traceback.print_exc()
 
 
-# ── Thread de nettoyage périodique (toutes les 15 min) ──
-import threading
+# ── Nettoyage périodique compatible eventlet ──
 def _cleanup_loop():
     while True:
-        time.sleep(900)  # 15 minutes
+        eventlet.sleep(900)  # 15 minutes
         try:
             with app.app_context():
                 nettoyer_parties_anciennes()
         except Exception as e:
-            print(f"[cleanup_thread] Erreur: {e}")
+            print(f"[cleanup] Erreur: {e}")
 
-_cleanup_thread = threading.Thread(target=_cleanup_loop, daemon=True)
-_cleanup_thread.start()
+eventlet.spawn(_cleanup_loop)
 
 
 def serialiser_puzzle(puzzle: Puzzle) -> dict:
@@ -910,11 +908,7 @@ def jouer(partie_id: str):
             scores_manches[partie_id][etat.gagnant] = scores_manches.get(partie_id, {}).get(etat.gagnant, 0) + 1
             resultat["scores_manches"] = scores_manches.get(partie_id, {"rouge": 0, "noir": 0})
             # Mise à jour ELO multijoueur
-            threading.Thread(
-                target=enregistrer_elo_fin_partie,
-                args=(partie_id, etat.gagnant),
-                daemon=True
-            ).start()
+            eventlet.spawn(enregistrer_elo_fin_partie, partie_id, etat.gagnant)
 
     if resultat.get("succes"):
         sauvegarder_partie(partie_id)
@@ -1034,11 +1028,7 @@ def coup_ia(partie_id: str):
 
     # Mise à jour ELO si la manche vient de se terminer
     if etat.manche_terminee and etat.gagnant in ("rouge", "noir"):
-        threading.Thread(
-            target=enregistrer_elo_fin_partie,
-            args=(partie_id, etat.gagnant),
-            daemon=True
-        ).start()
+        eventlet.spawn(enregistrer_elo_fin_partie, partie_id, etat.gagnant)
 
     socketio.emit("etat_mis_a_jour", {
         "etat": etat_serialise, "action": "poser",
