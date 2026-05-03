@@ -1,9 +1,6 @@
 # ============================================================
 #  ELMAAS — api.py
 # ============================================================
-import eventlet
-eventlet.monkey_patch()  # DOIT être en tout premier avant tous les imports
-
 import os
 import json
 import uuid
@@ -71,7 +68,7 @@ CORS(app,
 # SocketIO
 socketio = SocketIO(app,
     cors_allowed_origins="*",
-    async_mode="eventlet",
+    async_mode="threading",
     transports=["polling", "websocket"])
 # Extensions
 db.init_app(app)
@@ -133,49 +130,6 @@ timer_par_partie: dict[str, int] = {}
 historique_coups: dict[str, list] = {}    # partie_id -> liste de coups
 etats_initiaux: dict[str, dict] = {}      # partie_id -> etat sérialisé initial
 analyses_quotidiennes: dict[int, dict] = {}  # user_id -> {"date": date, "count": int
-users_par_partie: dict[str, dict] = {}    # partie_id -> {"rouge": user_id, "noir": user_id}
-elo_deja_mis_a_jour: set = set()          # partie_id déjà traités (anti-double)
-
-# ── Timestamps pour nettoyage automatique ──
-partie_timestamps: dict[str, float] = {}  # partie_id -> dernière activité (time.time())
-
-def nettoyer_partie(partie_id: str):
-    """Supprime TOUTES les données en mémoire associées à une partie."""
-    parties.pop(partie_id, None)
-    pixels_par_partie.pop(partie_id, None)
-    noms_par_partie.pop(partie_id, None)
-    bonus_double_tour.pop(partie_id, None)
-    reconnaissance_tentee.pop(partie_id, None)
-    joueurs_connectes.pop(partie_id, None)
-    pseudos_par_partie.pop(partie_id, None)
-    demandes_pause.pop(partie_id, None)
-    pause_active.pop(partie_id, None)
-    scores_manches.pop(partie_id, None)
-    timer_par_partie.pop(partie_id, None)
-    historique_coups.pop(partie_id, None)
-    etats_initiaux.pop(partie_id, None)
-    users_par_partie.pop(partie_id, None)
-    elo_deja_mis_a_jour.discard(partie_id)
-    partie_timestamps.pop(partie_id, None)
-
-def nettoyer_parties_anciennes():
-    """Supprime les parties inactives depuis plus de 45 minutes."""
-    seuil = time.time() - 2700  # 45 minutes
-    parties_a_supprimer = [
-        pid for pid, ts in partie_timestamps.items() if ts < seuil
-    ]
-    # Limite absolue : max 40 parties en mémoire — supprimer les plus vieilles
-    if len(parties) > 40:
-        triees = sorted(partie_timestamps.items(), key=lambda x: x[1])
-        for pid, _ in triees[:len(parties) - 40]:
-            if pid not in parties_a_supprimer:
-                parties_a_supprimer.append(pid)
-    for pid in parties_a_supprimer:
-        print(f"[cleanup] Nettoyage automatique partie {pid}")
-        nettoyer_partie(pid)
-    if parties_a_supprimer:
-        print(f"[cleanup] {len(parties_a_supprimer)} parties nettoyées. "
-              f"Restant en mémoire : {len(parties)} parties")
 
 
 def sauvegarder_partie(partie_id: str):
@@ -199,61 +153,6 @@ def sauvegarder_partie(partie_id: str):
     except Exception as e:
         if DEBUG:
             print(f"[DB] Erreur sauvegarde: {e}")
-
-
-def enregistrer_elo_fin_partie(partie_id: str, gagnant_couleur: str):
-    """Met à jour l'ELO des deux joueurs après une fin de partie multijoueur."""
-    if partie_id in elo_deja_mis_a_jour:
-        return  # Anti-double
-    users = users_par_partie.get(partie_id, {})
-    rouge_id = users.get("rouge")
-    noir_id = users.get("noir")
-    if not rouge_id or not noir_id:
-        return  # Partie solo ou IDs manquants
-    try:
-        with app.app_context():
-            j_rouge = Utilisateur.query.get(rouge_id)
-            j_noir = Utilisateur.query.get(noir_id)
-            if not j_rouge or not j_noir:
-                return
-            elo_rouge_avant = j_rouge.elo or 500
-            elo_noir_avant = j_noir.elo or 500
-            if gagnant_couleur == "rouge":
-                gagnant_num = 1
-            elif gagnant_couleur == "noir":
-                gagnant_num = 2
-            else:
-                gagnant_num = 0
-            new_rouge, new_noir = calculer_elo(elo_rouge_avant, elo_noir_avant, gagnant_num)
-            j_rouge.elo = new_rouge
-            j_noir.elo = new_noir
-            j_rouge.parties_jouees = (j_rouge.parties_jouees or 0) + 1
-            j_noir.parties_jouees = (j_noir.parties_jouees or 0) + 1
-            if gagnant_couleur == "rouge":
-                j_rouge.victoires = (j_rouge.victoires or 0) + 1
-                j_noir.defaites = (j_noir.defaites or 0) + 1
-            elif gagnant_couleur == "noir":
-                j_noir.victoires = (j_noir.victoires or 0) + 1
-                j_rouge.defaites = (j_rouge.defaites or 0) + 1
-            db.session.commit()
-            elo_deja_mis_a_jour.add(partie_id)
-            print(f"[ELO] {partie_id} rouge:{elo_rouge_avant}->{new_rouge} noir:{elo_noir_avant}->{new_noir} gagnant:{gagnant_couleur}")
-    except Exception as e:
-        print(f"[ELO] Erreur mise à jour ELO: {e}")
-        import traceback; traceback.print_exc()
-
-
-# ── Nettoyage périodique compatible eventlet ──
-def _cleanup_loop():
-    while True:
-        eventlet.sleep(900)  # 15 minutes
-        try:
-            with app.app_context():
-                nettoyer_parties_anciennes()
-        except Exception as e:
-            print(f"[cleanup] Erreur: {e}")
-
-eventlet.spawn(_cleanup_loop)
 
 
 def serialiser_puzzle(puzzle: Puzzle) -> dict:
@@ -347,7 +246,6 @@ def on_rejoindre_partie(data):
     partie_id = data.get("partie_id")
     role      = data.get("joueur")
     pseudo    = data.get("pseudo", "")   # pseudo du joueur qui se connecte
-    user_id   = data.get("user_id")      # user_id pour le suivi ELO
 
     if partie_id not in parties:
         emit("erreur", {"message": "Partie introuvable"})
@@ -368,15 +266,6 @@ def on_rejoindre_partie(data):
         pseudos_par_partie[partie_id] = {}
     if pseudo:
         pseudos_par_partie[partie_id][role] = pseudo
-
-    # Stocker user_id pour le suivi ELO — joueur2 = noir
-    if user_id:
-        if partie_id not in users_par_partie:
-            users_par_partie[partie_id] = {"rouge": None, "noir": None}
-        if role == "joueur2":
-            users_par_partie[partie_id]["noir"] = user_id
-        elif role == "joueur1":
-            users_par_partie[partie_id]["rouge"] = user_id
 
     emit("rejoint", {
         "partie_id": partie_id,
@@ -516,17 +405,11 @@ def nouvelle_partie():
                 user.photo_perso_utilisee = True
                 db.session.commit()
         parties[partie_id] = etat
-        partie_timestamps[partie_id] = time.time()
-        # Nettoyage automatique des vieilles parties
-        nettoyer_parties_anciennes()
         etats_initiaux[partie_id] = copier_etat_manuel(etat)
         print(f"[api] État initial sauvegardé : {partie_id}")
         pixels_par_partie[partie_id] = pixels
         historique_coups[partie_id] = []
         etats_initiaux[partie_id] = serialiser_etat(etat)
-        # Stocker le user_id du joueur rouge (celui qui upload la photo)
-        if user:
-            users_par_partie[partie_id] = {"rouge": user.id, "noir": None}
         nom_photo = request.form.get("nom_photo", "")[:10].strip()
         # Filtre mots sacrés sur nom photo
         if nom_photo:
@@ -772,10 +655,6 @@ def jouer(partie_id: str):
     etat = parties.get(partie_id)
     if not etat:
         return jsonify({"erreur": "Partie introuvable"}), 404
-    partie_timestamps[partie_id] = time.time()  # Garder la partie "active"
-    # Nettoyage toutes les 50 requêtes environ
-    if len(parties) > 10:
-        nettoyer_parties_anciennes()
 
     data = request.json or {}
     action = data.get("action")
@@ -907,8 +786,6 @@ def jouer(partie_id: str):
         if not resultat.get("attente_pouvoir"):
             scores_manches[partie_id][etat.gagnant] = scores_manches.get(partie_id, {}).get(etat.gagnant, 0) + 1
             resultat["scores_manches"] = scores_manches.get(partie_id, {"rouge": 0, "noir": 0})
-            # Mise à jour ELO multijoueur
-            eventlet.spawn(enregistrer_elo_fin_partie, partie_id, etat.gagnant)
 
     if resultat.get("succes"):
         sauvegarder_partie(partie_id)
@@ -1025,10 +902,6 @@ def coup_ia(partie_id: str):
     resultat["gagnant"] = etat.gagnant
     if "puzzles_completes" in resultat:
         resultat["puzzles_completes"] = [serialiser_puzzle(p) for p in resultat["puzzles_completes"]]
-
-    # Mise à jour ELO si la manche vient de se terminer
-    if etat.manche_terminee and etat.gagnant in ("rouge", "noir"):
-        eventlet.spawn(enregistrer_elo_fin_partie, partie_id, etat.gagnant)
 
     socketio.emit("etat_mis_a_jour", {
         "etat": etat_serialise, "action": "poser",
@@ -1171,21 +1044,15 @@ def get_scores_manches(partie_id: str):
 @app.route("/supprimer/<partie_id>", methods=["DELETE"])
 def supprimer_partie(partie_id: str):
     if partie_id in parties:
-        nettoyer_partie(partie_id)
+        del parties[partie_id]
+        pixels_par_partie.pop(partie_id, None)
+        noms_par_partie.pop(partie_id, None)
+        bonus_double_tour.pop(partie_id, None)
+        reconnaissance_tentee.pop(partie_id, None)
+        joueurs_connectes.pop(partie_id, None)
+        demandes_revanche.pop(partie_id, None)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
-
-
-@app.route("/debug/memoire", methods=["GET"])
-def debug_memoire():
-    """Diagnostic mémoire — nombre de parties en RAM."""
-    return jsonify({
-        "parties_en_memoire": len(parties),
-        "pixels_en_memoire": len(pixels_par_partie),
-        "historiques_en_memoire": len(historique_coups),
-        "etats_initiaux": len(etats_initiaux),
-        "joueurs_connectes": len(joueurs_connectes),
-    })
 
 
 if __name__ == "__main__":

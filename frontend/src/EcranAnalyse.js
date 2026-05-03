@@ -22,7 +22,7 @@ function MiniPieceAnalyse({ piece, couleur }) {
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
   const S = 8;
   const estELMAAS = piece.enlevement === true;
-  const coul = estELMAAS ? "var(--diamant)" : (couleur === "rouge" ? "var(--rouge-c)" : "var(--noir-c)");
+  const coul = estELMAAS ? "#00BFFF" : (couleur === "rouge" ? "var(--rouge-c)" : "var(--noir-c)");
 
   return (
     <div style={{
@@ -38,7 +38,7 @@ function MiniPieceAnalyse({ piece, couleur }) {
         }} />
       ))}
       {estELMAAS && (
-        <div style={{ position: "absolute", top: -2, right: -2, width: 4, height: 4, borderRadius: "50%", background: "var(--diamant)" }} />
+        <div style={{ position: "absolute", top: -2, right: -2, width: 4, height: 4, borderRadius: "50%", background: "#00BFFF" }} />
       )}
     </div>
   );
@@ -267,8 +267,8 @@ export default function EcranAnalyse({
                 <span style={{ fontSize: 10, color: "var(--noir-c)", fontWeight: 600, fontFamily: "var(--brush)" }}>Noir</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--diamant)" }} />
-                <span style={{ fontSize: 10, color: "var(--diamant)", fontWeight: 600, fontFamily: "var(--brush)" }}>ELMAAS</span>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: "#00BFFF" }} />
+                <span style={{ fontSize: 10, color: "#00BFFF", fontWeight: 600, fontFamily: "var(--brush)" }}>ELMAAS</span>
               </div>
             </div>
           </div>
@@ -540,7 +540,7 @@ export default function EcranAnalyse({
                 <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)" }}>
                   {t("analyseForme", L)} : <span style={{ color: "var(--texte)" }}>{coupActuel.piece_forme}</span>
                   {coupActuel.piece_est_elmaas && (
-                    <span style={{ color: "var(--diamant)", marginLeft: 6, fontWeight: 600 }}>ELMAAS</span>
+                    <span style={{ color: "#00BFFF", marginLeft: 6, fontWeight: 600 }}>ELMAAS</span>
                   )}
                 </div>
               )}
@@ -578,7 +578,7 @@ export default function EcranAnalyse({
                       {t("analyseOrigine", L)} : [{coupActuel.meilleur_alternative.origine?.join(", ")}]
                     </div>
                     {coupActuel.meilleur_alternative.est_elmaas && (
-                      <div style={{ color: "var(--diamant)", marginTop: 4, fontWeight: 600 }}>
+                      <div style={{ color: "#00BFFF", marginTop: 4, fontWeight: 600 }}>
                         {t("analyseElmaasDisponible", L)}
                       </div>
                     )}

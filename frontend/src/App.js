@@ -23,21 +23,9 @@ function getLangueInitiale() {
 }
 function appliquerTheme(indexLangue) {
   const html = document.documentElement;
-  const body = document.body;
-
-  // Transition de civilisation : fade out
-  if (body) body.classList.add('civilisation-transition');
-
-  setTimeout(() => {
-    LANGUES.forEach(l => html.classList.remove(l.theme));
-    html.classList.add(LANGUES[indexLangue].theme);
-    html.setAttribute("dir", LANGUES[indexLangue].code === "ar" ? "rtl" : "ltr");
-
-    // Fade in après changement
-    setTimeout(() => {
-      if (body) body.classList.remove('civilisation-transition');
-    }, 100);
-  }, 400);
+  LANGUES.forEach(l => html.classList.remove(l.theme));
+  html.classList.add(LANGUES[indexLangue].theme);
+  html.setAttribute("dir", LANGUES[indexLangue].code === "ar" ? "rtl" : "ltr");
 }
 
 // Gestion des scores cumulés par adversaire (localStorage)
@@ -112,26 +100,26 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
               border: "1px solid rgba(100,140,220,0.3)",
               background: "rgba(20,30,70,0.25)",
             }}>
-              <div className="plan-nom" style={{ color: "var(--plan-gratuit)" }}>{t("planGratuit", L)}</div>
+              <div className="plan-nom" style={{ color: "#6699ff" }}>{t("planGratuit", L)}</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
                 {t("planGratuitDesc", L)}
               </div>
-              <div className="plan-prix" style={{ color: "var(--plan-gratuit)" }}>0€</div>
+              <div className="plan-prix" style={{ color: "#6699ff" }}>0€</div>
             </div>
 
             {/* Plan ELMAASYON */}
             <div className={`plan-card ${utilisateur.plan === "elmaasyon" ? "actif" : "premium"}`} style={{
-              border: utilisateur.plan === "elmaasyon" ? "1px solid var(--plan-elmaasyon)" : "1px solid var(--plan-elmaasyon)55",
+              border: utilisateur.plan === "elmaasyon" ? "1px solid #4488ff" : "1px solid #4488ff55",
               background: utilisateur.plan === "elmaasyon" ? "rgba(30,60,140,0.3)" : "rgba(20,30,70,0.2)",
-              boxShadow: utilisateur.plan === "elmaasyon" ? "0 0 16px var(--plan-elmaasyon)33" : "none",
+              boxShadow: utilisateur.plan === "elmaasyon" ? "0 0 16px #4488ff33" : "none",
             }}>
-              <div className="plan-nom" style={{ color: "var(--plan-elmaasyon)" }}>{t("planElmaasyon", L)}</div>
+              <div className="plan-nom" style={{ color: "#66aaff" }}>{t("planElmaasyon", L)}</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
                 {t("planElmaasyonDescFull", L)}
               </div>
-              <div className="plan-prix" style={{ color: "var(--plan-elmaasyon)" }}>
+              <div className="plan-prix" style={{ color: "#88bbff" }}>
                 <span style={{ textDecoration: "line-through", fontSize: 13, opacity: 0.45, marginRight: 6 }}>6.99€</span>
-                <strong style={{ color: "var(--plan-elmaasyon)" }}>3.49€</strong>
+                <strong style={{ color: "#66aaff" }}>3.49€</strong>
                 <small style={{ color: "var(--muted)", fontSize: 10, marginLeft: 5 }}>
                   /{L===0?"mois":L===1?"month":L===2?"شهر":"mes"} — {L===0?"Lancement -50%":L===1?"-50% Launch":L===2?"إطلاق -50%":"-50% Lanzamiento"}
                 </small>
@@ -139,14 +127,14 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
               {utilisateur.plan !== "elmaasyon" && utilisateur.plan !== "elmaas" ? (
                 <button className="btn-valider" style={{
                   fontSize: 13, padding: "8px 16px",
-                  background: "linear-gradient(135deg,var(--plan-elmaasyon),var(--plan-elmaasyon))", border: "none",
+                  background: "linear-gradient(135deg,#1144cc,#4488ff)", border: "none",
                 }} onClick={() => onPaiement("elmaasyon")}>
                   {t("passerPremiumBtn", L)}
                 </button>
               ) : utilisateur.plan === "elmaasyon" && (
                 <button className="btn-valider" style={{
                   fontSize: 12, padding: "6px 14px", background: "rgba(68,136,255,0.12)",
-                  border: "1px solid var(--plan-elmaasyon)44",
+                  border: "1px solid #4488ff44",
                 }} onClick={async () => {
                   const res = await fetch(`${API}/stripe/portal`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
                   const d = await res.json(); if (d.url) window.location.href = d.url;
@@ -158,17 +146,17 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
 
             {/* Plan ELMAAS */}
             <div className={`plan-card ${utilisateur.plan === "elmaas" ? "actif" : "premium"}`} style={{
-              border: utilisateur.plan === "elmaas" ? "1px solid var(--plan-elmaas)" : "1px solid var(--plan-elmaas)44",
+              border: utilisateur.plan === "elmaas" ? "1px solid #aa55ff" : "1px solid #aa55ff44",
               background: utilisateur.plan === "elmaas" ? "rgba(60,20,120,0.3)" : "rgba(30,10,60,0.2)",
-              boxShadow: utilisateur.plan === "elmaas" ? "0 0 20px var(--plan-elmaas)33" : "none",
+              boxShadow: utilisateur.plan === "elmaas" ? "0 0 20px #aa55ff33" : "none",
             }}>
-              <div className="plan-nom" style={{ color: "var(--plan-elmaas)" }}>ELMAAS</div>
+              <div className="plan-nom" style={{ color: "#cc88ff" }}>ELMAAS</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
                 {t("planElmaasDescFull", L)}
               </div>
-              <div className="plan-prix" style={{ color: "var(--plan-elmaas)" }}>
+              <div className="plan-prix" style={{ color: "#cc88ff" }}>
                 <span style={{ textDecoration: "line-through", fontSize: 13, opacity: 0.45, marginRight: 6 }}>12.99€</span>
-                <strong style={{ color: "var(--plan-elmaas)" }}>6.49€</strong>
+                <strong style={{ color: "#aa66ff" }}>6.49€</strong>
                 <small style={{ color: "var(--muted)", fontSize: 10, marginLeft: 5 }}>
                   /{L===0?"mois":L===1?"month":L===2?"شهر":"mes"} — {L===0?"Lancement -50%":L===1?"-50% Launch":L===2?"إطلاق -50%":"-50% Lanzamiento"}
                 </small>
@@ -176,14 +164,14 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
               {utilisateur.plan !== "elmaas" ? (
                 <button className="btn-valider" style={{
                   fontSize: 13, padding: "8px 16px",
-                  background: "linear-gradient(135deg,var(--plan-elmaas),var(--plan-elmaas))", border: "none",
+                  background: "linear-gradient(135deg,#6600cc,#aa55ff)", border: "none",
                 }} onClick={() => onPaiement("elmaas")}>
                   {t("passerPremiumBtn", L)}
                 </button>
               ) : (
                 <button className="btn-valider" style={{
                   fontSize: 12, padding: "6px 14px", background: "rgba(170,85,255,0.12)",
-                  border: "1px solid var(--plan-elmaas)44",
+                  border: "1px solid #aa55ff44",
                 }} onClick={async () => {
                   const res = await fetch(`${API}/stripe/portal`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
                   const d = await res.json(); if (d.url) window.location.href = d.url;
@@ -274,7 +262,7 @@ function EcranPseudo({ onPseudoDefini, L }) {
           value={pseudo} onChange={e => setPseudo(e.target.value)}
           onKeyDown={e => e.key === "Enter" && statut?.disponible && valider()} />
         {pseudo.length >= 2 && statut && (
-          <div style={{ fontSize: 13, color: statut.disponible ? "var(--succes)" : "var(--erreur)" }}>
+          <div style={{ fontSize: 13, color: statut.disponible ? "#88ff88" : "#ff8888" }}>
             {statut.disponible ? t("pseudoDispo", L)
               : statut.raison === "mot_sacre" ? t("motSacreErreur", L)
               : statut.raison === "trop_court" ? t("pseudoTropCourt", L)
@@ -368,10 +356,10 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
           <div className="ia-niveau">
             <span>{t("niveauIA", L)}</span>
             {[
-              { n: 1, label: "Chess",      locked: false, color: "var(--couleur-j1)" },
+              { n: 1, label: "Chess",      locked: false, color: "#cc2200" },
               { n: 2, label: "Amal",       locked: false, color: "#ddaa00" },
               { n: 3, label: "ELMAASYON",  locked: false, color: "#4477ff" },
-              { n: 4, label: "ELMAAS",     locked: utilisateur?.plan !== "elmaas", color: "var(--plan-elmaas)" },
+              { n: 4, label: "ELMAAS",     locked: utilisateur?.plan !== "elmaas", color: "#9933ff" },
             ].map(({ n, label, locked, color }) => (
               <button key={n}
                 className={`ia-btn-niveau ${niveauIA === n ? "actif" : ""} ${locked ? "verrouille" : ""}`}
@@ -394,10 +382,10 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
           <div style={{
             marginTop: 12, padding: "10px 14px",
             background: "rgba(153,51,255,0.08)",
-            borderRadius: 8, border: "1px solid var(--plan-elmaas)44",
+            borderRadius: 8, border: "1px solid #9933ff44",
             fontSize: 13, lineHeight: 1.5
           }}>
-            <div style={{ color: "var(--plan-elmaas)", fontWeight: 700, marginBottom: 4 }}>
+            <div style={{ color: "#9933ff", fontWeight: 700, marginBottom: 4 }}>
               ELMAAS
             </div>
             <div style={{ color: "#cc99ff" }}>
@@ -415,7 +403,7 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
           {modeIA === "aucune" ? t("jouerContreAmi", L) : t("jouerContreIA", L)}
         </button>
         {utilisateur && modeIA === "aucune" && (
-          <button className="btn-valider" style={{ background: "linear-gradient(135deg, var(--succes), var(--succes))" }}
+          <button className="btn-valider" style={{ background: "linear-gradient(135deg, #228866, #44cc88)" }}
             onClick={() => onPlayOnline(timerSec)}>
             {t("jouerOnline", L)}
           </button>
@@ -604,19 +592,18 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
           <label className="nom-photo-label">
             {t("nomSecretPhoto", L)}{" "}
             <span>{t("max10Car", L)}</span>{" "}
-            <span style={{ color: nomValide ? "var(--succes)" : "var(--rouge-c)" }}>{t("min3Car", L)}</span>
+            <span style={{ color: nomValide ? "#88ff88" : "var(--rouge-c)" }}>{t("min3Car", L)}</span>
           </label>
           <input className="nom-photo-input" maxLength={10} placeholder={t("exVacances", L)}
             value={nomPhoto} onChange={e => filtreNomSacre(e.target.value)} />
         </div>
       )}
 
-      <div className="grille-photos-jeu" style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600 }}>
         {photosFixees.map((url, i) => (
           <div key={i} onClick={() => { setPhotoSelectionnee({ url, estFichier: false }); setApercu(null); }}
-            className="photo-miniature"
             style={{
-              borderRadius: 8, overflow: "hidden", cursor: "pointer",
+              width: 100, height: 100, borderRadius: 8, overflow: "hidden", cursor: "pointer",
               border: photoSelectionnee?.url === url ? "3px solid var(--rouge-c)" : "2px solid var(--bord)",
               transition: "all 0.2s",
             }}>
@@ -756,21 +743,20 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   const cells = piece.cellules || [];
   const maxR = Math.max(0, ...cells.map(([r]) => r));
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-  const S = isMobile ? 13 : 10;
+  const S = 10;
 
   //  ELMAAS = pièce d'enlèvement (diamant)
   const estELMAAS = piece.enlevement === true;
 
   let coul, coulClair, bordure, bgSel;
   if (estELMAAS) {
-    coul = "var(--diamant)"; coulClair = "var(--diamant-clair)";
-    bordure = estSelectionnee ? "var(--diamant)" : "var(--diamant)";
+    coul = "#00BFFF"; coulClair = "#80D8FF";
+    bordure = estSelectionnee ? "#00BFFF" : "#004488";
     bgSel = "rgba(0,191,255,0.2)";
   } else {
-    coul = couleur === "rouge" ? "var(--couleur-j1)" : "var(--couleur-j2)";
-    coulClair = couleur === "rouge" ? "var(--couleur-j1-clair)" : "var(--couleur-j2-clair)";
-    bordure = estSelectionnee ? coulClair : "var(--bord-clair)";
+    coul = couleur === "rouge" ? "#cc2200" : "#444444";
+    coulClair = couleur === "rouge" ? "#ff4422" : "#888888";
+    bordure = estSelectionnee ? coulClair : "#2a2a4a";
     bgSel = `${coul}33`;
   }
 
@@ -779,7 +765,7 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
       style={{ position: "relative", width: (maxC+1)*S+10, height: (maxR+1)*S+10, padding: 5,
         borderRadius: 6, cursor: "pointer", flexShrink: 0,
         border: `2px solid ${bordure}`,
-        background: estSelectionnee ? bgSel : "var(--bg3)", transition: "all 0.15s",
+        background: estSelectionnee ? bgSel : "#111122", transition: "all 0.15s",
         boxShadow: estELMAAS ? "0 0 8px rgba(0,191,255,0.4)" : "none" }}
       title={estELMAAS ? ` ELMAAS ${piece.forme}` : piece.forme}>
       {cells.map(([r, c], i) => (
@@ -789,7 +775,7 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
       ))}
       {estELMAAS && (
         <div style={{ position: "absolute", top: -3, right: -3, width: 8, height: 8,
-          borderRadius: "50%", background: "var(--diamant)", boxShadow: "0 0 4px var(--diamant)" }} />
+          borderRadius: "50%", background: "#00BFFF", boxShadow: "0 0 4px #00BFFF" }} />
       )}
     </div>
   );
@@ -871,15 +857,15 @@ function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite, L })
             <input className="lobby-input" placeholder={t("tonEstimation", L)} maxLength={12}
               value={proposition} onChange={e => { setProposition(e.target.value); setErreurLocale(null); }}
               onKeyDown={e => e.key === "Enter" && propValide && handleTenter()} />
-            {erreurLocale && <div style={{ color: "var(--erreur)", fontSize: 12 }}>{erreurLocale}</div>}
+            {erreurLocale && <div style={{ color: "#ff6644", fontSize: 12 }}>{erreurLocale}</div>}
             <button className="btn-valider" onClick={handleTenter} disabled={!propValide}>{t("valider", L)}</button>
           </>
         )}
         {resultat && (
           <div style={{ textAlign: "center" }}>
             {resultat.succes
-              ? <div style={{ color: "var(--succes)", fontSize: 20 }}>{t("bravoDoubleTour", L)}</div>
-              : <div style={{ color: "var(--erreur)" }}>{t("rateNomEtait", L)} <strong>{resultat.nom_reel}</strong></div>}
+              ? <div style={{ color: "#88ff88", fontSize: 20 }}>{t("bravoDoubleTour", L)}</div>
+              : <div style={{ color: "#ff8888" }}>{t("rateNomEtait", L)} <strong>{resultat.nom_reel}</strong></div>}
           </div>
         )}
         {tenteeDejaFaite && !resultat && <div style={{ color: "var(--muted)" }}>{t("tentativeUtilisee", L)}</div>}
@@ -929,7 +915,7 @@ function BulleMessage({ texte, couleur, position, onFermer }) {
     return () => clearTimeout(t);
   }, [onFermer]);
   return (
-    <div className="bulle-message" style={{ [position]: 20, borderColor: couleur === "rouge" ? "var(--couleur-j1-clair)" : "var(--couleur-j2-clair)" }}>
+    <div className="bulle-message" style={{ [position]: 20, borderColor: couleur === "rouge" ? "#ff4422" : "#aaaaaa" }}>
       {texte}
     </div>
   );
@@ -1013,16 +999,7 @@ export default function App() {
 
     // ── Mise à jour ELM ──────────────────────────────────────
     const token = getToken();
-    if (!token || !partieId) {
-      console.warn("[ELM] Pas de token ou partieId, ELM non mis à jour");
-      return;
-    }
-    // Lire utilisateur frais depuis localStorage (évite le stale closure)
-    const userFrais = getUser();
-    if (!userFrais) {
-      console.warn("[ELM] Pas d'utilisateur, ELM non mis à jour");
-      return;
-    }
+    if (!token || !utilisateur || !partieId) return;
     if (finPartieEnvoyee.current.has(partieId)) return;
     finPartieEnvoyee.current.add(partieId);
 
@@ -1043,23 +1020,17 @@ export default function App() {
       score_j2:         maCouleur === "rouge" ? (scores.noir  ?? 0) : (scores.rouge ?? 0),
     }, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
-        if (res.data.succes) {
+        if (res.data.succes && !res.data.deja_traite) {
+          const delta = res.data.delta;
           const eloApres = res.data.elo_apres;
-          setEloInfo({ avant: res.data.elo_avant, apres: eloApres, delta: res.data.delta });
-          const updatedUser = { ...userFrais, elo: eloApres };
+          setEloInfo({ avant: res.data.elo_avant, apres: eloApres, delta });
+          const updatedUser = { ...utilisateur, elo: eloApres };
           localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
           setUtilisateur(updatedUser);
-        } else {
-          console.error("[ELM] Réponse serveur non-succes:", res.data);
-          setEloInfo({ avant: userFrais.elo, apres: userFrais.elo, delta: 0, erreur: res.data.erreur || "Erreur serveur" });
         }
       })
-      .catch(err => {
-        console.error("[ELM] Erreur appel fin_partie:", err?.response?.status, err?.response?.data || err.message);
-        // Afficher l'erreur à l'utilisateur dans le popup
-        setEloInfo({ avant: userFrais.elo, apres: userFrais.elo, delta: 0, erreur: err?.response?.data?.erreur || "Erreur réseau" });
-      });
-  }, [mancheTermineeInfo, modeIA, monRole, partieId, pseudoAdverse]);
+      .catch(err => console.warn("[fin_partie]", err?.response?.data || err.message));
+  }, [mancheTermineeInfo]);
   
   const [showAnalyse, setShowAnalyse] = useState(false);
   const [analyseJoueur, setAnalyseJoueur] = useState(null);
@@ -1108,19 +1079,12 @@ export default function App() {
   };
 
   const changerLangue = (idx) => {
-    if (idx === indexLangue) return;
     setIndexLangue(idx);
     localStorage.setItem("elmaas_langue", String(idx));
     appliquerTheme(idx);
   };
 
-  useEffect(() => { 
-    appliquerTheme(indexLangue); 
-    // Nettoyer toute transition résiduelle au mount
-    setTimeout(() => {
-      document.body.classList.remove('civilisation-transition');
-    }, 500);
-  }, []);
+  useEffect(() => { appliquerTheme(indexLangue); }, [indexLangue]);
 
   // Retour Google OAuth
   useEffect(() => {
@@ -1373,7 +1337,7 @@ export default function App() {
       setModeMultijoueur(true);
       
       //  CRITIQUE: rejoindre la room WebSocket immédiatement
-      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1", pseudo: utilisateur?.pseudo || "", user_id: utilisateur?.id || null });
+      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1", pseudo: utilisateur?.pseudo || "" });
       
       if (partieIdMatch) {
         setEtape("jeu");
@@ -1391,7 +1355,7 @@ export default function App() {
     setEtape("lobby");
     
     //  CRITIQUE: rejoindre la room WebSocket immédiatement
-    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2", pseudo: utilisateur?.pseudo || "", user_id: utilisateur?.id || null });
+    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2", pseudo: utilisateur?.pseudo || "" });
     
     try {
       const res = await axios.get(`${API}/pixels/${id}`);
@@ -1608,28 +1572,22 @@ export default function App() {
       onDeconnecter={onDeconnecter} onPaiement={handlePaiement} />
   );
 
-  // Style inline pour les écrans hors-jeu sur mobile — aligne en haut
-  const isMobileDevice = typeof window !== 'undefined' && window.innerWidth <= 768;
-  const appStyleMobile = isMobileDevice
-    ? { alignItems: 'flex-start', justifyContent: 'flex-start', background: 'var(--bg)' }
-    : {};
-
   if (etape === "auth") return (
-    <div className="app" style={appStyleMobile}>
+    <div className="app">
       {boutonParamsFlottant}{popupParams}
       <EcranAuth onConnecte={(user) => { setUtilisateur(user); setEtape(user?.pseudo ? "taille" : (user ? "pseudo" : "taille")); }} L={L} />
     </div>
   );
 
   if (etape === "pseudo") return (
-    <div className="app" style={appStyleMobile}>
+    <div className="app">
       {boutonParamsFlottant}{popupParams}
       <EcranPseudo L={L} onPseudoDefini={(user) => { setUtilisateur(user); setEtape("taille"); }} />
     </div>
   );
 
   if (etape === "taille") return (
-    <div className="app" style={appStyleMobile}>
+    <div className="app">
       {boutonParamsFlottant}{popupParams}
       {matchmakingActif && (
         <PopupMatchmaking L={L} timerSec={timerChoisi} utilisateur={utilisateur}
@@ -1653,8 +1611,7 @@ export default function App() {
               socketRef.current.emit("rejoindre_partie", {
                 partie_id: data.partie_id,
                 joueur: "joueur2",
-                pseudo: utilisateur?.pseudo || "",
-                user_id: utilisateur?.id || null
+                pseudo: utilisateur?.pseudo || ""
               });
               
               // Récupérer les pixels en arrière-plan — poll rapide
@@ -1688,7 +1645,7 @@ export default function App() {
   );
 
   if (etape === "photo") return (
-    <div className="app" style={appStyleMobile}>
+    <div className="app">
       {boutonParamsFlottant}{popupParams}
       {modeIA === "aucune" && (
         <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
@@ -1705,7 +1662,7 @@ export default function App() {
   );
 
   if (etape === "lobby") return (
-    <div className="app" style={appStyleMobile}>
+    <div className="app">
       {boutonParamsFlottant}{popupParams}
       <EcranLobby 
         partieId={partieId} 
@@ -1724,7 +1681,7 @@ export default function App() {
   // 
   if (showAnalyse) {
     return (
-      <div className="app" style={appStyleMobile}>
+      <div className="app">
         <EcranAnalyse
           partieId={partieId}
           analyseJoueur={analyseJoueur}
@@ -1744,7 +1701,7 @@ export default function App() {
   // JEU PRINCIPAL
   // 
   return (
-    <div className={`app jeu mode-couleur-${modeCouleur}`}>
+    <div className="app jeu">
       {popupParams}
 
       {bullesActives.map(b => (
@@ -1763,13 +1720,13 @@ export default function App() {
               return (
                 <>
                   <div className="popup-titre" style={{
-                    color: egalite ? "var(--muted)" : jaiGagne ? "var(--succes)" : "var(--rouge-c)",
+                    color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
                     fontSize: 32,
                   }}>
                     {egalite ? t("egalite", L) : jaiGagne ? t("victoire", L) : t("defaite", L)}
                   </div>
                   {mancheTermineeInfo.messageTemps && (
-                    <div style={{ fontSize: 12, color: "var(--warning)", fontFamily: "var(--brush)", textAlign: "center" }}>
+                    <div style={{ fontSize: 12, color: "#ffaa44", fontFamily: "var(--brush)", textAlign: "center" }}>
                       {t("tempsEcoule", L)} — {mancheTermineeInfo.messageTemps}
                     </div>
                   )}
@@ -1792,7 +1749,7 @@ export default function App() {
               </div>
               <span style={{ color: "var(--muted)", fontSize: 20 }}>vs</span>
               <div style={{ textAlign: "center" }}>
-                <div style={{ color: "var(--couleur-j2-clair)", fontWeight: 700 }}>{mancheTermineeInfo.scores?.noir ?? 0}</div>
+                <div style={{ color: "#aaaaaa", fontWeight: 700 }}>{mancheTermineeInfo.scores?.noir ?? 0}</div>
                 <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("noir", L)}</div>
               </div>
             </div>
@@ -1801,12 +1758,12 @@ export default function App() {
             </div>
 
             {/* Delta ELM */}
-            {eloInfo && !eloInfo.erreur && (
+            {eloInfo && (
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                 padding: "8px 16px", borderRadius: 8,
                 background: eloInfo.delta >= 0 ? "rgba(68,204,136,0.08)" : "rgba(204,34,0,0.08)",
-                border: `1px solid ${eloInfo.delta >= 0 ? "var(--succes-glow)" : "var(--couleur-j1-glow)"}`,
+                border: `1px solid ${eloInfo.delta >= 0 ? "#44cc8844" : "#cc220044"}`,
               }}>
                 <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--brush)" }}>ELM</span>
                 <span style={{ fontSize: 16, fontWeight: 700, color: "var(--texte)", fontFamily: "var(--titre)" }}>
@@ -1814,24 +1771,10 @@ export default function App() {
                 </span>
                 <span style={{
                   fontSize: 13, fontWeight: 700, fontFamily: "var(--titre)",
-                  color: eloInfo.delta >= 0 ? "var(--succes)" : "var(--erreur)",
+                  color: eloInfo.delta >= 0 ? "#44cc88" : "#ff6644",
                 }}>
                   {eloInfo.delta >= 0 ? "+" : ""}{eloInfo.delta}
                 </span>
-              </div>
-            )}
-            {eloInfo && eloInfo.erreur && (
-              <div style={{
-                padding: "6px 12px", borderRadius: 8, fontSize: 12,
-                background: "rgba(204,34,0,0.08)", border: "1px solid var(--couleur-j1-glow)",
-                color: "var(--erreur)", textAlign: "center",
-              }}>
-                ELM non mis à jour : {eloInfo.erreur}
-              </div>
-            )}
-            {!eloInfo && getToken() && (
-              <div style={{ fontSize: 11, color: "var(--muted)", textAlign: "center" }}>
-                ELM en cours...
               </div>
             )}
             <div className="popup-options" style={{ flexDirection: "column", gap: 8 }}>
@@ -1915,10 +1858,10 @@ export default function App() {
       {popup?.type === "attente_extraire" && (
         <div className="bandeau-cible">
           <span>{popup.message}</span>
-          <span style={{ color: "var(--warning)", fontWeight: 700 }}>
+          <span style={{ color: "#ffaa44", fontWeight: 700 }}>
             {extractionsEnCours.length}/2 {extractionsEnCours.length > 1 ? t("selectionnees", L) : t("selectionnee", L)}
           </span>
-          <button style={{ background: "var(--succes-glow)", color: "var(--succes)", borderColor: "var(--succes-glow)" }} onClick={handleConfirmerExtraction}>{t("confirmer", L)}</button>
+          <button style={{ background: "#22441188", color: "#88ff88", borderColor: "#88ff8844" }} onClick={handleConfirmerExtraction}>{t("confirmer", L)}</button>
           <button onClick={() => { setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>{t("annuler", L)}</button>
         </div>
       )}
@@ -1964,11 +1907,11 @@ export default function App() {
         <div className="header-centre">
           {estTourIA || iaEnCours ? (
             <div className="timers">
-              <div className="timer-bloc" style={{ borderColor: "var(--accent-culture)", background: "linear-gradient(180deg, var(--accent-culture)22, var(--accent-culture)11)" }}>
-                <span className="timer-label" style={{ color: "var(--accent-culture)" }}>
+              <div className="timer-bloc" style={{ borderColor: "#ffd700", background: "linear-gradient(180deg, #ffd70022, #ffd70011)" }}>
+                <span className="timer-label" style={{ color: "#ffd700" }}>
                   {L === 0 ? "IA RÉFLÉCHIT" : L === 1 ? "AI THINKING" : L === 2 ? "الذكاء الاصطناعي يفكر" : "IA PENSANDO"}
                 </span>
-                <span className="timer-val" style={{ color: "var(--accent-culture)" }}>
+                <span className="timer-val" style={{ color: "#ffd700" }}>
                   {String(Math.floor(timerIA / 60)).padStart(2, "0")}:{String(timerIA % 60).padStart(2, "0")}
                 </span>
               </div>
@@ -1995,11 +1938,11 @@ export default function App() {
           <div className="tour-info">
             {t("tour", L)} {etat?.numero_tour}
             {modeMultijoueur && (
-              <span className="badge-ia" style={{ background: estMonTour ? "var(--succes-glow)" : "var(--erreur-glow)", color: estMonTour ? "var(--succes)" : "var(--erreur)" }}>
+              <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
                 {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
               </span>
             )}
-            {bonusDoubleActif && <span className="badge-ia" style={{ background: "var(--warning-glow)", color: "var(--warning)" }}>{t("doubleTourActif", L)}</span>}
+            {bonusDoubleActif && <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>{t("doubleTourActif", L)}</span>}
             {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
             {joueurAffiche?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurAffiche.serie_actuelle}</span>}
           </div>
@@ -2042,35 +1985,30 @@ export default function App() {
 
       <div className="zone-jeu">
         <div className="panneau-main">
-          <div className="section-mes-pieces">
-            <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurAffiche?.couleur)})</div>
-            <div className="main-pieces-list">
-              {(joueurAffiche?.main_active || []).map((piece, i) => {
-                const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
-                const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
-                const estSelectPourDonner = clickEchanger && pieceADonner === i;
-                return (
-                  <div key={i} style={{ position: "relative" }}>
-                    <MiniPiece piece={piece} couleur={joueurAffiche?.couleur}
-                      estSelectionnee={pieceIdx === i || estSelectPourDonner}
-                      onClick={() => {
-                        if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
-                        else if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
-                        else if (!enModeCible && !attenteChoixPouvoir && estMonTour) { setPieceIdx(pieceIdx === i ? null : i); }
-                      }} />
-                  </div>
-                );
-              })}
-            </div>
-            {(joueurAffiche?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
+          <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurAffiche?.couleur)})</div>
+          <div className="main-pieces-list">
+            {(joueurAffiche?.main_active || []).map((piece, i) => {
+              const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
+              const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
+              const estSelectPourDonner = clickEchanger && pieceADonner === i;
+              return (
+                <div key={i} style={{ position: "relative" }}>
+                  <MiniPiece piece={piece} couleur={joueurAffiche?.couleur}
+                    estSelectionnee={pieceIdx === i || estSelectPourDonner}
+                    onClick={() => {
+                      if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
+                      else if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
+                      else if (!enModeCible && !attenteChoixPouvoir && estMonTour) { setPieceIdx(pieceIdx === i ? null : i); }
+                    }} />
+                </div>
+              );
+            })}
           </div>
-          <div className="section-info-pieces">
-            <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
-            <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0} / {joueurAffiche?.seuil_regen_actuel ?? 5}</div>
-            <div className="serie-info">{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</div>
-          </div>
+          {(joueurAffiche?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
+          <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0} / {joueurAffiche?.seuil_regen_actuel ?? 5}</div>
+          <div className="serie-info">{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</div>
 
-          <div className="section-adv-pieces">
           {(() => {
             const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
             const mainAdverse = joueurAdverseAffiche?.main_active || [];
@@ -2096,7 +2034,6 @@ export default function App() {
               </>
             );
           })()}
-          </div>
         </div>
 
         <div className="plateau-central">
@@ -2120,7 +2057,7 @@ export default function App() {
 
           {modeMultijoueur && modeIA === "aucune" && monRole === "joueur2" && indiceReconnaissance && (
             <button className="btn-action"
-              style={{ borderColor: reconnaissanceTentee ? "#444" : "var(--warning-glow)", color: reconnaissanceTentee ? "var(--muted)" : "var(--warning)" }}
+              style={{ borderColor: reconnaissanceTentee ? "#444" : "#cc880044", color: reconnaissanceTentee ? "var(--muted)" : "#ffaa44" }}
               onClick={() => setPopup({ type: "reconnaissance" })} disabled={reconnaissanceTentee}>
               {reconnaissanceTentee ? t("dejaTente", L) : t("reconnaitre", L)}
             </button>
@@ -2147,7 +2084,7 @@ export default function App() {
           )}
 
           {!estMonTour && modeMultijoueur && (
-            <div className="hint-action" style={{ borderColor: "var(--erreur-glow)", color: "var(--erreur)" }}>
+            <div className="hint-action" style={{ borderColor: "#ff444444", color: "#ff8888" }}>
               {t("attendsTonTour", L)}
             </div>
           )}
