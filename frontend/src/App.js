@@ -943,13 +943,16 @@ export default function App() {
     }, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         if (res.data.succes && !res.data.deja_traite) {
-          setEloInfo({ avant: res.data.elo_avant, apres: res.data.elo_apres, delta: res.data.delta });
-          // Mettre à jour l'utilisateur en localStorage
-          const updatedUser = { ...user, elo: res.data.elo_apres };
+          const delta = res.data.delta;
+          const eloApres = res.data.elo_apres;
+          setEloInfo({ avant: res.data.elo_avant, apres: eloApres, delta });
+          // Mettre à jour localStorage ET l'état React
+          const updatedUser = { ...user, elo: eloApres };
           localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
+          setUtilisateur(updatedUser);
         }
       })
-      .catch(() => {});
+      .catch(err => console.warn("[fin_partie]", err?.response?.data || err.message));
   }, [mancheTermineeInfo]);
   
   const [showAnalyse, setShowAnalyse] = useState(false);
@@ -1104,19 +1107,19 @@ export default function App() {
         setTimerRouge(restant);
         if (restant <= 0) {
           clearInterval(timerRef.current);
-          // "noir" gagne car rouge n'a pas joué
-          setMancheTermineeInfo({ gagnant: "noir", scores: etat?.scores || {} });
-          setPopup({ type: "temps_ecoule", titre: t("tempsEcoule", L),
-            message: t("rougeNonJoue", L), gagnant: t("noir", L), couleurGagnant: "noir" });
+          setMancheTermineeInfo({
+            gagnant: "noir", scores: etat?.scores || {},
+            messageTemps: t("rougeNonJoue", L)
+          });
         }
       } else {
         setTimerNoir(restant);
         if (restant <= 0) {
           clearInterval(timerRef.current);
-          // "rouge" gagne car noir n'a pas joué
-          setMancheTermineeInfo({ gagnant: "rouge", scores: etat?.scores || {} });
-          setPopup({ type: "temps_ecoule", titre: t("tempsEcoule", L),
-            message: t("noirNonJoue", L), gagnant: t("rouge", L), couleurGagnant: "rouge" });
+          setMancheTermineeInfo({
+            gagnant: "rouge", scores: etat?.scores || {},
+            messageTemps: t("noirNonJoue", L)
+          });
         }
       }
     }, 200);
@@ -1604,6 +1607,11 @@ export default function App() {
                   }}>
                     {egalite ? t("egalite", L) : jaiGagne ? t("victoire", L) : t("defaite", L)}
                   </div>
+                  {mancheTermineeInfo.messageTemps && (
+                    <div style={{ fontSize: 12, color: "#ffaa44", fontFamily: "var(--brush)", textAlign: "center" }}>
+                      {t("tempsEcoule", L)} — {mancheTermineeInfo.messageTemps}
+                    </div>
+                  )}
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
                     {egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
                   </div>

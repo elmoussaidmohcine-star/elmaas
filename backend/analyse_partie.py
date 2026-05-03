@@ -863,6 +863,11 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
     meilleur_alt = evaluations[0] if evaluations else None
     alt_est_elmaas = bool(meilleur_alt and meilleur_alt["coup"].get("est_elmaas"))
 
+    # ── Main des joueurs au moment du coup ──────────────────────
+    couleur_coup = coup_joue.get("couleur") or couleur
+    joueur_avant_ref = etat_avant.joueur1 if etat_avant.joueur1.couleur == couleur_coup else etat_avant.joueur2
+    adverse_avant_ref = etat_avant.joueur2 if joueur_avant_ref == etat_avant.joueur1 else etat_avant.joueur1
+
     return AnalyseCoup(
         index=coup_joue.get("index", 0),
         type_coup="poser",
@@ -899,6 +904,8 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
         puzzles_apres=_serialiser_puzzles(etat_apres_joue),
         plateau_avant=plateau_avant_dict,
         plateau_apres=plateau_apres_dict,
+        main_joueur=[serialiser_piece(p) for p in joueur_avant_ref.main_active],
+        main_adversaire=[serialiser_piece(p) for p in adverse_avant_ref.main_active],
     )
 
 
