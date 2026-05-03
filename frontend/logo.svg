@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="diamondCool" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc"></stop>
+      <stop offset="50%" stop-color="#818cf8"></stop>
+      <stop offset="100%" stop-color="#a78bfa"></stop>
+    </linearGradient>
+    <linearGradient id="diamondCoolSoft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#93c5fd"></stop>
+      <stop offset="100%" stop-color="#8b78d8"></stop>
+    </linearGradient>
+    <linearGradient id="diamondShine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0f2fe"></stop>
+      <stop offset="30%" stop-color="#7dd3fc"></stop>
+      <stop offset="55%" stop-color="#a5b4fc"></stop>
+      <stop offset="80%" stop-color="#c4b5fd"></stop>
+      <stop offset="100%" stop-color="#f0abfc"></stop>
+    </linearGradient>
+    <filter id="diamondGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.2" result="blur"></feGaussianBlur>
+      <feMerge>
+        <feMergeNode in="blur"></feMergeNode>
+        <feMergeNode in="blur"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="400" height="400" fill="#0a0a0a"></rect>
+
+  
+
+  <g transform="translate(200 200) rotate(45)">
+    <rect x="-152" y="-152" width="304" height="304" fill="none" stroke="url(#diamondCool)" stroke-width="2.5" stroke-opacity="0.95"></rect>
+    <g>
+      <rect x="-149" y="-149" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-111" y="-149" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-73" y="-149" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-35" y="-149" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="3" y="-149" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="41" y="-149" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="79" y="-149" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="117" y="-149" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-149" y="-111" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-111" y="-111" width="32" height="32" fill="url(#diamondCoolSoft)" fill-opacity="0.85"></rect>
+      <rect x="79" y="-111" width="32" height="32" fill="url(#diamondCoolSoft)" fill-opacity="0.85"></rect>
+      <rect x="117" y="-111" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-149" y="-73" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-73" y="-73" width="32" height="32" fill="url(#diamondCool)" fill-opacity="0.7"></rect>
+      <rect x="41" y="-73" width="32" height="32" fill="url(#diamondCool)" fill-opacity="0.7"></rect>
+      <rect x="117" y="-73" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-149" y="-35" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="117" y="-35" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-149" y="3" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="117" y="3" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-149" y="41" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-73" y="41" width="32" height="32" fill="url(#diamondCool)" fill-opacity="0.7"></rect>
+      <rect x="41" y="41" width="32" height="32" fill="url(#diamondCool)" fill-opacity="0.7"></rect>
+      <rect x="117" y="41" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-149" y="79" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-111" y="79" width="32" height="32" fill="url(#diamondCoolSoft)" fill-opacity="0.85"></rect>
+      <rect x="79" y="79" width="32" height="32" fill="url(#diamondCoolSoft)" fill-opacity="0.85"></rect>
+      <rect x="117" y="79" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-149" y="117" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-111" y="117" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-73" y="117" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="-35" y="117" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="3" y="117" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="41" y="117" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="79" y="117" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+      <rect x="117" y="117" width="32" height="32" fill="url(#diamondCool)" fill-opacity="1"></rect>
+    </g>
+  </g>
+
+  <text x="200" y="206" text-anchor="middle" font-family="&#39;Didot&#39;,&#39;Bodoni 72&#39;,&#39;Playfair Display&#39;,Georgia,serif" font-style="italic" font-weight="500" font-size="20" letter-spacing="1.2" fill="url(#diamondShine)">ELMAAS</text>
+</svg>
