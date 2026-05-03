@@ -2107,22 +2107,31 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   /* ═══════════════════════════════════════════
      HOME & PHOTO : plein écran, pas de vide
      ═══════════════════════════════════════════ */
+  /* App wrapper : aligner en haut sur mobile (plus de centrage vertical) */
+  .app:not(.jeu) {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    min-height: 100dvh;
+    height: auto;
+    background: var(--bg) !important; /* pas de gradient coûteux */
+  }
   .ecran-taille, .ecran-lobby {
-    padding: 8px 6px;
-    gap: 8px;
+    padding: 16px 10px;
+    gap: 14px;
     justify-content: flex-start;
-    align-items: stretch;
+    align-items: center;
+    width: 100%;
     min-height: 100dvh;
     overflow-y: auto;
   }
-  .titre-jeu { font-size: clamp(26px, 9vw, 42px); margin: 0; }
-  .phrase-jeu { font-size: 13px; margin: 0; }
-  .sous-phrase-jeu { font-size: 11px; margin: 0; }
-  .sous-titre { font-size: 12px; margin: 0; }
+  .titre-jeu { font-size: clamp(36px, 14vw, 56px); margin: 0; letter-spacing: 0.15em; }
+  .phrase-jeu { font-size: 13px; margin: 0; text-align: center; }
+  .sous-phrase-jeu { font-size: 11px; margin: 0; text-align: center; }
+  .sous-titre { font-size: 12px; margin: 0; text-align: center; }
   .taille-inputs { gap: 10px; flex-wrap: wrap; justify-content: center; }
-  .taille-final { font-size: 44px; }
+  .taille-final { font-size: 48px; }
   .lobby-card {
-    padding: 12px 10px;
+    padding: 14px 12px;
     min-width: unset;
     width: 100%;
     max-width: unset;
