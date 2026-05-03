@@ -505,7 +505,10 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
   const [erreur, setErreur] = useState(null);
   const [apercu, setApercu] = useState(null);
 
-  const peutUploader = !utilisateur ? false : utilisateur.premium || !utilisateur.photo_perso_utilisee;
+  const peutUploader = !utilisateur ? false
+    : (utilisateur.plan === "elmaas" || utilisateur.plan === "elmaasyon")
+      ? true
+      : !utilisateur.photo_perso_utilisee;
   const nomValide = modeIA !== "aucune" || nomPhoto.trim().length >= 3;
 
   useEffect(() => {
@@ -525,9 +528,23 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
       if (partieIdMatch) formData.append("partie_id_match", partieIdMatch);
       if (estFichier) {
         formData.append("photo", urlOuFichier);
-        if (utilisateur && !utilisateur.premium) {
+        if (utilisateur && utilisateur.plan !== "elmaas" && utilisateur.plan !== "elmaasyon") {
           const token = getToken();
-          await axios.post(`${API}/consommer_upload`, {}, { headers: { Authorization: `Bearer ${token}` } });
+          try {
+            await axios.post(`${API}/consommer_upload`, {}, { headers: { Authorization: `Bearer ${token}` } });
+            const upd = { ...utilisateur, photo_perso_utilisee: true };
+            localStorage.setItem("elmaas_user", JSON.stringify(upd));
+            setUtilisateur(upd);
+          } catch (err) {
+            if (err.response?.data?.code === "QUOTA_UPLOAD") {
+              const msg = L===0 ? "Upload limité à 1 photo (plan Gratuit). Passez à ELMAASYON." :
+                          L===1 ? "Upload limited to 1 photo (Free plan). Upgrade to ELMAASYON." :
+                          L===2 ? "التحميل محدود بصورة واحدة. ترقّ إلى ELMAASYON." :
+                                  "Upload limitado a 1 foto (Gratis). Pasa a ELMAASYON.";
+              setErreurPhoto(msg);
+              return;
+            }
+          }
         }
       } else {
         const resp = await fetch(`${API}${urlOuFichier}`);
@@ -540,6 +557,13 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
     } catch (err) {
       console.error("Erreur création partie:", err);
       if (err.response?.data?.code === "MOT_SACRE") setErreur(t("motSacreErreur", L));
+      else if (err.response?.data?.code === "QUOTA_UPLOAD") {
+        const msg = L===0 ? "Upload limité à 1 photo (plan Gratuit). Passez à ELMAASYON." :
+                    L===1 ? "Upload limited to 1 photo (Free plan). Upgrade to ELMAASYON." :
+                    L===2 ? "التحميل محدود. ترقّ إلى ELMAASYON." :
+                            "Upload limitado a 1 foto (Gratis). Pasa a ELMAASYON.";
+        setErreur(msg);
+      }
       else if (err.response?.status === 413 || err.response?.data?.code === "PHOTO_INVALIDE")
         setErreur(t("photoInvalide", L));
       else setErreur(err.response?.data?.erreur || t("erreurCreation", L));
@@ -591,7 +615,9 @@ function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatc
       {utilisateur ? (peutUploader ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
           <div style={{ fontSize: 13, color: "var(--muted)" }}>
-            {utilisateur.premium ? t("premiumIllimite", L) : t("unePhotoGratuite", L)}
+            {utilisateur.plan === "elmaas" || utilisateur.plan === "elmaasyon"
+              ? t("premiumIllimite", L)
+              : t("unePhotoGratuite", L)}
           </div>
           <label className="zone-upload" htmlFor="photo-perso-input" style={{ width: 200, minHeight: 80, cursor: "pointer" }}>
             {apercu ? <img src={apercu} alt="apercu" style={{ width: "100%", height: 80, objectFit: "cover" }} />

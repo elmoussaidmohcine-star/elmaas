@@ -334,6 +334,22 @@ def on_message(data):
 @app.route("/nouvelle-partie", methods=["POST"])
 def nouvelle_partie():
     try:
+        # ── Vérification quota upload ──────────────────────────
+        from auth import get_user_from_request
+        user = get_user_from_request()
+        if user:
+            plan = getattr(user, "plan", None) or "gratuit"
+            if plan == "elmaas":
+                pass  # illimité
+            elif plan == "elmaasyon":
+                pass  # illimité côté upload
+            else:
+                # Gratuit : 1 seul upload
+                if user.photo_perso_utilisee:
+                    return jsonify({
+                        "erreur": "Quota upload atteint. Passez au plan ELMAASYON pour des uploads illimités.",
+                        "code": "QUOTA_UPLOAD"
+                    }), 403
         prop_j1 = int(request.form.get("prop_j1", 16))
         prop_j2 = int(request.form.get("prop_j2", 16))
 
@@ -381,6 +397,13 @@ def nouvelle_partie():
             partie_id = partie_id_match
         else:
             partie_id = str(uuid.uuid4())
+
+        # Marquer l'upload consommé pour le plan gratuit
+        if user:
+            plan = getattr(user, "plan", None) or "gratuit"
+            if plan not in ("elmaasyon", "elmaas") and not user.photo_perso_utilisee:
+                user.photo_perso_utilisee = True
+                db.session.commit()
         parties[partie_id] = etat
         etats_initiaux[partie_id] = copier_etat_manuel(etat)
         print(f"[api] État initial sauvegardé : {partie_id}")

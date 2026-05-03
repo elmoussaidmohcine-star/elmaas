@@ -219,7 +219,13 @@ def consommer_upload():
     user = get_user_from_request()
     if not user:
         return jsonify({"erreur": "Non authentifie"}), 401
-    if not user.premium and not user.photo_perso_utilisee:
-        user.photo_perso_utilisee = True
-        db.session.commit()
-    return jsonify({"succes": True})
+    plan = getattr(user, "plan", None) or "gratuit"
+    # ELMAAS et ELMAASYON : uploads illimités
+    if plan in ("elmaas", "elmaasyon"):
+        return jsonify({"succes": True, "illimite": True})
+    # Gratuit : 1 seul upload
+    if user.photo_perso_utilisee:
+        return jsonify({"erreur": "Quota upload atteint", "code": "QUOTA_UPLOAD"}), 403
+    user.photo_perso_utilisee = True
+    db.session.commit()
+    return jsonify({"succes": True, "illimite": False})
