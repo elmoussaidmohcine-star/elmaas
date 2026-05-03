@@ -638,24 +638,23 @@ body::after {
   height: 44px;
   border-radius: 50%;
   border: var(--border-btn) solid var(--accent-culture);
-  background: var(--bg-glass);
+  background: var(--bg3);
   color: var(--accent-culture);
   font-size: 18px;
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   box-shadow: var(--shadow-soft);
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(8px);
 }
 
 html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
 
-.theme-fr .btn-params-flottant:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 20px var(--accent-culture-glow); }
-.theme-en .btn-params-flottant:hover { transform: scale(1.1); background: var(--accent-culture); color: #000; border-radius: 2px; }
-.theme-ar .btn-params-flottant:hover { transform: scale(1.15); box-shadow: 0 0 30px var(--accent-culture-glow); }
-.theme-es .btn-params-flottant:hover { transform: scale(1.1) rotate(-15deg); box-shadow: 0 0 25px var(--accent-culture-glow); }
+.theme-fr .btn-params-flottant:hover { transform: scale(1.1); box-shadow: 0 0 20px var(--accent-culture-glow); }
+.theme-en .btn-params-flottant:hover { transform: scale(1.1); background: var(--accent-culture); color: #000; }
+.theme-ar .btn-params-flottant:hover { transform: scale(1.1); box-shadow: 0 0 30px var(--accent-culture-glow); }
+.theme-es .btn-params-flottant:hover { transform: scale(1.1); box-shadow: 0 0 25px var(--accent-culture-glow); }
 
 /* ──────────────────────────────────────────────────────────────────────────
    ZONES & UPLOAD
@@ -734,13 +733,12 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
   justify-content: space-between;
   padding: 8px 16px;
   border-bottom: 1px solid var(--bord);
-  background: var(--bg-glass);
+  background: var(--bg2);
   position: sticky; 
   top: 0; 
   z-index: 100;
   gap: 12px;
   min-height: 54px;
-  backdrop-filter: blur(12px);
   transition: all var(--transition-slow);
 }
 
@@ -906,13 +904,12 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
    ────────────────────────────────────────────────────────────────────────── */
 
 .zone-adverse { 
-  background: var(--bg-glass); 
+  background: var(--bg2); 
   border-bottom: 1px solid var(--bord); 
   padding: 8px 16px; 
   display: flex; 
   align-items: center; 
   gap: 12px; 
-  backdrop-filter: blur(8px);
   transition: all var(--transition-slow);
 }
 
@@ -965,14 +962,13 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
 .panneau-main, .panneau-actions {
   width: 180px; 
   min-width: 180px;
-  background: var(--bg-glass); 
+  background: var(--bg2); 
   padding: 14px 12px;
   display: flex; 
   flex-direction: column; 
   gap: 8px;
   border-right: 1px solid var(--bord); 
   overflow-y: auto;
-  backdrop-filter: blur(8px);
   transition: all var(--transition-slow);
 }
 
@@ -1072,17 +1068,16 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
 .popup-overlay { 
   position: fixed; 
   inset: 0; 
-  background: rgba(0,0,0,0.75); 
+  background: rgba(0,0,0,0.85); 
   display: flex; 
   align-items: center; 
   justify-content: center; 
   z-index: 999; 
-  backdrop-filter: blur(8px);
-  animation: fade-in var(--anim-vitesse) var(--anim-easing);
+  /* backdrop-filter retiré pour réponse instantanée */
 }
 
 .popup-pouvoir, .popup-scout { 
-  background: var(--bg-glass); 
+  background: var(--bg3); 
   border: 1px solid var(--accent-culture-glow); 
   border-radius: var(--radius-card);
   padding: 32px; 
@@ -1093,8 +1088,7 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
   flex-direction: column; 
   gap: 20px; 
   align-items: center; 
-  backdrop-filter: blur(16px);
-  animation: pop-culture var(--anim-vitesse) var(--anim-easing);
+  /* backdrop-filter retiré, animation retirée pour réponse instantanée */
 }
 
 .theme-fr .popup-pouvoir { border: 1px solid rgba(201,168,76,0.3); }
@@ -1346,9 +1340,8 @@ html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
   padding: 40px 48px;
   border: 1px solid var(--bord); 
   border-radius: var(--radius-card); 
-  background: var(--bg-glass); 
+  background: var(--bg2); 
   min-width: 360px; 
-  backdrop-filter: blur(12px);
   transition: all var(--transition-base);
 }
 
@@ -1792,9 +1785,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   border-radius: var(--radius-pill); 
   font-size: 13px; 
   font-family: var(--font-corps);
-  backdrop-filter: blur(12px); 
   z-index: 1000; 
-  animation: bulle-in 0.4s var(--anim-easing), bulle-out 0.4s var(--anim-easing) 4.6s forwards;
   max-width: 280px;
   text-align: center;
 }
@@ -1976,10 +1967,9 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: var(--bg-glass);
+  background: var(--bg2);
   border-radius: var(--radius-card);
   border: 1px solid var(--bord);
-  backdrop-filter: blur(12px);
   transition: all var(--transition-slow);
 }
 
