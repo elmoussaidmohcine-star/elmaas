@@ -879,35 +879,69 @@ export const SLOGANS = {
 
 const FRAGMENTS = {
   fr: {
-    sujets:  ["Le plateau", "Ton adversaire", "Le jeu", "Ton coup", "Le silence", "L'erreur", "Ta décision", "Le temps", "Chaque case"],
-    verbes:  ["attend", "observe", "révèle", "trahit", "anticipe", "expose", "cache", "répond à", "questionne"],
-    fins:    ["ton erreur.", "ce que tu dissimules.", "ta prochaine hésitation.", "ce que tu refuses de voir.", "ta façon de penser.", "ta véritable intention.", "le joueur que tu es."],
+    structures: [
+      ["Le plateau", "observe", "tes hésitations."],
+      ["Ton adversaire", "attend", "ton erreur."],
+      ["Le jeu", "révèle", "ce que tu refuses de voir."],
+      ["Le silence", "trahit", "ta manière de penser."],
+      ["Chaque case", "questionne", "ta prochaine décision."],
+      ["Le temps", "expose", "tes doutes."],
+      ["Ton coup", "annonce", "tes intentions."],
+      ["L'erreur", "enseigne", "plus que la victoire."],
+      ["Ta stratégie", "cache", "ta peur de perdre."],
+    ],
   },
+
   en: {
-    sujets:  ["The board", "Your opponent", "This game", "Your move", "The silence", "Your choice", "Time", "Every square"],
-    verbes:  ["waits for", "reveals", "exposes", "anticipates", "questions", "challenges", "sees through", "demands"],
-    fins:    ["your next mistake.", "what you're hiding.", "who you really are.", "your hesitation.", "your intention.", "your true skill.", "the player behind the move."],
+    structures: [
+      ["The board", "reveals", "your hesitation."],
+      ["Your opponent", "waits for", "your mistake."],
+      ["This game", "questions", "who you truly are."],
+      ["Every square", "remembers", "your decisions."],
+      ["Silence", "exposes", "your intentions."],
+      ["Your move", "announces", "your ambition."],
+      ["Time", "punishes", "indecision."],
+      ["The game", "sees through", "your strategy."],
+      ["Your choice", "defines", "the player behind the move."],
+    ],
   },
+
   ar: {
-    sujets:  ["اللوحة", "خصمك", "هذه اللعبة", "حركتك", "الصمت", "قرارك", "الوقت", "كل خانة"],
-    verbes:  ["تنتظر", "تكشف", "ترصد", "تتوقع", "تُظهر", "تُجيب على", "تتحدى", "تسأل عن"],
-    fins:    ["خطأك القادم.", "ما تحاول إخفاءه.", "حقيقة من أنت.", "ترددك.", "نيتك الحقيقية.", "مستواك الفعلي.", "اللاعب خلف الحركة."],
+    structures: [
+      ["اللوحة", "تكشف", "ترددك."],
+      ["خصمك", "ينتظر", "خطأك القادم."],
+      ["هذه اللعبة", "تسأل", "من تكون حقاً."],
+      ["كل خانة", "تتذكر", "قراراتك."],
+      ["الصمت", "يفضح", "نواياك."],
+      ["حركتك", "تعلن", "طموحك."],
+      ["الوقت", "يعاقب", "التردد."],
+      ["اللعبة", "ترى", "ما وراء استراتيجيتك."],
+      ["قرارك", "يكشف", "اللاعب خلف الحركة."],
+    ],
   },
+
   es: {
-    sujets:  ["El tablero", "Tu rival", "Este juego", "Tu jugada", "El silencio", "Tu elección", "El tiempo", "Cada casilla"],
-    verbes:  ["espera", "revela", "expone", "anticipa", "cuestiona", "desafía", "ve a través de", "exige"],
-    fins:    ["tu próximo error.", "lo que escondes.", "quién eres realmente.", "tu duda.", "tu intención.", "tu nivel real.", "al jugador detrás de la jugada."],
+    structures: [
+      ["El tablero", "revela", "tu duda."],
+      ["Tu rival", "espera", "tu próximo error."],
+      ["Este juego", "cuestiona", "quién eres realmente."],
+      ["Cada casilla", "recuerda", "tus decisiones."],
+      ["El silencio", "expone", "tus intenciones."],
+      ["Tu jugada", "anuncia", "tu ambición."],
+      ["El tiempo", "castiga", "la indecisión."],
+      ["El juego", "ve a través de", "tu estrategia."],
+      ["Tu elección", "define", "al jugador detrás de la jugada."],
+    ],
   },
 };
 
 function genererCitation(codeLangue) {
   const f = FRAGMENTS[codeLangue] || FRAGMENTS.fr;
-  const s = f.sujets[Math.floor(Math.random() * f.sujets.length)];
-  const v = f.verbes[Math.floor(Math.random() * f.verbes.length)];
-  const e = f.fins[Math.floor(Math.random() * f.fins.length)];
-  return `${s} ${v} ${e}`;
-}
+  const phrase =
+    f.structures[Math.floor(Math.random() * f.structures.length)];
 
+  return `${phrase[0]} ${phrase[1]} ${phrase[2]}`;
+}
 // ═══════════════════════════════════════════════════════════
 // FONCTIONS D'ACCÈS AUX CITATIONS
 // ═══════════════════════════════════════════════════════════
