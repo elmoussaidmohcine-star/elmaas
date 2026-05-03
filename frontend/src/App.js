@@ -95,42 +95,88 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
           <div className="plans-section">
             <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("plans", L)}</div>
 
-            {/* Plan Gratuit (indicatif) */}
-            <div className={`plan-card ${!utilisateur.plan ? "actif" : ""}`}>
-              <div className="plan-nom">{t("planGratuit", L)}</div>
+            {/* Plan Gratuit */}
+            <div className={`plan-card ${!utilisateur.plan || utilisateur.plan === "gratuit" ? "actif" : ""}`} style={{
+              border: "1px solid rgba(100,140,220,0.3)",
+              background: "rgba(20,30,70,0.25)",
+            }}>
+              <div className="plan-nom" style={{ color: "#6699ff" }}>{t("planGratuit", L)}</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
                 {t("planGratuitDesc", L)}
               </div>
-              <div className="plan-prix">0€</div>
+              <div className="plan-prix" style={{ color: "#6699ff" }}>0€</div>
             </div>
 
             {/* Plan ELMAASYON */}
-            <div className={`plan-card ${utilisateur.plan === "elmaasyon" ? "actif" : "premium"}`}>
-              <div className="plan-nom">{t("planElmaasyon", L)}</div>
+            <div className={`plan-card ${utilisateur.plan === "elmaasyon" ? "actif" : "premium"}`} style={{
+              border: utilisateur.plan === "elmaasyon" ? "1px solid #4488ff" : "1px solid #4488ff55",
+              background: utilisateur.plan === "elmaasyon" ? "rgba(30,60,140,0.3)" : "rgba(20,30,70,0.2)",
+              boxShadow: utilisateur.plan === "elmaasyon" ? "0 0 16px #4488ff33" : "none",
+            }}>
+              <div className="plan-nom" style={{ color: "#66aaff" }}>{t("planElmaasyon", L)}</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
                 {t("planElmaasyonDescFull", L)}
               </div>
-              <div className="plan-prix">{t("planGratuitLancement", L)}</div>
-              {utilisateur.plan !== "elmaasyon" && utilisateur.plan !== "elmaas" && (
-                <button className="btn-valider" style={{ fontSize: 13, padding: "8px 16px" }} onClick={() => onPaiement("elmaasyon")}>
+              <div className="plan-prix" style={{ color: "#88bbff" }}>
+                <span style={{ textDecoration: "line-through", fontSize: 13, opacity: 0.45, marginRight: 6 }}>6.99€</span>
+                <strong style={{ color: "#66aaff" }}>3.49€</strong>
+                <small style={{ color: "var(--muted)", fontSize: 10, marginLeft: 5 }}>
+                  /{L===0?"mois":L===1?"month":L===2?"شهر":"mes"} — {L===0?"Lancement -50%":L===1?"-50% Launch":L===2?"إطلاق -50%":"-50% Lanzamiento"}
+                </small>
+              </div>
+              {utilisateur.plan !== "elmaasyon" && utilisateur.plan !== "elmaas" ? (
+                <button className="btn-valider" style={{
+                  fontSize: 13, padding: "8px 16px",
+                  background: "linear-gradient(135deg,#1144cc,#4488ff)", border: "none",
+                }} onClick={() => onPaiement("elmaasyon")}>
                   {t("passerPremiumBtn", L)}
+                </button>
+              ) : utilisateur.plan === "elmaasyon" && (
+                <button className="btn-valider" style={{
+                  fontSize: 12, padding: "6px 14px", background: "rgba(68,136,255,0.12)",
+                  border: "1px solid #4488ff44",
+                }} onClick={async () => {
+                  const res = await fetch(`${API}/stripe/portal`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
+                  const d = await res.json(); if (d.url) window.location.href = d.url;
+                }}>
+                  {L===0?"Gérer l'abonnement":L===1?"Manage subscription":L===2?"إدارة الاشتراك":"Gestionar suscripción"}
                 </button>
               )}
             </div>
 
             {/* Plan ELMAAS */}
             <div className={`plan-card ${utilisateur.plan === "elmaas" ? "actif" : "premium"}`} style={{
-              border: utilisateur.plan === "elmaas" ? "1px solid #9933ff" : "1px solid #9933ff44",
-              boxShadow: utilisateur.plan === "elmaas" ? "0 0 12px #9933ff44" : "none",
+              border: utilisateur.plan === "elmaas" ? "1px solid #aa55ff" : "1px solid #aa55ff44",
+              background: utilisateur.plan === "elmaas" ? "rgba(60,20,120,0.3)" : "rgba(30,10,60,0.2)",
+              boxShadow: utilisateur.plan === "elmaas" ? "0 0 20px #aa55ff33" : "none",
             }}>
-              <div className="plan-nom" style={{ color: "#aa77ff" }}>ELMAAS</div>
+              <div className="plan-nom" style={{ color: "#cc88ff" }}>ELMAAS</div>
               <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
                 {t("planElmaasDescFull", L)}
               </div>
-              <div className="plan-prix">6.99€<small>{t("parMois", L)}</small></div>
-              {utilisateur.plan !== "elmaas" && (
-                <button className="btn-valider" style={{ fontSize: 13, padding: "8px 16px", background: "linear-gradient(135deg,#6600cc,#9933ff)" }} onClick={() => onPaiement("elmaas")}>
+              <div className="plan-prix" style={{ color: "#cc88ff" }}>
+                <span style={{ textDecoration: "line-through", fontSize: 13, opacity: 0.45, marginRight: 6 }}>12.99€</span>
+                <strong style={{ color: "#aa66ff" }}>6.49€</strong>
+                <small style={{ color: "var(--muted)", fontSize: 10, marginLeft: 5 }}>
+                  /{L===0?"mois":L===1?"month":L===2?"شهر":"mes"} — {L===0?"Lancement -50%":L===1?"-50% Launch":L===2?"إطلاق -50%":"-50% Lanzamiento"}
+                </small>
+              </div>
+              {utilisateur.plan !== "elmaas" ? (
+                <button className="btn-valider" style={{
+                  fontSize: 13, padding: "8px 16px",
+                  background: "linear-gradient(135deg,#6600cc,#aa55ff)", border: "none",
+                }} onClick={() => onPaiement("elmaas")}>
                   {t("passerPremiumBtn", L)}
+                </button>
+              ) : (
+                <button className="btn-valider" style={{
+                  fontSize: 12, padding: "6px 14px", background: "rgba(170,85,255,0.12)",
+                  border: "1px solid #aa55ff44",
+                }} onClick={async () => {
+                  const res = await fetch(`${API}/stripe/portal`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
+                  const d = await res.json(); if (d.url) window.location.href = d.url;
+                }}>
+                  {L===0?"Gérer l'abonnement":L===1?"Manage subscription":L===2?"إدارة الاشتراك":"Gestionar suscripción"}
                 </button>
               )}
             </div>
@@ -1029,6 +1075,27 @@ export default function App() {
       window.history.replaceState({}, "", "/");
       return;
     }
+
+    // ── Retour paiement Stripe ──────────────────────────────
+    const paymentStatus = params.get("payment");
+    if (paymentStatus === "success") {
+      window.history.replaceState({}, "", "/");
+      const token = getToken();
+      if (token) {
+        // Attendre 2s que le webhook Stripe soit traité, puis sync
+        setTimeout(() => {
+          fetch(`${API}/stripe/sync`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json())
+            .then(data => {
+              if (data && !data.erreur) {
+                const updatedUser = { ...getUser(), ...data };
+                localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
+                setUtilisateur(updatedUser);
+              }
+            }).catch(() => {});
+        }, 2000);
+      }
+    }
     if (googleToken) {
       localStorage.setItem("elmaas_token", googleToken);
       fetch(`${API}/auth/moi`, { headers: { Authorization: `Bearer ${googleToken}` } })
@@ -1521,13 +1588,15 @@ export default function App() {
                 pseudo: utilisateur?.pseudo || ""
               });
               
-              // Récupérer les pixels en arrière-plan
+              // Récupérer les pixels en arrière-plan — poll rapide
+              let tentatives = 0;
               const pollerPartie = async () => {
+                tentatives++;
                 try {
                   const res = await axios.get(`${API}/pixels/${data.partie_id}`);
-                  if (res.data && res.data.pixels_photo) {
+                  if (res.data?.pixels_photo) {
                     setPixelsPhoto(res.data.pixels_photo);
-                    setTaille(res.data.taille);
+                    setTaille(res.data.taille || 16);
                     if (res.data.etat) setEtat(res.data.etat);
                     if (res.data.indice) setIndiceReconnaissance(res.data.indice);
                     if (res.data.timer_sec) {
@@ -1535,10 +1604,10 @@ export default function App() {
                       setTimerRouge(res.data.timer_sec);
                       setTimerNoir(res.data.timer_sec);
                     }
-                    return;
+                    return; // succès
                   }
                 } catch (e) {}
-                setTimeout(pollerPartie, 2000);
+                if (tentatives < 20) setTimeout(pollerPartie, 800); // poll rapide 0.8s
               };
               pollerPartie();
             }

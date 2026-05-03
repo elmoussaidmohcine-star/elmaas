@@ -9,7 +9,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import "./Board.css";
 
 const COULEURS = {
-  1: { ROUGE: "#cc2200", ROUGE_C: "#ff4422", NOIR_B: "#222222", NOIR_C: "#555566", DIAMANT: "#00BFFF" },
+  1: { ROUGE: "#dd1100", ROUGE_C: "#ff3311", NOIR_B: "#222222", NOIR_C: "#555566", DIAMANT: "#00BFFF" },
   2: { ROUGE: "#00CED1", ROUGE_C: "#40E0D0", NOIR_B: "#F0E68C", NOIR_C: "#FFFACD", DIAMANT: "#FFFFFF" },
 };
 
@@ -300,13 +300,19 @@ export default function Board({
                   position: "absolute",
                   top: 2, left: 2, right: 2, bottom: 2,
                   borderRadius: "20%",
-                  backgroundColor: couleurPiece === "rouge" ? C.ROUGE_C : 
-                                  couleurPiece === "noir"  ? C.NOIR_C : 
-                                  couleurPiece === "diamant" ? C.DIAMANT : "#888",
-                  border: couleurPiece === "noir" ? `2px solid ${C.NOIR_B}` : "none",
-                  boxShadow: couleurPiece === "rouge" ? "0 0 4px rgba(255,68,34,0.5)" :
-                            couleurPiece === "noir" ? "0 0 4px rgba(85,85,102,0.5)" :
-                            "0 0 6px rgba(0,191,255,0.6)",
+                  backgroundColor:
+                    couleurPiece === "meilleur_coup" ? "#00dd66" :
+                    couleurPiece === "rouge"   ? C.ROUGE_C :
+                    couleurPiece === "noir"    ? C.NOIR_C  :
+                    couleurPiece === "diamant" ? C.DIAMANT : "#888",
+                  border:
+                    couleurPiece === "meilleur_coup" ? "2px solid #00ff88" :
+                    couleurPiece === "noir"  ? `2px solid ${C.NOIR_B}` : "none",
+                  boxShadow:
+                    couleurPiece === "meilleur_coup" ? "0 0 8px rgba(0,255,100,0.7)" :
+                    couleurPiece === "rouge" ? "0 0 6px rgba(255,68,34,0.6)" :
+                    couleurPiece === "noir"  ? "0 0 4px rgba(85,85,102,0.5)" :
+                    "0 0 6px rgba(0,191,255,0.6)",
                   zIndex: 10,
                 }}
               />
