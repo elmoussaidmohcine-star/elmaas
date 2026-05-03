@@ -389,10 +389,10 @@ function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
               ELMAAS
             </div>
             <div style={{ color: "#cc99ff" }}>
-              {L === 0 ? "ELMAAS réfléchit profondément. Chaque coup peut prendre jusqu'à 15 secondes. Ce délai est inhérent à sa puissance." :
-               L === 1 ? "ELMAAS thinks deeply. Each move may take up to 15 seconds. This delay is inherent to its power." :
-               L === 2 ? "ELMAAS يفكر بعمق. كل حركة قد تستغرق حتى 15 ثانية. هذا التأخير جزء من قوته." :
-               "ELMAAS piensa profundamente. Cada movimiento puede tardar hasta 15 segundos. Este retraso es parte de su poder."}
+              {L === 0 ? "ELMAAS réfléchit profondément. Chaque coup peut prendre jusqu'à 30 secondes. Ce délai est inhérent à sa puissance." :
+               L === 1 ? "ELMAAS thinks deeply. Each move may take up to 30 seconds. This delay is inherent to its power." :
+               L === 2 ? "ELMAAS يفكر بعمق. كل حركة قد تستغرق حتى 30 ثانية. هذا التأخير جزء من قوته." :
+               "ELMAAS piensa profundamente. Cada movimiento puede tardar hasta 30 segundos. Este retraso es parte de su poder."}
             </div>
           </div>
         )}
