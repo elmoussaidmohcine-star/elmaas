@@ -2086,101 +2086,136 @@ html[dir="rtl"] .manuel-content { text-align: right; }
    ────────────────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
-  /* ── HOME & PHOTO SCREENS : plus zoomé, pas de vide ── */
-  .ecran-taille, .ecran-lobby { 
-    padding: 8px 6px; 
-    gap: 8px; 
+
+  /* ═══════════════════════════════════════════
+     PERFORMANCE : désactiver toutes les animations
+     et effets coûteux pendant le jeu mobile
+     ═══════════════════════════════════════════ */
+  .app.jeu * {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+  }
+  .app.jeu .app-header {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* Garder seulement l'anim de completion puzzle */
+  .app.jeu .anim-complete {
+    animation: fx-complete 0.5s ease-out forwards !important;
+  }
+
+  /* ═══════════════════════════════════════════
+     HOME & PHOTO : plein écran, pas de vide
+     ═══════════════════════════════════════════ */
+  .ecran-taille, .ecran-lobby {
+    padding: 8px 6px;
+    gap: 8px;
     justify-content: flex-start;
     align-items: stretch;
     min-height: 100dvh;
     overflow-y: auto;
   }
-  .titre-jeu { font-size: clamp(28px, 10vw, 44px); margin: 0; }
+  .titre-jeu { font-size: clamp(26px, 9vw, 42px); margin: 0; }
   .phrase-jeu { font-size: 13px; margin: 0; }
   .sous-phrase-jeu { font-size: 11px; margin: 0; }
   .sous-titre { font-size: 12px; margin: 0; }
   .taille-inputs { gap: 10px; flex-wrap: wrap; justify-content: center; }
   .taille-final { font-size: 44px; }
-  .lobby-card { padding: 14px 10px; min-width: unset; width: 100%; max-width: unset; border-radius: 10px; }
+  .lobby-card {
+    padding: 12px 10px;
+    min-width: unset;
+    width: 100%;
+    max-width: unset;
+    border-radius: 10px;
+  }
   .ia-section { width: 100%; padding: 0 2px; }
   .ia-options { justify-content: center; flex-wrap: wrap; }
   .ia-btn { font-size: 12px; padding: 8px 10px; }
   .ia-btn-niveau { font-size: 11px; }
   .nom-photo-section { width: 100%; padding: 0 4px; }
-  /* Photos plus grandes — 2 colonnes qui occupent tout l'espace */
-  .photo-miniature { width: calc(46vw - 8px); height: calc(46vw - 8px); max-width: unset; max-height: unset; }
-  .grille-photos-jeu { 
-    gap: 8px !important; 
-    max-width: 100% !important; 
-    padding: 0 4px; 
+
+  /* Photos 2 colonnes plein écran */
+  .photo-miniature {
+    width: calc(50vw - 12px);
+    height: calc(50vw - 12px);
+    max-width: unset;
+    max-height: unset;
+  }
+  .grille-photos-jeu {
+    gap: 8px !important;
+    max-width: 100% !important;
+    padding: 0 4px;
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
   }
 
-  /* ── GAME SCREEN ── */
+  /* ═══════════════════════════════════════════
+     JEU : structure en colonne, full screen
+     ═══════════════════════════════════════════ */
   .app.jeu {
     padding: 0;
     height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: var(--bg);
   }
 
-  /* Header compact */
+  /* Header ultra-compact : 36px */
   .app-header {
-    flex-wrap: wrap;
-    padding: 3px 6px;
-    gap: 0;
-    min-height: auto;
-    background: var(--bg-glass);
+    flex-wrap: nowrap;
+    padding: 2px 5px;
+    gap: 4px;
+    min-height: 36px;
+    height: 36px;
+    max-height: 36px;
+    background: var(--bg2);
     border-bottom: 1px solid var(--bord);
     flex-shrink: 0;
-    row-gap: 2px;
-    backdrop-filter: blur(12px);
+    overflow: hidden;
   }
   .header-gauche {
-    flex: 1 1 0; min-width: 0; gap: 0;
-    justify-content: flex-start; align-items: center;
+    flex: 1 1 0; min-width: 0;
+    justify-content: flex-start; align-items: center; gap: 3px;
   }
   .header-centre {
     flex: 0 0 auto; justify-content: center; align-items: center;
-    gap: 4px; order: 0; padding: 0; background: transparent; border: none; margin: 0;
+    gap: 3px; padding: 0; background: transparent; border: none;
   }
   .header-droite {
-    flex: 1 1 0; min-width: 0; gap: 4px;
+    flex: 1 1 0; min-width: 0; gap: 3px;
     justify-content: flex-end; align-items: center;
   }
   .app-header .titre-jeu-petit { display: none; }
-  .pseudo-joueur { padding: 2px 5px; border-radius: var(--radius-btn); min-width: 0; }
-  .pseudo-nom { font-size: 10px; max-width: 68px; }
-  .pseudo-score { font-size: 18px; }
-  .timers { gap: 3px; padding: 2px 5px; border-radius: var(--radius-btn); }
-  .timer-bloc { padding: 2px 8px; min-width: 54px; border-radius: var(--radius-btn); }
-  .timer-val { font-size: 17px; }
-  .timer-label { font-size: 7px; letter-spacing: 0.1em; }
-  .tour-info { font-size: 9px; max-width: 100px; }
+  .pseudo-joueur { padding: 1px 4px; border-radius: 4px; min-width: 0; }
+  .pseudo-nom { font-size: 9px; max-width: 60px; }
+  .pseudo-score { font-size: 16px; }
+  .timers { gap: 2px; padding: 1px 4px; border-radius: 4px; }
+  .timer-bloc { padding: 1px 6px; min-width: 48px; border-radius: 4px; }
+  .timer-val { font-size: 15px; }
+  .timer-label { font-size: 6px; letter-spacing: 0.05em; }
+  .tour-info { font-size: 8px; max-width: 90px; }
   .badge-ia, .badge-serie, .badge-classif {
-    font-size: 8px; padding: 1px 3px; margin-left: 0; white-space: nowrap;
+    font-size: 7px; padding: 1px 3px; margin-left: 0; white-space: nowrap;
   }
   .score-cumule { display: none; }
-  .btn-manuel { width: 26px; height: 26px; font-size: 12px; }
+  .btn-manuel { width: 24px; height: 24px; font-size: 11px; }
   .btn-reset {
-    font-size: 0; padding: 0; width: 26px; height: 26px; min-height: 26px;
+    font-size: 0; padding: 0; width: 24px; height: 24px; min-height: 24px;
     display: flex; align-items: center; justify-content: center;
     border-radius: 50%; flex-shrink: 0;
   }
-  .btn-reset::before { content: "\21BA"; font-size: 14px; color: var(--muted); }
+  .btn-reset::before { content: "\21BA"; font-size: 13px; color: var(--muted); }
 
-  /* ── Zone adverse au TOP → cachée, on utilise celle du panneau-main ── */
-  .zone-adverse {
-    display: none;
-  }
+  /* Zone adverse desktop : cachée sur mobile */
+  .zone-adverse { display: none; }
 
-  /* ── Zone de jeu : CSS GRID pour placement précis ── */
+  /* ── GRILLE principale du jeu ── */
   .zone-jeu {
     flex: 1;
+    min-height: 0;
     display: grid !important;
-    grid-template-rows: auto auto 1fr auto auto;
+    grid-template-rows: 52px 18px 1fr 34px 38px;
     grid-template-columns: 1fr;
     grid-template-areas:
       "mes-pieces"
@@ -2189,105 +2224,81 @@ html[dir="rtl"] .manuel-content { text-align: right; }
       "actions"
       "adv-pieces";
     overflow: hidden;
-    min-height: 0;
   }
 
-  /* ── Panneau main : éclate ses enfants dans la grille ── */
-  .panneau-main {
-    display: contents !important;
-  }
+  .panneau-main { display: contents !important; }
 
-  /* Section mes pièces : bande horizontale en haut — COMPACT */
+  /* ── MES PIÈCES : 52px, ligne horizontale ── */
   .section-mes-pieces {
     grid-area: mes-pieces;
     display: flex !important;
     flex-direction: row;
     align-items: center;
     gap: 4px;
-    padding: 2px 4px;
+    padding: 2px 6px;
     border-bottom: 1px solid var(--bord);
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    max-height: 54px;
-    flex-shrink: 0;
+    scrollbar-width: none;
+    background: var(--bg2);
   }
+  .section-mes-pieces::-webkit-scrollbar { display: none; }
   .section-mes-pieces .panneau-titre {
-    font-size: 7px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-    align-self: center;
-    opacity: 0.5;
+    font-size: 7px; white-space: nowrap; flex-shrink: 0;
+    padding-bottom: 0; border-bottom: none; opacity: 0.45;
   }
   .section-mes-pieces .main-pieces-list {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 4px;
-    align-items: center;
-    -webkit-overflow-scrolling: touch;
-    flex: 1;
+    display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px;
+    align-items: center; -webkit-overflow-scrolling: touch; flex: 1;
+    scrollbar-width: none;
   }
+  .section-mes-pieces .main-pieces-list::-webkit-scrollbar { display: none; }
 
-  /* Section info : 1 ligne ultra-compacte */
+  /* ── INFO : 18px, 1 ligne ── */
   .section-info-pieces {
     grid-area: info;
     display: flex !important;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
-    padding: 1px 6px;
+    gap: 6px;
+    padding: 0 8px;
     border-bottom: 1px solid var(--bord);
     background: var(--bg3);
     overflow: hidden;
-    min-height: 18px;
-    flex-shrink: 0;
+    font-size: 8px !important;
   }
   .section-info-pieces .panneau-titre {
-    font-size: 8px;
-    white-space: nowrap;
-    padding-bottom: 0;
-    border-bottom: none;
-    margin-top: 0 !important;
-    opacity: 0.6;
+    font-size: 8px; white-space: nowrap; padding-bottom: 0;
+    border-bottom: none; margin-top: 0 !important; opacity: 0.55;
   }
-  .section-info-pieces .serie-info {
-    font-size: 8px;
-    white-space: nowrap;
-  }
-  .section-info-pieces > div {
-    font-size: 8px !important;
-    white-space: nowrap;
-  }
+  .section-info-pieces .serie-info { font-size: 8px; white-space: nowrap; }
+  .section-info-pieces > div { font-size: 8px !important; white-space: nowrap; }
 
-  /* ── Plateau central : MAXIMUM de place ── */
+  /* ── PLATEAU : toute la place restante ── */
   .plateau-central {
     grid-area: board;
-    padding: 1px;
+    padding: 0;
     width: 100%;
+    height: 100%;
     overflow: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 0;
-    flex: 1;
+    background: var(--bg);
   }
+  /* Pas de transition sur les cellules */
+  .board-v3 .cell-v3 { transition: none !important; }
 
-  /* Board : pas de transition sur les cellules (perf) */
-  .board-v3 .cell-v3 {
-    transition: none !important;
-  }
-
-  /* ── Actions : barre compacte ── */
+  /* ── ACTIONS : 34px, boutons en ligne ── */
   .panneau-actions {
     grid-area: actions;
     width: 100%;
     min-width: unset;
     flex-direction: row;
     flex-wrap: nowrap;
-    padding: 2px 4px;
+    padding: 0 4px;
     gap: 3px;
     border-right: none;
     border-left: none;
@@ -2295,79 +2306,85 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     align-items: center;
     justify-content: center;
     overflow-x: auto;
+    scrollbar-width: none;
     background: var(--bg2);
     flex-shrink: 0;
   }
+  .panneau-actions::-webkit-scrollbar { display: none; }
+  .panneau-actions .panneau-titre { display: none; }
+  .btn-action {
+    padding: 4px 8px;
+    font-size: 11px;
+    min-height: 28px;
+    height: 28px;
+    flex: 1 1 auto;
+    min-width: 50px;
+    max-width: 95px;
+    text-align: center;
+    justify-content: center;
+    white-space: nowrap;
+  }
 
-  /* Section adversaire : en BAS de la page — COMPACT */
+  /* ── PIÈCES ADVERSAIRE : 38px en bas ── */
   .section-adv-pieces {
     grid-area: adv-pieces;
     display: flex !important;
     flex-direction: row;
     align-items: center;
     gap: 4px;
-    padding: 2px 4px;
+    padding: 2px 6px;
     border-top: 1px solid var(--bord);
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    max-height: 44px;
+    scrollbar-width: none;
     background: var(--bg3);
-    flex-shrink: 0;
   }
+  .section-adv-pieces::-webkit-scrollbar { display: none; }
   .section-adv-pieces .panneau-titre {
-    font-size: 7px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-    margin-top: 0 !important;
-    opacity: 0.5;
+    font-size: 7px; white-space: nowrap; flex-shrink: 0;
+    padding-bottom: 0; border-bottom: none; margin-top: 0 !important; opacity: 0.45;
   }
   .section-adv-pieces .main-pieces-list {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 4px;
-    align-items: center;
-    -webkit-overflow-scrolling: touch;
-    flex: 1;
+    display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px;
+    align-items: center; -webkit-overflow-scrolling: touch; flex: 1;
+    scrollbar-width: none;
   }
-  .panneau-actions .panneau-titre { display: none; }
-  .btn-action {
-    padding: 5px 8px;
-    font-size: 11px;
-    min-height: 32px;
-    flex: 1 1 auto;
-    min-width: 52px;
-    max-width: 100px;
-    text-align: center;
-    justify-content: center;
+  .section-adv-pieces .main-pieces-list::-webkit-scrollbar { display: none; }
+
+  /* ── MINI PIECES taille mobile ── */
+  .mini-piece { min-width: 38px; min-height: 38px; }
+  .mini-piece.sel { box-shadow: 0 0 8px var(--rouge) !important; }
+  .panneau-titre {
+    font-size: 8px; white-space: nowrap; flex-shrink: 0;
+    padding-bottom: 0; border-bottom: none; align-self: center; opacity: 0.5;
   }
-  .mini-piece { min-width: 36px; min-height: 36px; }
+  .main-pieces-list {
+    flex-wrap: nowrap; overflow-x: auto; gap: 4px;
+    align-items: center; -webkit-overflow-scrolling: touch;
+  }
+  .serie-info { font-size: 8px; white-space: nowrap; align-self: center; flex-shrink: 0; }
 
-  .hint-action { font-size: 10px; width: 100%; text-align: center; padding: 3px 6px; }
-  .chat-zone { width: 100%; flex-shrink: 0; border-top: 1px solid var(--bord); }
-  .chat-zone input { font-size: 14px; padding: 6px; }
-  .chat-zone button { min-height: 32px; min-width: 32px; }
-
-  /* ── Popups ── */
+  /* ── POPUPS ── */
+  .hint-action { font-size: 10px; width: 100%; text-align: center; padding: 2px 4px; }
+  .chat-zone { width: 100%; flex-shrink: 0; }
+  .chat-zone input { font-size: 14px; padding: 4px; }
+  .chat-zone button { min-height: 28px; min-width: 28px; }
   .popup-pouvoir, .popup-scout {
     min-width: unset; width: 94vw; max-width: 420px;
-    padding: 16px 12px; gap: 10px; max-height: 88vh; overflow-y: auto;
+    padding: 14px 10px; gap: 8px; max-height: 88vh; overflow-y: auto;
   }
-  .popup-titre { font-size: 20px; }
+  .popup-titre { font-size: 18px; }
   .popup-btn { font-size: 14px; padding: 10px 12px; min-height: 44px; }
-  .popup-options { gap: 8px; }
-  .popup-options-fin { gap: 8px; }
-
+  .popup-options { gap: 6px; }
+  .popup-options-fin { gap: 6px; }
   .bandeau-cible {
     width: 94vw; flex-wrap: wrap; font-size: 12px;
-    padding: 8px 10px; gap: 6px; top: auto; bottom: 80px; left: 3vw; transform: none;
+    padding: 6px 8px; gap: 5px; top: auto; bottom: 76px; left: 3vw; transform: none;
   }
-  .bandeau-cible button { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+  .bandeau-cible button { min-height: 34px; padding: 5px 8px; font-size: 11px; }
 
-  /* ── Analyse : zoomé, pas de vide ── */
+  /* ── ANALYSE : zoomé, pas de vide ── */
   .ecran-analyse { padding: 4px; gap: 4px; }
   .analyse-titre { font-size: 15px; }
   .analyse-precision { font-size: 22px; }
@@ -2375,11 +2392,10 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   .analyse-plateau { min-width: unset; width: 100%; align-items: center; padding: 0; }
   .analyse-panneau { width: 100%; min-width: unset; gap: 6px; padding: 6px; }
   .analyse-badge-classe { font-size: 14px; padding: 5px 8px; }
-  /* Plateau d'analyse prend tout l'espace */
   .analyse-plateau .board-v3 { max-width: calc(100vw - 8px) !important; }
 
-  .bulle-message { width: 90vw; text-align: center; font-size: 13px; padding: 8px 14px; }
-  .btn-params-flottant { top: 8px; right: 8px; width: 34px; height: 34px; font-size: 15px; }
+  .bulle-message { width: 90vw; text-align: center; font-size: 13px; padding: 6px 12px; }
+  .btn-params-flottant { top: 8px; right: 8px; width: 32px; height: 32px; font-size: 14px; }
   html[dir="rtl"] .btn-params-flottant { right: auto; left: 8px; }
 }
 
@@ -2466,19 +2482,15 @@ html[dir="rtl"] .manuel-content { text-align: right; }
 
 /* Très petits écrans */
 @media (max-width: 480px) {
-  .titre-jeu { font-size: clamp(28px, 10vw, 44px); }
-  .timer-val { font-size: 15px; }
-  .timer-label { font-size: 6px; letter-spacing: 0.08em; }
-  .pseudo-score { font-size: 16px; }
-  .pseudo-nom { font-size: 9px; max-width: 55px; }
-  .tour-info { font-size: 8px; max-width: 85px; }
-  .btn-manuel { width: 24px; height: 24px; font-size: 11px; }
-  .mini-piece { min-width: 36px; min-height: 36px; }
-  .section-mes-pieces { max-height: 52px; padding: 2px 4px; }
-  .section-adv-pieces { max-height: 44px; padding: 2px 4px; }
-  .btn-action { font-size: 11px; padding: 5px 6px; min-height: 34px; min-width: 52px; }
-  .popup-gagnant { font-size: 20px; padding: 10px 16px; }
+  .titre-jeu { font-size: clamp(24px, 9vw, 38px); }
+  .timer-val { font-size: 14px; }
+  .timer-label { font-size: 5px; }
+  .pseudo-score { font-size: 14px; }
+  .pseudo-nom { font-size: 8px; max-width: 50px; }
+  .btn-manuel { width: 22px; height: 22px; font-size: 10px; }
+  .btn-action { font-size: 10px; padding: 3px 6px; min-height: 26px; min-width: 44px; }
+  .popup-gagnant { font-size: 18px; padding: 8px 12px; }
   .popup-options-fin { flex-direction: column; }
-  .ecran-analyse { padding: 4px; }
-  .analyse-panneau { gap: 6px; padding: 6px; }
+  .ecran-analyse { padding: 2px; }
+  .analyse-panneau { gap: 4px; padding: 4px; }
 }

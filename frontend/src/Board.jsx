@@ -78,12 +78,18 @@ export default function Board({
   const [pendingPlacement, setPendingPlacement] = useState(null); // {cell, valid} pour placement tactile 2 étapes
   const boardRef = useRef(null);
   
-  // Calcul de la taille des cellules — plus grand sur mobile
+  // Calcul de la taille des cellules — calibré sur l'espace disponible réel
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-  const maxBoardPx = isMobile 
-    ? Math.min(window.innerWidth - 4, window.innerHeight * 0.62)  // mobile: prend quasi toute la largeur, plus de hauteur
-    : 560;
-  const CELL = Math.max(16, Math.floor(maxBoardPx / taille));
+  let CELL;
+  if (isMobile) {
+    // Espace vertical disponible : écran - header(36) - pièces(52) - info(18) - actions(34) - adversaire(38) - marges(10)
+    const hauteurBoard = window.innerHeight - 188;
+    const largeurBoard = window.innerWidth - 2;
+    const maxPx = Math.min(largeurBoard, hauteurBoard);
+    CELL = Math.max(14, Math.floor(maxPx / taille));
+  } else {
+    CELL = Math.max(18, Math.floor(560 / taille));
+  }
 
   const plateau = etat?.plateau;
   const pieces  = plateau?.pieces ?? {};
@@ -334,7 +340,7 @@ export default function Board({
                 borderRight:  frontieres.right  ? `${epaisseur} solid ${getCF("right")}`  : "1px solid #1a1a2a22",
                 boxSizing: "border-box",
                 cursor: pieceSelectionnee ? "crosshair" : (puzzle ? "pointer" : "default"),
-                transition: "background-color 0.25s",
+                transition: isMobile ? "none" : "background-color 0.25s",
                 outline: estEnExtraction ? "2px solid #ffaa44" : "none",
                 outlineOffset: "-2px",
               }}

@@ -756,7 +756,8 @@ function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
   const cells = piece.cellules || [];
   const maxR = Math.max(0, ...cells.map(([r]) => r));
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
-  const S = 10;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const S = isMobile ? 13 : 10;
 
   //  ELMAAS = pièce d'enlèvement (diamant)
   const estELMAAS = piece.enlevement === true;
