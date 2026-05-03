@@ -1032,13 +1032,20 @@ export default function App() {
       score_j2:         maCouleur === "rouge" ? (scores.noir  ?? 0) : (scores.rouge ?? 0),
     }, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
-        if (res.data.succes && !res.data.deja_traite) {
+        if (res.data.succes) {
           const delta = res.data.delta;
           const eloApres = res.data.elo_apres;
           setEloInfo({ avant: res.data.elo_avant, apres: eloApres, delta });
-          const updatedUser = { ...utilisateur, elo: eloApres };
-          localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
-          setUtilisateur(updatedUser);
+          if (!res.data.deja_traite) {
+            const updatedUser = { ...utilisateur, elo: eloApres };
+            localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
+            setUtilisateur(updatedUser);
+          } else {
+            // deja_traite : mettre à jour l'affichage local avec l'ELO correct du serveur
+            const updatedUser = { ...utilisateur, elo: eloApres };
+            localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
+            setUtilisateur(updatedUser);
+          }
         }
       })
       .catch(err => console.warn("[fin_partie]", err?.response?.data || err.message));
@@ -2004,30 +2011,35 @@ export default function App() {
 
       <div className="zone-jeu">
         <div className="panneau-main">
-          <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurAffiche?.couleur)})</div>
-          <div className="main-pieces-list">
-            {(joueurAffiche?.main_active || []).map((piece, i) => {
-              const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
-              const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
-              const estSelectPourDonner = clickEchanger && pieceADonner === i;
-              return (
-                <div key={i} style={{ position: "relative" }}>
-                  <MiniPiece piece={piece} couleur={joueurAffiche?.couleur}
-                    estSelectionnee={pieceIdx === i || estSelectPourDonner}
-                    onClick={() => {
-                      if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
-                      else if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
-                      else if (!enModeCible && !attenteChoixPouvoir && estMonTour) { setPieceIdx(pieceIdx === i ? null : i); }
-                    }} />
-                </div>
-              );
-            })}
+          <div className="section-mes-pieces">
+            <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurAffiche?.couleur)})</div>
+            <div className="main-pieces-list">
+              {(joueurAffiche?.main_active || []).map((piece, i) => {
+                const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
+                const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
+                const estSelectPourDonner = clickEchanger && pieceADonner === i;
+                return (
+                  <div key={i} style={{ position: "relative" }}>
+                    <MiniPiece piece={piece} couleur={joueurAffiche?.couleur}
+                      estSelectionnee={pieceIdx === i || estSelectPourDonner}
+                      onClick={() => {
+                        if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
+                        else if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
+                        else if (!enModeCible && !attenteChoixPouvoir && estMonTour) { setPieceIdx(pieceIdx === i ? null : i); }
+                      }} />
+                  </div>
+                );
+              })}
+            </div>
+            {(joueurAffiche?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
           </div>
-          {(joueurAffiche?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
-          <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0} / {joueurAffiche?.seuil_regen_actuel ?? 5}</div>
-          <div className="serie-info">{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</div>
+          <div className="section-info-pieces">
+            <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0} / {joueurAffiche?.seuil_regen_actuel ?? 5}</div>
+            <div className="serie-info">{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</div>
+          </div>
 
+          <div className="section-adv-pieces">
           {(() => {
             const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
             const mainAdverse = joueurAdverseAffiche?.main_active || [];
@@ -2053,6 +2065,7 @@ export default function App() {
               </>
             );
           })()}
+          </div>
         </div>
 
         <div className="plateau-central">

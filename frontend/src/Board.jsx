@@ -5,7 +5,7 @@
 //  - Frontières nettes par type et état
 //  - Support modeCible et extractionsEnCours
 // ============================================================
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import "./Board.css";
 
 const COULEURS = {
@@ -75,25 +75,35 @@ export default function Board({
   const [survol, setSurvol] = useState(null);
   const [puzzleEclaire, setPuzzleEclaire] = useState(null);
   const [animPuzzles, setAnimPuzzles] = useState({});
+  const [pendingPlacement, setPendingPlacement] = useState(null); // {cell, valid} pour placement tactile 2 étapes
   const boardRef = useRef(null);
-  const CELL = Math.min(36, Math.floor(560 / taille));
+  
+  // Calcul de la taille des cellules — plus grand sur mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const maxBoardPx = isMobile 
+    ? Math.min(window.innerWidth - 8, window.innerHeight * 0.52)  // mobile: prend presque toute la largeur
+    : 560;
+  const CELL = Math.max(14, Math.floor(maxBoardPx / taille));
 
   const plateau = etat?.plateau;
   const pieces  = plateau?.pieces ?? {};
   const puzzles = plateau?.puzzles ?? {};
 
-  // ── Index multi-puzzle ──
-  const puzzlesParCell = {};
-  Object.entries(puzzles).forEach(([pid, puzz]) => {
-    (puzz.cellules || []).forEach(([r, c]) => {
-      const key = `${r},${c}`;
-      if (!puzzlesParCell[key]) puzzlesParCell[key] = [];
-      puzzlesParCell[key].push(Number(pid));
+  // ── Index multi-puzzle — MEMOIZED ──
+  const puzzlesParCell = useMemo(() => {
+    const idx = {};
+    Object.entries(puzzles).forEach(([pid, puzz]) => {
+      (puzz.cellules || []).forEach(([r, c]) => {
+        const key = `${r},${c}`;
+        if (!idx[key]) idx[key] = [];
+        idx[key].push(Number(pid));
+      });
     });
-  });
-  Object.values(puzzlesParCell).forEach(pids => {
-    pids.sort((a, b) => (puzzles[a]?.cellules?.length ?? 0) - (puzzles[b]?.cellules?.length ?? 0));
-  });
+    Object.values(idx).forEach(pids => {
+      pids.sort((a, b) => (puzzles[a]?.cellules?.length ?? 0) - (puzzles[b]?.cellules?.length ?? 0));
+    });
+    return idx;
+  }, [puzzles]);
 
   const getFrontieres = useCallback((r, c, pid) => {
     const dirs = { top: [r-1,c], bottom: [r+1,c], left: [r,c-1], right: [r,c+1] };
@@ -145,6 +155,34 @@ export default function Board({
     setSurvol(getCellule(e));
   }, [pieceSelectionnee, modeCible, getCellule]);
 
+  // ── Touch handlers pour mobile : ghost + placement en 2 étapes ──
+  const getTouchCellule = useCallback((e) => {
+    if (!boardRef.current || !e.touches || e.touches.length === 0) return null;
+    const touch = e.touches[0];
+    const rect = boardRef.current.getBoundingClientRect();
+    const c = Math.floor((touch.clientX - rect.left) / CELL);
+    const r = Math.floor((touch.clientY - rect.top) / CELL);
+    if (r >= 0 && r < taille && c >= 0 && c < taille) return [r, c];
+    return null;
+  }, [CELL, taille]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!pieceSelectionnee || modeCible) return;
+    const cell = getTouchCellule(e);
+    if (cell) {
+      setSurvol(cell);
+      e.preventDefault(); // empêcher le scroll pendant le drag
+    }
+  }, [pieceSelectionnee, modeCible, getTouchCellule]);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (!pieceSelectionnee || !survol || pieceIdx === null) return;
+    // Figer la position ghost → attendre un tap de confirmation
+    const valide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille, pieceSelectionnee.enlevement === true);
+    setPendingPlacement({ cell: survol, valid: valide });
+    // Ne PAS effacer survol pour garder le ghost visible
+  }, [pieceSelectionnee, survol, pieceIdx, pieces, taille]);
+
   const handleClick = useCallback((e) => {
     const cell = getCellule(e);
 
@@ -153,12 +191,29 @@ export default function Board({
       return;
     }
 
+    // ── Placement tactile 2 étapes : si pendingPlacement, confirmer sur tap ──
+    if (pendingPlacement && pieceSelectionnee && pieceIdx !== null) {
+      if (pendingPlacement.valid && onPoserPiece) {
+        onPoserPiece(pieceIdx, pendingPlacement.cell);
+        setSurvol(null);
+        setPuzzleEclaire(null);
+        setPendingPlacement(null);
+        return;
+      } else {
+        // Tap ailleurs → annuler le pending et montrer un nouveau ghost
+        setPendingPlacement(null);
+        if (cell) setSurvol(cell);
+        return;
+      }
+    }
+
     if (pieceSelectionnee && survol && pieceIdx !== null) {
       const valide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille, pieceSelectionnee.enlevement === true);
       if (valide && onPoserPiece) {
         onPoserPiece(pieceIdx, survol);
         setSurvol(null);
         setPuzzleEclaire(null);
+        setPendingPlacement(null);
         return;
       }
     }
@@ -176,14 +231,15 @@ export default function Board({
       }
     }
   }, [getCellule, modeCible, onCibleSelectionnee, pieceSelectionnee, survol,
-      pieceIdx, pieces, taille, onPoserPiece, puzzlesParCell, puzzleEclaire]);
+      pieceIdx, pieces, taille, onPoserPiece, puzzlesParCell, puzzleEclaire, pendingPlacement]);
 
-  // Fantômes
+  // Use pending cell for ghost if available, otherwise survol
+  const ghostOrigin = pendingPlacement ? pendingPlacement.cell : survol;
   const cellulesFantomes = new Set();
   let fantomeValide = false;
-  if (pieceSelectionnee && survol) {
-    const absolues = cellulesDansGrille(pieceSelectionnee.cellules, survol);
-    fantomeValide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille, pieceSelectionnee.enlevement === true);
+  if (pieceSelectionnee && ghostOrigin) {
+    const absolues = cellulesDansGrille(pieceSelectionnee.cellules, ghostOrigin);
+    fantomeValide = positionValide(pieceSelectionnee.cellules, ghostOrigin, pieces, taille, pieceSelectionnee.enlevement === true);
     absolues.forEach(([r, c]) => {
       if (r >= 0 && r < taille && c >= 0 && c < taille)
         cellulesFantomes.add(`${r},${c}`);
@@ -198,10 +254,12 @@ export default function Board({
     <div
       ref={boardRef}
       className={`board-v3 ${pieceSelectionnee ? "mode-pose" : ""} ${modeCible ? "mode-cible" : ""}`}
-      style={{ width: taille * CELL, height: taille * CELL, position: "relative" }}
+      style={{ width: taille * CELL, height: taille * CELL, position: "relative", touchAction: pieceSelectionnee ? "none" : "auto" }}
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => setSurvol(null)}
+      onMouseLeave={() => { setSurvol(null); }}
       onClick={handleClick}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {Array.from({ length: taille }, (_, r) =>
         Array.from({ length: taille }, (_, c) => {

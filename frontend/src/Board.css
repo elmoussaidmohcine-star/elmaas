@@ -78,17 +78,17 @@
 }
 
 /* Fantôme valide */
-.cellule-v2.fantome-ok {
-  filter: brightness(1.8);
-  outline: 2px solid rgba(255,255,255,0.5);
+.cell-v3.f-ok {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  outline: 2px solid rgba(255, 255, 255, 0.5);
   outline-offset: -2px;
   z-index: 10;
 }
 
 /* Fantôme invalide */
-.cellule-v2.fantome-non {
-  filter: brightness(0.6) saturate(0.3);
-  outline: 2px solid rgba(255,0,0,0.5);
+.cell-v3.f-non {
+  background-color: rgba(255, 0, 0, 0.15) !important;
+  outline: 2px solid rgba(255, 0, 0, 0.5);
   outline-offset: -2px;
 }
 

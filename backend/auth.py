@@ -101,16 +101,23 @@ def fin_partie():
     score_j1      = int(data.get("score_j1", 0))
     score_j2      = int(data.get("score_j2", 0))
 
-    # ── Anti-double : si partie_id déjà enregistrée → renvoyer l'ancien résultat ──
+    # ── Anti-double : si partie_id déjà enregistrée → renvoyer le résultat correct pour CE joueur ──
     if partie_id:
         existant = PartieHistorique.query.filter_by(partie_id=partie_id).first()
         if existant:
+            # Déterminer si l'appelant est j1 ou j2
+            if existant.joueur2_id and existant.joueur2_id == user.id:
+                elo_avant = existant.elo_j2_avant or 500
+                elo_apres = existant.elo_j2_apres or 500
+            else:
+                elo_avant = existant.elo_j1_avant
+                elo_apres = existant.elo_j1_apres
             return jsonify({
                 "succes": True,
                 "deja_traite": True,
-                "elo_avant": existant.elo_j1_avant,
-                "elo_apres": existant.elo_j1_apres,
-                "delta": existant.elo_j1_apres - existant.elo_j1_avant,
+                "elo_avant": elo_avant,
+                "elo_apres": elo_apres,
+                "delta": elo_apres - elo_avant,
             })
 
     elo_user_avant = user.elo
