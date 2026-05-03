@@ -282,6 +282,7 @@ def on_rejoindre_partie(data):
             "etat": serialiser_etat(parties[partie_id]),
             "pseudo_j1": pseudos.get("joueur1", ""),
             "pseudo_j2": pseudos.get("joueur2", ""),
+            "partie_id_pixels": partie_id,
         }, room=partie_id)
 
 

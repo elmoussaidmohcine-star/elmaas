@@ -871,6 +871,8 @@ export default function App() {
   const [iaEnCours, setIaEnCours] = useState(false);
   const socketRef = useRef(null);
   const [monRole, setMonRole] = useState(null);
+  const monRoleRef = useRef(null);
+  useEffect(() => { monRoleRef.current = monRole; }, [monRole]);
   const [statutConnexion, setStatutConnexion] = useState("attente");
   const [modeMultijoueur, setModeMultijoueur] = useState(false);
   const [bonusDoubleActif, setBonusDoubleActif] = useState(false);
@@ -911,8 +913,10 @@ export default function App() {
     if (!mancheTermineeInfo) return;
     const g = mancheTermineeInfo.gagnant;
     if (g && g !== "egalite" && pseudoAdverse) {
-      const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
-      const jaiGagne = g === maCouleur;
+      const maCouleurScore = modeIA !== "aucune"
+        ? (modeIA === "j1" ? "noir" : "rouge")
+        : (monRole === "joueur2" ? "noir" : "rouge");
+      const jaiGagne = g === maCouleurScore;
       const nouveauScore = {
         moi: scoresCumules.moi + (jaiGagne ? 1 : 0),
         lui: scoresCumules.lui + (jaiGagne ? 0 : 1)
@@ -927,7 +931,10 @@ export default function App() {
     if (finPartieEnvoyee.current.has(partieId)) return;
     finPartieEnvoyee.current.add(partieId);
 
-    const maCouleur   = monRole === "joueur2" ? "noir" : "rouge";
+    // Couleur réelle du joueur humain
+    const maCouleur = modeIA !== "aucune"
+      ? (modeIA === "j1" ? "noir" : "rouge")   // IA j1=rouge → humain=noir
+      : (monRole === "joueur2" ? "noir" : "rouge");
     const egalite     = g === "egalite";
     const jaiGagne    = !egalite && g === maCouleur;
     const gagnantCode = egalite ? 0 : jaiGagne ? 1 : 2;
@@ -1132,11 +1139,22 @@ export default function App() {
     socket.on("partie_prete", (data) => {
       setStatutConnexion("connecte");
       setEtat(data.etat);
-      // Récupérer le pseudo de l'adversaire depuis l'événement
-      const monRoleLocal = monRole; // capturer dans la closure
+      // Récupérer le pseudo de l'adversaire (monRoleRef est à jour, pas monRole)
+      const roleActuel = monRoleRef.current;
       if (data.pseudo_j1 || data.pseudo_j2) {
-        const advPseudo = monRoleLocal === "joueur2" ? data.pseudo_j1 : data.pseudo_j2;
+        const advPseudo = roleActuel === "joueur2" ? data.pseudo_j1 : data.pseudo_j2;
         if (advPseudo) setPseudoAdversaireMatch(advPseudo);
+      }
+      // Charger les pixels immédiatement si pas encore reçus (évite la race condition)
+      if (data.partie_id_pixels) {
+        axios.get(`${API}/pixels/${data.partie_id_pixels}`)
+          .then(res => {
+            if (res.data?.pixels_photo) {
+              setPixelsPhoto(res.data.pixels_photo);
+              setTaille(res.data.taille || 16);
+              if (res.data.etat) setEtat(res.data.etat);
+            }
+          }).catch(() => {});
       }
       setTimeout(() => setEtape("jeu"), 800);
     });
