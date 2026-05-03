@@ -1372,7 +1372,7 @@ export default function App() {
       setModeMultijoueur(true);
       
       //  CRITIQUE: rejoindre la room WebSocket immédiatement
-      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1", pseudo: utilisateur?.pseudo || "" });
+      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1", pseudo: utilisateur?.pseudo || "", user_id: utilisateur?.id || null });
       
       if (partieIdMatch) {
         setEtape("jeu");
@@ -1390,7 +1390,7 @@ export default function App() {
     setEtape("lobby");
     
     //  CRITIQUE: rejoindre la room WebSocket immédiatement
-    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2", pseudo: utilisateur?.pseudo || "" });
+    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2", pseudo: utilisateur?.pseudo || "", user_id: utilisateur?.id || null });
     
     try {
       const res = await axios.get(`${API}/pixels/${id}`);
@@ -1646,7 +1646,8 @@ export default function App() {
               socketRef.current.emit("rejoindre_partie", {
                 partie_id: data.partie_id,
                 joueur: "joueur2",
-                pseudo: utilisateur?.pseudo || ""
+                pseudo: utilisateur?.pseudo || "",
+                user_id: utilisateur?.id || null
               });
               
               // Récupérer les pixels en arrière-plan — poll rapide

@@ -81,9 +81,9 @@ export default function Board({
   // Calcul de la taille des cellules — plus grand sur mobile
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const maxBoardPx = isMobile 
-    ? Math.min(window.innerWidth - 8, window.innerHeight * 0.52)  // mobile: prend presque toute la largeur
+    ? Math.min(window.innerWidth - 4, window.innerHeight * 0.62)  // mobile: prend quasi toute la largeur, plus de hauteur
     : 560;
-  const CELL = Math.max(14, Math.floor(maxBoardPx / taille));
+  const CELL = Math.max(16, Math.floor(maxBoardPx / taille));
 
   const plateau = etat?.plateau;
   const pieces  = plateau?.pieces ?? {};

@@ -1012,12 +1012,15 @@ export const CLASSIFICATION_COUP = {
 // ═══════════════════════════════════════════════════════════
 
 export const T = {
-  sousSlogan: [
-    "Un jeu de stratégie, d'art et d'intuition.",
-    "A game of strategy, art, and instinct.",
-    "لعبة الاستراتيجية والفن والحدس",
-    "Un juego de estrategia, arte e instinto."
-  ],
+sousSlogan: [
+  "ELMAAS — stratégie, identité, héritage.",
+  
+  "ELMAAS — the flag of a new strategic culture.",
+  
+  "إلماس — رايةٌ جديدة في عالم الألعاب الاستراتيجية.",
+  
+  "ELMAAS — más que reglas, una filosofía."
+],
 
   // Auth
   continuerAvecGoogle: ["Continuer avec Google", "Continue with Google", "المتابعة بواسطة Google", "Continuar con Google"],
