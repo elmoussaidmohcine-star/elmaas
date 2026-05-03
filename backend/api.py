@@ -122,6 +122,7 @@ noms_par_partie: dict[str, str] = {}
 bonus_double_tour: dict[str, bool] = {}
 reconnaissance_tentee: dict[str, bool] = {}
 joueurs_connectes: dict[str, dict] = {}
+pseudos_par_partie: dict[str, dict] = {}   # partie_id -> {joueur1: pseudo, joueur2: pseudo}
 demandes_pause: dict[str, str] = {}
 pause_active: dict[str, bool] = {}
 scores_manches: dict[str, dict] = {}
@@ -243,7 +244,8 @@ def on_disconnect():
 @socketio.on("rejoindre_partie")
 def on_rejoindre_partie(data):
     partie_id = data.get("partie_id")
-    role = data.get("joueur")
+    role      = data.get("joueur")
+    pseudo    = data.get("pseudo", "")   # pseudo du joueur qui se connecte
 
     if partie_id not in parties:
         emit("erreur", {"message": "Partie introuvable"})
@@ -259,6 +261,12 @@ def on_rejoindre_partie(data):
         joueurs_connectes[partie_id] = {}
     joueurs_connectes[partie_id][role] = request.sid
 
+    # Mémoriser le pseudo de ce joueur
+    if partie_id not in pseudos_par_partie:
+        pseudos_par_partie[partie_id] = {}
+    if pseudo:
+        pseudos_par_partie[partie_id][role] = pseudo
+
     emit("rejoint", {
         "partie_id": partie_id,
         "ton_role": role,
@@ -267,11 +275,13 @@ def on_rejoindre_partie(data):
 
     slots = joueurs_connectes[partie_id]
     if "joueur1" in slots and "joueur2" in slots:
-        # Réinitialiser le timestamp quand les 2 joueurs sont prêts
         parties[partie_id].timestamp_debut_tour = time.time()
+        pseudos = pseudos_par_partie.get(partie_id, {})
         socketio.emit("partie_prete", {
             "message": "Les deux joueurs sont connectés !",
             "etat": serialiser_etat(parties[partie_id]),
+            "pseudo_j1": pseudos.get("joueur1", ""),
+            "pseudo_j2": pseudos.get("joueur2", ""),
         }, room=partie_id)
 
 

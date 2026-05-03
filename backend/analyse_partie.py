@@ -895,6 +895,7 @@ def evaluer_coup_poser(etat_avant: EtatJeu, coup_joue: dict,
         meilleur_alternative={
             "type": meilleur_alt["coup"]["type"] if meilleur_alt else None,
             "piece_index": meilleur_alt["coup"].get("piece_index") if meilleur_alt else None,
+            "piece": serialiser_piece(meilleur_alt["coup"]["piece"]) if (meilleur_alt and meilleur_alt["coup"].get("piece")) else None,
             "origine": list(meilleur_alt["coup"].get("origine", [])) if meilleur_alt else None,
             "est_elmaas": meilleur_alt["coup"].get("est_elmaas", False) if meilleur_alt else False,
             "score": round(meilleur_alt["score"], 2) if meilleur_alt else 0,

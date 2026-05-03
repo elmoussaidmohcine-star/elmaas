@@ -901,7 +901,7 @@ export default function App() {
   
   const pseudoAdverse = modeIA !== "aucune"
     ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS")
-    : (etat?.pseudo_adversaire || "ADVERSAIRE");
+    : (pseudoAdversaireMatch || etat?.pseudo_adversaire || "ADVERSAIRE");
 
   const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });
   const [eloInfo, setEloInfo] = useState(null); // { avant, apres, delta }
@@ -923,8 +923,7 @@ export default function App() {
 
     // ── Mise à jour ELM ──────────────────────────────────────
     const token = getToken();
-    const user  = getUser();
-    if (!token || !user || !partieId) return;
+    if (!token || !utilisateur || !partieId) return;
     if (finPartieEnvoyee.current.has(partieId)) return;
     finPartieEnvoyee.current.add(partieId);
 
@@ -946,8 +945,7 @@ export default function App() {
           const delta = res.data.delta;
           const eloApres = res.data.elo_apres;
           setEloInfo({ avant: res.data.elo_avant, apres: eloApres, delta });
-          // Mettre à jour localStorage ET l'état React
-          const updatedUser = { ...user, elo: eloApres };
+          const updatedUser = { ...utilisateur, elo: eloApres };
           localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
           setUtilisateur(updatedUser);
         }
@@ -1132,8 +1130,14 @@ export default function App() {
     socketRef.current = socket;
     socket.on("rejoint", (data) => { setEtat(data.etat); });
     socket.on("partie_prete", (data) => {
-      setStatutConnexion("connecte"); 
+      setStatutConnexion("connecte");
       setEtat(data.etat);
+      // Récupérer le pseudo de l'adversaire depuis l'événement
+      const monRoleLocal = monRole; // capturer dans la closure
+      if (data.pseudo_j1 || data.pseudo_j2) {
+        const advPseudo = monRoleLocal === "joueur2" ? data.pseudo_j1 : data.pseudo_j2;
+        if (advPseudo) setPseudoAdversaireMatch(advPseudo);
+      }
       setTimeout(() => setEtape("jeu"), 800);
     });
     socket.on("etat_mis_a_jour", (data) => {
@@ -1222,7 +1226,7 @@ export default function App() {
       setModeMultijoueur(true);
       
       //  CRITIQUE: rejoindre la room WebSocket immédiatement
-      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1" });
+      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1", pseudo: utilisateur?.pseudo || "" });
       
       if (partieIdMatch) {
         setEtape("jeu");
@@ -1240,7 +1244,7 @@ export default function App() {
     setEtape("lobby");
     
     //  CRITIQUE: rejoindre la room WebSocket immédiatement
-    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2" });
+    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2", pseudo: utilisateur?.pseudo || "" });
     
     try {
       const res = await axios.get(`${API}/pixels/${id}`);
@@ -1495,7 +1499,8 @@ export default function App() {
               // CRITIQUE : rejoindre tout de suite
               socketRef.current.emit("rejoindre_partie", {
                 partie_id: data.partie_id,
-                joueur: "joueur2"
+                joueur: "joueur2",
+                pseudo: utilisateur?.pseudo || ""
               });
               
               // Récupérer les pixels en arrière-plan
