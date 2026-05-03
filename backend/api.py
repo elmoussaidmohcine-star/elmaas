@@ -131,6 +131,39 @@ historique_coups: dict[str, list] = {}    # partie_id -> liste de coups
 etats_initiaux: dict[str, dict] = {}      # partie_id -> etat sérialisé initial
 analyses_quotidiennes: dict[int, dict] = {}  # user_id -> {"date": date, "count": int
 
+# ── Timestamps pour nettoyage automatique ──
+partie_timestamps: dict[str, float] = {}  # partie_id -> dernière activité (time.time())
+
+def nettoyer_partie(partie_id: str):
+    """Supprime TOUTES les données en mémoire associées à une partie."""
+    parties.pop(partie_id, None)
+    pixels_par_partie.pop(partie_id, None)
+    noms_par_partie.pop(partie_id, None)
+    bonus_double_tour.pop(partie_id, None)
+    reconnaissance_tentee.pop(partie_id, None)
+    joueurs_connectes.pop(partie_id, None)
+    pseudos_par_partie.pop(partie_id, None)
+    demandes_pause.pop(partie_id, None)
+    pause_active.pop(partie_id, None)
+    scores_manches.pop(partie_id, None)
+    timer_par_partie.pop(partie_id, None)
+    historique_coups.pop(partie_id, None)
+    etats_initiaux.pop(partie_id, None)
+    partie_timestamps.pop(partie_id, None)
+
+def nettoyer_parties_anciennes():
+    """Supprime les parties inactives depuis plus de 2 heures."""
+    seuil = time.time() - 7200  # 2 heures
+    parties_a_supprimer = [
+        pid for pid, ts in partie_timestamps.items() if ts < seuil
+    ]
+    for pid in parties_a_supprimer:
+        print(f"[cleanup] Nettoyage automatique partie {pid}")
+        nettoyer_partie(pid)
+    if parties_a_supprimer:
+        print(f"[cleanup] {len(parties_a_supprimer)} parties nettoyées. "
+              f"Restant en mémoire : {len(parties)} parties")
+
 
 def sauvegarder_partie(partie_id: str):
     try:
@@ -405,6 +438,9 @@ def nouvelle_partie():
                 user.photo_perso_utilisee = True
                 db.session.commit()
         parties[partie_id] = etat
+        partie_timestamps[partie_id] = time.time()
+        # Nettoyage automatique des vieilles parties
+        nettoyer_parties_anciennes()
         etats_initiaux[partie_id] = copier_etat_manuel(etat)
         print(f"[api] État initial sauvegardé : {partie_id}")
         pixels_par_partie[partie_id] = pixels
@@ -655,6 +691,10 @@ def jouer(partie_id: str):
     etat = parties.get(partie_id)
     if not etat:
         return jsonify({"erreur": "Partie introuvable"}), 404
+    partie_timestamps[partie_id] = time.time()  # Garder la partie "active"
+    # Nettoyage toutes les 50 requêtes environ
+    if len(parties) > 10:
+        nettoyer_parties_anciennes()
 
     data = request.json or {}
     action = data.get("action")
@@ -1044,15 +1084,21 @@ def get_scores_manches(partie_id: str):
 @app.route("/supprimer/<partie_id>", methods=["DELETE"])
 def supprimer_partie(partie_id: str):
     if partie_id in parties:
-        del parties[partie_id]
-        pixels_par_partie.pop(partie_id, None)
-        noms_par_partie.pop(partie_id, None)
-        bonus_double_tour.pop(partie_id, None)
-        reconnaissance_tentee.pop(partie_id, None)
-        joueurs_connectes.pop(partie_id, None)
-        demandes_revanche.pop(partie_id, None)
+        nettoyer_partie(partie_id)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
+
+
+@app.route("/debug/memoire", methods=["GET"])
+def debug_memoire():
+    """Diagnostic mémoire — nombre de parties en RAM."""
+    return jsonify({
+        "parties_en_memoire": len(parties),
+        "pixels_en_memoire": len(pixels_par_partie),
+        "historiques_en_memoire": len(historique_coups),
+        "etats_initiaux": len(etats_initiaux),
+        "joueurs_connectes": len(joueurs_connectes),
+    })
 
 
 if __name__ == "__main__":
