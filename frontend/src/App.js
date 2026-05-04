@@ -2008,6 +2008,26 @@ export default function App() {
           </div>
           {(joueurAffiche?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
 
+          {/* Mobile : pièces adversaires sous mes pièces */}
+          <div className="mobile-adverse-in-main mobile-only">
+            <div className="mobile-adverse-in-main-header">
+              <span className="mobile-adverse-in-main-name">
+                {modeIA === "j2" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}
+              </span>
+              <span className="mobile-adverse-in-main-score">
+                {etat?.scores?.[joueurAdverseAffiche?.couleur] ?? 0}
+              </span>
+            </div>
+            <div className="mobile-adverse-in-main-pieces">
+              {(joueurAdverseAffiche?.main_active || []).map((_, i) => (
+                <div key={i} className={"piece-cachee " + joueurAdverseAffiche?.couleur} />
+              ))}
+            </div>
+            <span className="mobile-adverse-in-main-count">
+              {(joueurAdverseAffiche?.nb_pieces_reserve || 0) + (joueurAdverseAffiche?.main_active?.length || 0)} {t("pieces", L)}
+            </span>
+          </div>
+
           {/* Desktop only : réserve, série, pièces adverses */}
           <div className="desktop-only">
             <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
@@ -2105,25 +2125,6 @@ export default function App() {
           )}
         </div>
 
-        {/* 5. ADVERSAIRE MOBILE — en bas */}
-        <div className="mobile-adverse-bar mobile-only">
-          <div className="mobile-adverse-header">
-            <span className="mobile-adverse-name">
-              {modeIA === "j2" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}
-            </span>
-            <span className="mobile-adverse-score">
-              {etat?.scores?.[joueurAdverseAffiche?.couleur] ?? 0}
-            </span>
-          </div>
-          <div className="mobile-adverse-pieces">
-            {(joueurAdverseAffiche?.main_active || []).map((_, i) => (
-              <div key={i} className={"piece-cachee " + joueurAdverseAffiche?.couleur} />
-            ))}
-          </div>
-          <span className="mobile-adverse-count">
-            {(joueurAdverseAffiche?.nb_pieces_reserve || 0) + (joueurAdverseAffiche?.main_active?.length || 0)} {t("pieces", L)}
-          </span>
-        </div>
       </div>
     </div>
   );
