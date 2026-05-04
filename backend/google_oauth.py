@@ -8,11 +8,10 @@ from auth import generer_token, get_user_from_request
 
 google_bp = Blueprint("google_oauth", __name__)
 
-# Hardcode temporaire (on déplacera en var env après)
 GOOGLE_CLIENT_ID = "68474294787-lj8ntgrgf7b3igheug7ln6aqpta7hfuq.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET = "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"   #  remplace par ton vrai secret
+GOOGLE_CLIENT_SECRET = "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"
 
-BACKEND_URL = "https://elmaas-backend.onrender.com"   #  remplace par l'URL Render exacte
+BACKEND_URL = "https://elmaas-backend.onrender.com"
 FRONTEND_URL = "https://www.elmaas.fun"
 REDIRECT_URI = f"{BACKEND_URL}/auth/google/callback"
 
@@ -20,28 +19,20 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-# Stockage in-memory des states valides (remplace la session Flask)
-# Format : {state: timestamp}
 _states_valides = {}
-_DUREE_VALIDITE_STATE = 600  # 10 minutes
-
+_DUREE_VALIDITE_STATE = 600
 
 def _nettoyer_states():
-    """Supprime les states expirés."""
     maintenant = time.time()
     expires = [s for s, t in _states_valides.items() if maintenant - t > _DUREE_VALIDITE_STATE]
     for s in expires:
         del _states_valides[s]
 
-
 def init_google_oauth(app):
-    """Pas besoin d'init Authlib — on gère tout nous-mêmes."""
     pass
-
 
 @google_bp.route("/auth/google")
 def google_login():
-    """Démarre le flow OAuth."""
     _nettoyer_states()
     state = secrets.token_urlsafe(32)
     _states_valides[state] = time.time()
@@ -59,10 +50,8 @@ def google_login():
     url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     return redirect(url)
 
-
 @google_bp.route("/auth/google/callback")
 def google_callback():
-    """Reçoit le code Google, échange contre un token, crée/récupère l'utilisateur."""
     try:
         from urllib.parse import quote
         code = request.args.get("code")
@@ -71,13 +60,11 @@ def google_callback():
         if not code:
             return redirect(f"{FRONTEND_URL}?auth_error=no_code")
 
-        # Vérifie le state (notre propre CSRF check)
         _nettoyer_states()
         if not state or state not in _states_valides:
             return redirect(f"{FRONTEND_URL}?auth_error=invalid_state")
-        del _states_valides[state]  # usage unique
+        del _states_valides[state]
 
-        # Échange le code contre un token
         import requests
         token_data = {
             "code": code,
@@ -95,7 +82,6 @@ def google_callback():
         if not access_token:
             return redirect(f"{FRONTEND_URL}?auth_error=no_token")
 
-        # Récupère les infos utilisateur
         user_resp = requests.get(
             GOOGLE_USERINFO_URL,
             headers={"Authorization": f"Bearer {access_token}"},
@@ -111,22 +97,26 @@ def google_callback():
         if not email:
             return redirect(f"{FRONTEND_URL}?auth_error=no_email")
 
-        # Crée ou récupère l'utilisateur
         user = Utilisateur.query.filter_by(email=email).first()
+        session_token = secrets.token_urlsafe(32)
+
         if not user:
             user = Utilisateur(
                 email=email,
                 pseudo=None,
                 mot_de_passe="",
                 google_id=google_id,
+                session_token=session_token,
             )
             db.session.add(user)
             db.session.commit()
-        elif not getattr(user, "google_id", None):
-            user.google_id = google_id
+        else:
+            if not getattr(user, "google_id", None):
+                user.google_id = google_id
+            user.session_token = session_token  # ← FORCER nouvelle session
             db.session.commit()
 
-        token_jwt = generer_token(user.id)
+        token_jwt = generer_token(user.id, session_token)
 
         if not user.pseudo:
             return redirect(f"{FRONTEND_URL}?google_token={token_jwt}&besoin_pseudo=1")
@@ -141,8 +131,6 @@ def google_callback():
         err_msg = quote(str(e)[:300])
         return redirect(f"{FRONTEND_URL}?auth_error=oauth_failed&detail={err_msg}")
 
-
-# ── Routes pseudo ──
 @google_bp.route("/auth/pseudo/disponible", methods=["GET"])
 def pseudo_disponible():
     pseudo = (request.args.get("pseudo") or "").strip()
@@ -158,12 +146,11 @@ def pseudo_disponible():
     existe = Utilisateur.query.filter_by(pseudo=pseudo).first()
     return jsonify({"disponible": existe is None})
 
-
 @google_bp.route("/auth/pseudo/definir", methods=["POST"])
 def definir_pseudo():
     user = get_user_from_request()
     if not user:
-        return jsonify({"erreur": "Non authentifié"}), 401
+        return jsonify({"erreur": "Non authentifie"}), 401
     data = request.get_json() or {}
     pseudo = (data.get("pseudo") or "").strip()
     if not pseudo or len(pseudo) < 2:

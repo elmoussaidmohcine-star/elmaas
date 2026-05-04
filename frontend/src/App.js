@@ -1085,6 +1085,81 @@ export default function App() {
   };
 
   useEffect(() => { appliquerTheme(indexLangue); }, [indexLangue]);
+    // ═══════════════════════════════════════════════════════════
+  // SESSION UNIQUE + SYNC PLAN
+  // ═══════════════════════════════════════════════════════════
+  const onDeconnecterRef = useRef(onDeconnecter);
+  useEffect(() => { onDeconnecterRef.current = onDeconnecter; }, [onDeconnecter]);
+
+  // 1. Vérifier la session au chargement et toutes les 30s
+  //    Si un autre appareil s'est connecté → 401 → déconnexion forcée
+  useEffect(() => {
+    const syncSession = async () => {
+      const token = getToken();
+      if (!token) return;
+      try {
+        const res = await fetch(`${API}/auth/moi`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.status === 401) {
+          // Session invalide : déconnexion depuis un autre appareil
+          onDeconnecterRef.current();
+          return;
+        }
+        const user = await res.json();
+        if (user && !user.erreur) {
+          // Synchronise le plan et toutes les infos fraîches
+          localStorage.setItem("elmaas_user", JSON.stringify(user));
+          setUtilisateur(user);
+        }
+      } catch (e) {
+        // Erreur réseau silencieuse
+      }
+    };
+
+    syncSession(); // immédiat au chargement
+    const interval = setInterval(syncSession, 30000); // toutes les 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  // 2. Intercepteur Axios : capte les 401 globalement
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response?.status === 401) {
+          onDeconnecterRef.current();
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
+  // 3. Resync quand l'onglet reprend le focus (utile si paiement sur PC)
+  useEffect(() => {
+    const onFocus = () => {
+      const token = getToken();
+      if (!token) return;
+      fetch(`${API}/auth/moi`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => {
+          if (res.status === 401) {
+            onDeconnecterRef.current();
+            return;
+          }
+          return res.json();
+        })
+        .then(user => {
+          if (user && !user.erreur) {
+            localStorage.setItem("elmaas_user", JSON.stringify(user));
+            setUtilisateur(user);
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   // Retour Google OAuth
   useEffect(() => {

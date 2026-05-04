@@ -6,6 +6,7 @@
 import bcrypt
 import jwt
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from models import db, Utilisateur, PartieHistorique, calculer_elo
@@ -13,25 +14,36 @@ from models import db, Utilisateur, PartieHistorique, calculer_elo
 auth_bp = Blueprint("auth", __name__)
 SECRET_KEY = os.environ.get("SECRET_KEY", "elmaas_secret_dev")
 
-def generer_token(user_id):
-    payload = {"user_id": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)}
+def generer_token(user_id, session_token=None):
+    payload = {
+        "user_id": user_id,
+        "session_token": session_token,
+        "exp": datetime.now(timezone.utc) + timedelta(days=30)
+    }
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
 def verifier_token(token):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return payload["user_id"]
+        return payload.get("user_id"), payload.get("session_token")
     except Exception:
-        return None
+        return None, None
 
 def get_user_from_request():
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         return None
-    user_id = verifier_token(token)
+    user_id, session_token = verifier_token(token)
     if not user_id:
         return None
-    return Utilisateur.query.get(user_id)
+    user = Utilisateur.query.get(user_id)
+    if not user:
+        return None
+    # SESSION UNIQUE : si un autre appareil s'est connecté, le session_token
+    # en DB a changé et ne correspond plus à celui du JWT → rejeté
+    if user.session_token and user.session_token != session_token:
+        return None
+    return user
 
 @auth_bp.route("/auth/inscription", methods=["POST"])
 def inscription():
@@ -48,10 +60,11 @@ def inscription():
     if Utilisateur.query.filter_by(pseudo=pseudo).first():
         return jsonify({"erreur": "Pseudo deja pris"}), 400
     hash_mdp = bcrypt.hashpw(mdp.encode(), bcrypt.gensalt()).decode()
-    user = Utilisateur(email=email, pseudo=pseudo, mot_de_passe=hash_mdp)
+    session_token = secrets.token_urlsafe(32)
+    user = Utilisateur(email=email, pseudo=pseudo, mot_de_passe=hash_mdp, session_token=session_token)
     db.session.add(user)
     db.session.commit()
-    return jsonify({"succes": True, "token": generer_token(user.id), "utilisateur": user.to_dict()})
+    return jsonify({"succes": True, "token": generer_token(user.id, session_token), "utilisateur": user.to_dict()})
 
 @auth_bp.route("/auth/connexion", methods=["POST"])
 def connexion():
@@ -61,7 +74,10 @@ def connexion():
     user = Utilisateur.query.filter_by(email=email).first()
     if not user or not bcrypt.checkpw(mdp.encode(), user.mot_de_passe.encode()):
         return jsonify({"erreur": "Email ou mot de passe incorrect"}), 401
-    return jsonify({"succes": True, "token": generer_token(user.id), "utilisateur": user.to_dict()})
+    # Nouvelle session = invalide les anciens appareils
+    user.session_token = secrets.token_urlsafe(32)
+    db.session.commit()
+    return jsonify({"succes": True, "token": generer_token(user.id, user.session_token), "utilisateur": user.to_dict()})
 
 @auth_bp.route("/auth/moi", methods=["GET"])
 def moi():
@@ -80,7 +96,6 @@ def classement():
     } for i, u in enumerate(top)])
 
 
-# ELO fictifs des robots (non stockés en DB, utilisés pour le calcul seulement)
 IA_ELO = {
     "Chess":     400,
     "Amal":      650,
@@ -95,13 +110,12 @@ def fin_partie():
     if not user:
         return jsonify({"erreur": "Non authentifie"}), 401
 
-    partie_id     = data.get("partie_id")          # UUID de la partie
+    partie_id     = data.get("partie_id")
     adversaire_ps = data.get("adversaire_pseudo", "")
-    gagnant       = int(data.get("gagnant", 0))    # 1=moi gagne, 2=adversaire gagne, 0=égalité
+    gagnant       = int(data.get("gagnant", 0))
     score_j1      = int(data.get("score_j1", 0))
     score_j2      = int(data.get("score_j2", 0))
 
-    # ── Anti-double : si partie_id déjà enregistrée → renvoyer l'ancien résultat ──
     if partie_id:
         existant = PartieHistorique.query.filter_by(partie_id=partie_id).first()
         if existant:
@@ -114,9 +128,8 @@ def fin_partie():
             })
 
     elo_user_avant = user.elo
-
-    # ── Cas IA : adversaire fictif, ELO fixe ──
     est_ia = adversaire_ps in IA_ELO
+
     if est_ia:
         elo_ia = IA_ELO[adversaire_ps]
         nv_elo_user, _ = calculer_elo(user.elo, elo_ia, gagnant)
@@ -145,10 +158,8 @@ def fin_partie():
             "delta": nv_elo_user - elo_user_avant,
         })
 
-    # ── Cas multijoueur : chercher l'adversaire en DB ──
     adversaire = Utilisateur.query.filter_by(pseudo=adversaire_ps).first()
     if not adversaire:
-        # Adversaire sans compte : mise à jour solo seulement
         elo_virtuel = 500
         nv_elo_user, _ = calculer_elo(user.elo, elo_virtuel, gagnant)
         user.elo = nv_elo_user
@@ -175,7 +186,6 @@ def fin_partie():
             "delta": nv_elo_user - elo_user_avant,
         })
 
-    # ── Deux joueurs avec comptes ──
     elo_j1_avant, elo_j2_avant = user.elo, adversaire.elo
     nv_elo_j1, nv_elo_j2 = calculer_elo(elo_j1_avant, elo_j2_avant, gagnant)
 
@@ -220,10 +230,8 @@ def consommer_upload():
     if not user:
         return jsonify({"erreur": "Non authentifie"}), 401
     plan = getattr(user, "plan", None) or "gratuit"
-    # ELMAAS et ELMAASYON : uploads illimités
     if plan in ("elmaas", "elmaasyon"):
         return jsonify({"succes": True, "illimite": True})
-    # Gratuit : 1 seul upload
     if user.photo_perso_utilisee:
         return jsonify({"erreur": "Quota upload atteint", "code": "QUOTA_UPLOAD"}), 403
     user.photo_perso_utilisee = True
