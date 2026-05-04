@@ -693,7 +693,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   .panneau-main {
     width: 100%;
     min-width: unset;
-    max-height: 130px;
+    max-height: 68px;
     flex-direction: row;
     flex-wrap: nowrap;
     padding: 4px 8px;
@@ -774,7 +774,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     border: none;
     border-top: 1px solid var(--bord);
     flex-shrink: 0;
-    order: 4;
+    order: 5;
     align-items: center;
     justify-content: center;
     overflow-x: auto;
@@ -810,7 +810,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
      ADVERSAIRE MOBILE — En bas
      ════════════════════════════════════ */
   .mobile-adverse-bar {
-    order: 5;
+    order: 4;
     flex-shrink: 0;
     display: flex;
     flex-direction: row;
@@ -958,65 +958,6 @@ html[dir="rtl"] .manuel-content { text-align: right; }
 }
 
 
-  /* Pièces adversaires dans le panneau main (mobile) */
-  .mobile-adverse-in-main {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0;
-    border-top: 1px solid var(--bord);
-    margin-top: 2px;
-    width: 100%;
-    flex-shrink: 0;
-  }
-  .mobile-adverse-in-main-header {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
-    flex-shrink: 0;
-  }
-  .mobile-adverse-in-main-name {
-    font-size: 10px;
-    color: var(--texte);
-    font-family: var(--brush);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .mobile-adverse-in-main-score {
-    font-size: 16px;
-    color: #aaaaaa;
-    font-family: var(--brush);
-    font-weight: 700;
-    line-height: 1;
-  }
-  .mobile-adverse-in-main-pieces {
-    display: flex;
-    gap: 4px;
-    flex-wrap: nowrap;
-    flex: 1;
-    align-items: center;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .mobile-adverse-in-main-count {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: var(--brush);
-    flex-shrink: 0;
-  }
 
-@media (max-width: 480px) {
-  .pseudo-nom { max-width: 52px; font-size: 9px; }
-  .pseudo-score { font-size: 16px; }
-  .timer-val  { font-size: 15px; }
-  .timer-label { font-size: 7px; letter-spacing: 0.08em; }
-  .btn-manuel { width: 26px; height: 26px; font-size: 11px; }
-  .mini-piece { min-width: 36px; min-height: 36px; }
-  .panneau-main { max-height: 60px; padding: 3px 6px; }
-  .btn-action { font-size: 11px; padding: 6px 6px; min-height: 34px; min-width: 56px; }
-  .popup-gagnant { font-size: 20px; padding: 10px 16px; }
-  .popup-options-fin { flex-direction: column; }
   .mobile-infos-bar { gap: 10px; font-size: 10px; }
-}
+
