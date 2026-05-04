@@ -1785,7 +1785,7 @@ export default function App() {
               {/* SUPPRESSION BOUTONS RAPIDE/PROFONDE — UN SEUL BOUTON ANALYSE */}
               <button className="popup-btn" style={{ borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
                 onClick={() => { lancerAnalyse(); }} disabled={analyseChargement}>
-                {analyseChargement ? "⏳ Analyse..." : (L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo")}
+                {analyseChargement ? (L === 0 ? "Analyse en cours..." : L === 1 ? "Analyzing..." : L === 2 ? "...جارٍ التحليل" : "Analizando...") : (L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo")}
               </button>
               <button className="popup-btn" onClick={handleReset}>{t("nouvellePartie", L)}</button>
             </div>
@@ -1888,7 +1888,7 @@ export default function App() {
               {/* SUPPRESSION BOUTONS RAPIDE/PROFONDE — UN SEUL BOUTON */}
               <button className="popup-btn" style={{ borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
                 onClick={() => { lancerAnalyse(); }} disabled={analyseChargement}>
-                {analyseChargement ? "⏳ Analyse..." : (L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo")}
+                {analyseChargement ? (L === 0 ? "Analyse en cours..." : L === 1 ? "Analyzing..." : L === 2 ? "...جارٍ التحليل" : "Analizando...") : (L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo")}
               </button>
               <button className="popup-btn" onClick={() => { setPopup(null); handleReset(); }}>{t("fermer", L)}</button>
             </div>
@@ -1960,12 +1960,11 @@ export default function App() {
           {/* Toggle couleur — uniquement mode local */}
           {!modeMultijoueur && (
             <button 
-              className="btn-manuel" 
+              className="btn-manuel btn-couleur-toggle"
               onClick={() => setModeCouleur(prev => prev === 1 ? 2 : 1)}
               title={modeCouleur === 1 ? "Mode Cyan/Jaune" : "Mode Rouge/Noir"}
-              style={{ fontSize: 16, padding: "4px 8px" }}
             >
-              {modeCouleur === 1 ? "🔴⚫" : "🔵🟡"}
+              {modeCouleur === 1 ? "C/J" : "R/N"}
             </button>
           )}
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
@@ -2045,9 +2044,21 @@ export default function App() {
 
         {/* 2. INFOS MOBILE — sous les pièces */}
         <div className="mobile-infos-bar mobile-only">
+          <span className="mobile-infos-tour">{t("tour", L)} {etat?.numero_tour}</span>
+          {modeMultijoueur && (
+            <span className={`mobile-tour-badge ${estMonTour ? "mon-tour" : "adverse-tour"}`}>
+              {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
+            </span>
+          )}
+          {!modeMultijoueur && estTourIA && (
+            <span className="mobile-tour-badge adverse-tour">IA</span>
+          )}
+          {bonusDoubleActif && (
+            <span className="mobile-tour-badge bonus-tour">{t("doubleTourActif", L)}</span>
+          )}
+          <span className="mobile-infos-sep">|</span>
           <span>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</span>
-          <span>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0}/{joueurAffiche?.seuil_regen_actuel ?? 5}</span>
-          <span>{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</span>
+          <span>{joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0}/{joueurAffiche?.seuil_regen_actuel ?? 5}</span>
         </div>
 
         {/* 3. PLATEAU — maximum d'espace */}
