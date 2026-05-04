@@ -96,7 +96,7 @@ with app.app_context():
         db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS date_inscription TIMESTAMP DEFAULT NOW()"))
         db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN mot_de_passe DROP NOT NULL"))
         db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN pseudo DROP NOT NULL"))
-        db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS session_token VARCHAR(100)"))
+        
         db.session.commit()
         print("[migration] Colonnes Google ajoutées")
     except Exception as e:
