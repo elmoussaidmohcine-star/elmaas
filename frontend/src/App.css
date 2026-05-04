@@ -897,7 +897,7 @@ html[dir="rtl"] .manuel-content { text-align: right; }
   }
   .mobile-adverse-pieces {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     flex-wrap: nowrap;
     flex: 1;
     align-items: center;
@@ -915,12 +915,19 @@ html[dir="rtl"] .manuel-content { text-align: right; }
     border-radius: 4px;
     background: var(--bg);
   }
-  /* Pièces cachées légèrement plus visibles sur mobile */
-  .mobile-adverse-pieces .piece-cachee {
-    width: 18px;
-    height: 18px;
-    opacity: 0.65;
+  /* Pièces adverses via MiniPiece — réduites par scale */
+  .mobile-adverse-piece-wrap {
+    transform: scale(0.7);
+    transform-origin: center;
     flex-shrink: 0;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .mobile-adverse-piece-wrap:active {
+    transform: scale(0.78);
+  }
+  .mobile-adverse-pieces .mini-piece {
+    min-width: 40px;
+    min-height: 40px;
   }
 
   /* ════════════════════════════════════

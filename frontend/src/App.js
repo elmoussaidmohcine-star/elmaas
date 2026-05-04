@@ -2083,9 +2083,25 @@ export default function App() {
             </span>
           </div>
           <div className="mobile-adverse-pieces">
-            {(joueurAdverseAffiche?.main_active || []).map((_, i) => (
-              <div key={i} className={"piece-cachee " + joueurAdverseAffiche?.couleur} />
-            ))}
+            {(joueurAdverseAffiche?.main_active || []).map((piece, i) => {
+              const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
+              return (
+                <div key={i} className="mobile-adverse-piece-wrap"
+                  style={{ opacity: clickEchanger ? 1 : 0.45, cursor: clickEchanger ? "pointer" : "default" }}>
+                  <MiniPiece
+                    piece={piece}
+                    couleur={joueurAdverseAffiche?.couleur}
+                    onClick={() => {
+                      if (clickEchanger) {
+                        if (pieceADonner === null) return;
+                        setPopup(null); setPieceADonner(null);
+                        envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i, piece_index_donner: pieceADonner });
+                      }
+                    }}
+                  />
+                </div>
+              );
+            })}
           </div>
           <span className="mobile-adverse-count">
             {(joueurAdverseAffiche?.nb_pieces_reserve || 0) + (joueurAdverseAffiche?.main_active?.length || 0)} {t("pieces", L)}
