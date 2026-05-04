@@ -76,7 +76,31 @@ export default function Board({
   const [puzzleEclaire, setPuzzleEclaire] = useState(null);
   const [animPuzzles, setAnimPuzzles] = useState({});
   const boardRef = useRef(null);
-  const CELL = Math.min(36, Math.floor(560 / taille));
+  const [cellSize, setCellSize] = useState(() => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      const avail = Math.min(window.innerWidth - 16, 420);
+      return Math.max(14, Math.floor(avail / taille));
+    }
+    return Math.min(36, Math.floor(560 / taille));
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const avail = Math.min(window.innerWidth - 16, 420);
+        setCellSize(Math.max(14, Math.floor(avail / taille)));
+      } else {
+        setCellSize(Math.min(36, Math.floor(560 / taille)));
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [taille]);
+
+  const CELL = cellSize;
 
   const plateau = etat?.plateau;
   const pieces  = plateau?.pieces ?? {};
@@ -140,6 +164,39 @@ export default function Board({
     return null;
   }, [CELL, taille]);
 
+  const getCelluleFromTouch = useCallback((touch) => {
+    if (!boardRef.current) return null;
+    const rect = boardRef.current.getBoundingClientRect();
+    const c = Math.floor((touch.clientX - rect.left) / CELL);
+    const r = Math.floor((touch.clientY - rect.top) / CELL);
+    if (r >= 0 && r < taille && c >= 0 && c < taille) return [r, c];
+    return null;
+  }, [CELL, taille]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!pieceSelectionnee && !modeCible) { setSurvol(null); return; }
+    if (pieceSelectionnee || modeCible) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      setSurvol(getCelluleFromTouch(touch));
+    }
+  }, [pieceSelectionnee, modeCible, getCelluleFromTouch]);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (modeCible && onCibleSelectionnee && survol) {
+      onCibleSelectionnee(survol);
+      return;
+    }
+    if (pieceSelectionnee && survol && pieceIdx !== null) {
+      const valide = positionValide(pieceSelectionnee.cellules, survol, pieces, taille, pieceSelectionnee.enlevement === true);
+      if (valide && onPoserPiece) {
+        onPoserPiece(pieceIdx, survol);
+        setSurvol(null);
+        setPuzzleEclaire(null);
+      }
+    }
+  }, [modeCible, onCibleSelectionnee, pieceSelectionnee, survol, pieceIdx, pieces, taille, onPoserPiece]);
+
   const handleMouseMove = useCallback((e) => {
     if (!pieceSelectionnee && !modeCible) { setSurvol(null); return; }
     setSurvol(getCellule(e));
@@ -198,10 +255,12 @@ export default function Board({
     <div
       ref={boardRef}
       className={`board-v3 ${pieceSelectionnee ? "mode-pose" : ""} ${modeCible ? "mode-cible" : ""}`}
-      style={{ width: taille * CELL, height: taille * CELL, position: "relative" }}
+      style={{ width: taille * CELL, height: taille * CELL, position: "relative", touchAction: (pieceSelectionnee || modeCible) ? "none" : "auto" }}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setSurvol(null)}
       onClick={handleClick}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {Array.from({ length: taille }, (_, r) =>
         Array.from({ length: taille }, (_, c) => {

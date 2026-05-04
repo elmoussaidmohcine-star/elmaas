@@ -1972,7 +1972,8 @@ export default function App() {
         </div>
       </header>
 
-      <div className="zone-adverse">
+      {/* Zone adverse desktop — cachée en mobile */}
+      <div className="zone-adverse desktop-only">
         <div className="adverse-label">
           {t("adversaire", L)} ({trCouleur(joueurAdverseAffiche?.couleur)}) — {(joueurAdverseAffiche?.nb_pieces_reserve || 0) + (joueurAdverseAffiche?.main_active?.length || 0)} {t("pieces", L)}
         </div>
@@ -1984,6 +1985,7 @@ export default function App() {
       </div>
 
       <div className="zone-jeu">
+        {/* 1. PANNEAU MAIN — Pièces joueur en haut */}
         <div className="panneau-main">
           <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurAffiche?.couleur)})</div>
           <div className="main-pieces-list">
@@ -2005,37 +2007,49 @@ export default function App() {
             })}
           </div>
           {(joueurAffiche?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
-          <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0} / {joueurAffiche?.seuil_regen_actuel ?? 5}</div>
-          <div className="serie-info">{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</div>
 
-          {(() => {
-            const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
-            const mainAdverse = joueurAdverseAffiche?.main_active || [];
-            return (
-              <>
-                <div className="panneau-titre" style={{ marginTop: 14 }}>
-                  {t("adversaire", L)} ({trCouleur(joueurAdverseAffiche?.couleur)})
-                </div>
-                <div className="main-pieces-list">
-                  {mainAdverse.map((piece, i) => (
-                    <div key={i} style={{ position: "relative", opacity: clickEchanger ? 1 : 0.4 }}>
-                      <MiniPiece piece={piece} couleur={joueurAdverseAffiche?.couleur}
-                        onClick={() => {
-                          if (clickEchanger) {
-                            if (pieceADonner === null) return;
-                            setPopup(null); setPieceADonner(null);
-                            envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i, piece_index_donner: pieceADonner });
-                          }
-                        }} />
-                    </div>
-                  ))}
-                </div>
-              </>
-            );
-          })()}
+          {/* Desktop only : réserve, série, pièces adverses */}
+          <div className="desktop-only">
+            <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0} / {joueurAffiche?.seuil_regen_actuel ?? 5}</div>
+            <div className="serie-info">{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</div>
+
+            {(() => {
+              const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
+              const mainAdverse = joueurAdverseAffiche?.main_active || [];
+              return (
+                <>
+                  <div className="panneau-titre" style={{ marginTop: 14 }}>
+                    {t("adversaire", L)} ({trCouleur(joueurAdverseAffiche?.couleur)})
+                  </div>
+                  <div className="main-pieces-list">
+                    {mainAdverse.map((piece, i) => (
+                      <div key={i} style={{ position: "relative", opacity: clickEchanger ? 1 : 0.4 }}>
+                        <MiniPiece piece={piece} couleur={joueurAdverseAffiche?.couleur}
+                          onClick={() => {
+                            if (clickEchanger) {
+                              if (pieceADonner === null) return;
+                              setPopup(null); setPieceADonner(null);
+                              envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i, piece_index_donner: pieceADonner });
+                            }
+                          }} />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         </div>
 
+        {/* 2. INFOS MOBILE — sous les pièces */}
+        <div className="mobile-infos-bar mobile-only">
+          <span>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</span>
+          <span>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0}/{joueurAffiche?.seuil_regen_actuel ?? 5}</span>
+          <span>{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</span>
+        </div>
+
+        {/* 3. PLATEAU — maximum d'espace */}
         <div className="plateau-central">
           <Board etat={etat} taille={taille} couleurJoueur={joueurAffiche?.couleur}
             pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurAffiche?.main_active[pieceIdx] : null}
@@ -2046,8 +2060,9 @@ export default function App() {
             modeCouleur={modeCouleur} />
         </div>
 
+        {/* 4. ACTIONS — sous le plateau */}
         <div className="panneau-actions">
-          <div className="panneau-titre">{t("actions", L)}</div>
+          <div className="panneau-titre desktop-only">{t("actions", L)}</div>
           <button className="btn-action" onClick={handleRepiocher} disabled={!estMonTour || enModeCible || attenteChoixPouvoir || estTourIA}>
             {t("repiocher", L)}
           </button>
@@ -2088,6 +2103,26 @@ export default function App() {
               {t("attendsTonTour", L)}
             </div>
           )}
+        </div>
+
+        {/* 5. ADVERSAIRE MOBILE — en bas */}
+        <div className="mobile-adverse-bar mobile-only">
+          <div className="mobile-adverse-header">
+            <span className="mobile-adverse-name">
+              {modeIA === "j2" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}
+            </span>
+            <span className="mobile-adverse-score">
+              {etat?.scores?.[joueurAdverseAffiche?.couleur] ?? 0}
+            </span>
+          </div>
+          <div className="mobile-adverse-pieces">
+            {(joueurAdverseAffiche?.main_active || []).map((_, i) => (
+              <div key={i} className={"piece-cachee " + joueurAdverseAffiche?.couleur} />
+            ))}
+          </div>
+          <span className="mobile-adverse-count">
+            {(joueurAdverseAffiche?.nb_pieces_reserve || 0) + (joueurAdverseAffiche?.main_active?.length || 0)} {t("pieces", L)}
+          </span>
         </div>
       </div>
     </div>

@@ -348,3 +348,27 @@
     box-shadow: inset 0 0 12px rgba(255,255,255,1), 0 0 16px rgba(255,255,255,1), 0 0 32px rgba(200,200,255,0.6);
   }
 }
+
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE — Fantôme ultra-visible pour drag & drop tactile
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .cell-v3.f-ok {
+    filter: brightness(2.8) !important;
+    outline: 2px solid rgba(255,255,255,0.95) !important;
+    outline-offset: -2px;
+    background-color: rgba(255,255,255,0.4) !important;
+    z-index: 20;
+  }
+  .cell-v3.f-non {
+    filter: brightness(0.5) sepia(1) !important;
+    outline: 2px solid rgba(255,50,50,0.9) !important;
+    outline-offset: -2px;
+    background-color: rgba(255,0,0,0.2) !important;
+    z-index: 20;
+  }
+  .board-v3.mode-pose {
+    box-shadow: 0 0 0 2px var(--rouge-c), 0 0 30px var(--rouge)33;
+  }
+}
