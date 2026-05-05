@@ -1177,6 +1177,151 @@ export const T = {
     "استراتيجية، فن، وحدس. بلا ملك. بلا مبررات.",
     "Estrategia, arte e instinto. Sin rey. Sin excusas."
   ],
+
+  // ── Sections du manuel ────────────────────────────────────
+  mSecPlateau:    ["Le Plateau", "The Board", "اللوحة", "El Tablero"],
+  mSecJouer:      ["Comment jouer", "How to Play", "كيف تلعب", "Cómo Jugar"],
+  mSecPuzzles:    ["Les Puzzles", "The Puzzles", "الألغاز", "Los Puzzles"],
+  mSecElmaas:     ["Pièces ELMAAS", "ELMAAS Pieces", "قطع إلماس", "Piezas ELMAAS"],
+  mSecSeries:     ["Séries & Pouvoirs", "Streaks & Powers", "السلاسل والقوى", "Rachas y Poderes"],
+  mSecFin:        ["Fin de partie", "End of Round", "نهاية الجولة", "Fin de Ronda"],
+  mSecConseils:   ["Conseils", "Tips", "نصائح", "Consejos"],
+
+  // ── Plateau ───────────────────────────────────────────────
+  mPlateauDesc: [
+    "Le plateau est recouvert de puzzles délimités par des bords colorés. Certains sont unicolores (rouge ou noir), d'autres sont bicolores — ils nécessitent les deux couleurs pour être complétés. Chaque case du plateau appartient à au plus un puzzle.",
+    "The board is covered with puzzles outlined by colored borders. Some are single-color (red or black), others are two-color — they require both colors to be completed. Each cell belongs to at most one puzzle.",
+    "اللوحة مغطاة بألغاز محددة بحدود ملونة. بعضها أحادي اللون (أحمر أو أسود)، وبعضها ثنائي اللون — يتطلب كلا اللونين لإكماله. كل خانة تنتمي إلى لغز واحد على الأكثر.",
+    "El tablero está cubierto de puzzles delimitados por bordes de colores. Algunos son de un solo color (rojo o negro), otros son bicolores — requieren ambos colores para completarse. Cada celda pertenece a un solo puzzle."
+  ],
+  mPlateauBords: [
+    "Pointe sur les bords d'un puzzle pour voir ses cellules mises en surbrillance et identifier ses limites exactes.",
+    "Hover over a puzzle's border to highlight its cells and identify its exact boundaries.",
+    "حرك المؤشر فوق حدود أي لغز لإبراز خلاياه ومعرفة حدوده الدقيقة.",
+    "Pasa el cursor sobre el borde de un puzzle para resaltar sus celdas e identificar sus límites exactos."
+  ],
+  mPlateauSurpuzzle: [
+    "Certains puzzles contiennent des sous-puzzles. Remporter un sous-puzzle peut voler le puzzle parent à l'adversaire.",
+    "Some puzzles contain sub-puzzles. Winning a sub-puzzle can steal the parent puzzle from your opponent.",
+    "بعض الألغاز تحتوي على ألغاز فرعية. الفوز بلغز فرعي قد يسرق اللغز الرئيسي من خصمك.",
+    "Algunos puzzles contienen sub-puzzles. Ganar un sub-puzzle puede arrebatarle el puzzle principal al rival."
+  ],
+
+  // ── Comment jouer ─────────────────────────────────────────
+  mJouerPoser: [
+    "Poser une pièce — Sélectionne une pièce dans ta main (en bas), puis clique sur le plateau. La pièce doit avoir au moins une case dans un puzzle actif.",
+    "Place a piece — Select a piece from your hand (bottom), then click the board. The piece must have at least one cell in an active puzzle.",
+    "وضع قطعة — اختر قطعة من يدك (الأسفل)، ثم انقر على اللوحة. يجب أن تحتوي القطعة على خانة واحدة على الأقل في لغز نشط.",
+    "Colocar pieza — Selecciona una pieza de tu mano (abajo), luego haz clic en el tablero. La pieza debe tener al menos una celda en un puzzle activo."
+  ],
+  mJouerRepiocher: [
+    "Repiocher — Remplace toute ta main par de nouvelles pièces de ta réserve. Utile quand aucune pièce ne convient.",
+    "Redraw — Replace your entire hand with new pieces from your reserve. Useful when no piece fits.",
+    "السحب — استبدل يدك بالكامل بقطع جديدة من احتياطيك. مفيد عندما لا تناسب أي قطعة.",
+    "Robar — Reemplaza tu mano completa con piezas nuevas de tu reserva. Útil cuando ninguna pieza encaja."
+  ],
+  mJouerScout: [
+    "Scout — Consulte les prochaines pièces de ta réserve et échange certaines si tu le souhaites. Planifie à l'avance.",
+    "Scout — Preview your next reserve pieces and optionally swap some. Plan your strategy ahead.",
+    "الاستكشاف — راجع القطع القادمة في احتياطيك وبدّل بعضها إن أردت. خطط مسبقاً.",
+    "Explorar — Consulta tus próximas piezas de reserva e intercambia algunas si lo deseas. Planifica tu estrategia."
+  ],
+
+  // ── Puzzles ───────────────────────────────────────────────
+  mPuzzleMono: [
+    "Puzzle unicolore — Toutes les cases doivent être remplies par une seule couleur de joueur (rouge OU noir). Pas de diamant.",
+    "Single-color puzzle — All cells must be filled with one player color (red OR black). No diamond pieces.",
+    "لغز أحادي اللون — يجب أن تُملأ جميع الخلايا بلون لاعب واحد (أحمر أو أسود). بلا قطع ماسية.",
+    "Puzzle unicolor — Todas las celdas deben llenarse con un solo color de jugador (rojo O negro). Sin piezas diamante."
+  ],
+  mPuzzleBicolor: [
+    "Puzzle bicolore — Doit contenir au moins une case rouge ET une case noire. Le joueur actif remporte le puzzle quand il est complet.",
+    "Two-color puzzle — Must contain at least one red AND one black cell. The active player wins the puzzle when it's complete.",
+    "لغز ثنائي اللون — يجب أن يحتوي على خانة حمراء واحدة على الأقل وخانة سوداء. اللاعب النشط يفوز باللغز عند اكتماله.",
+    "Puzzle bicolor — Debe contener al menos una celda roja Y una negra. El jugador activo gana el puzzle al completarlo."
+  ],
+  mPuzzleIntersection: [
+    "Intersections — Si deux puzzles se chevauchent, le dernier complété remporte les cases partagées. L'adversaire perd ces points.",
+    "Intersections — If two puzzles overlap, the last one completed wins the shared cells. Your opponent loses those points.",
+    "التقاطعات — إذا تداخل لغزان، فإن آخر لغز مكتمل يفوز بالخلايا المشتركة. يخسر الخصم هذه النقاط.",
+    "Intersecciones — Si dos puzzles se superponen, el último completado gana las celdas compartidas. El rival pierde esos puntos."
+  ],
+  mPuzzleScore: [
+    "Score — Chaque case gagnée vaut 1 point. Une case compte pour un seul joueur. Quand la manche se termine, le joueur avec le plus de cellules gagne.",
+    "Scoring — Each won cell is worth 1 point. A cell counts for one player only. When the round ends, the player with the most cells wins.",
+    "التسجيل — كل خانة مكتسبة تساوي نقطة واحدة. تُحسب الخانة للاعب واحد فقط. عند نهاية الجولة، اللاعب بأكبر عدد من الخلايا يفوز.",
+    "Puntuación — Cada celda ganada vale 1 punto. Una celda cuenta para un solo jugador. Al terminar la ronda, gana quien tenga más celdas."
+  ],
+
+  // ── Pièces ELMAAS ─────────────────────────────────────────
+  mElmaasQuoi: [
+    "Les pièces ELMAAS (diamant) apparaissent lors de la régénération — quand ta réserve est épuisée.",
+    "ELMAAS (diamond) pieces appear during regeneration — when your reserve runs out.",
+    "تظهر قطع ELMAAS (الماسية) عند التجديد — حين ينفد احتياطيك.",
+    "Las piezas ELMAAS (diamante) aparecen durante la regeneración — cuando tu reserva se agota."
+  ],
+  mElmaasEffet: [
+    "Posée sur une case occupée, une pièce ELMAAS efface la pièce adverse et rend la case vide. On ne peut pas poser un ELMAAS sur une case déjà diamant.",
+    "Placed on an occupied cell, an ELMAAS piece erases the opponent's piece and leaves the cell empty. You cannot place ELMAAS on a diamond cell.",
+    "عند وضعها فوق خانة مشغولة، تمحو قطعة ELMAAS قطعة الخصم وتُفرغ الخانة. لا يمكن وضع ELMAAS فوق خانة ماسية.",
+    "Colocada sobre una celda ocupada, una pieza ELMAAS borra la pieza rival y deja la celda vacía. No se puede colocar ELMAAS sobre una celda ya diamante."
+  ],
+  mElmaasScore: [
+    "Poser un ELMAAS sur un puzzle déjà gagné par l'adversaire ne lui retire pas ses points — sauf si tu poses ensuite ta couleur dessus.",
+    "Placing ELMAAS on a puzzle already won by your opponent does not remove their points — unless you then place your color on it.",
+    "وضع ELMAAS على لغز فاز به الخصم لا يُزيل نقاطه — إلا إذا وضعت لونك فوقه لاحقاً.",
+    "Colocar ELMAAS en un puzzle ya ganado por el rival no le quita sus puntos — a menos que luego coloques tu color encima."
+  ],
+
+  // ── Séries ────────────────────────────────────────────────
+  mSerie3: [
+    "3 puzzles d'affilée — Débloque un pouvoir : échange une case adverse contre la tienne, ou extrait jusqu'à 2 pièces du plateau. La série de l'adversaire est remise à zéro.",
+    "3 in a row — Unlocks a power: swap one opponent cell for yours, or extract up to 2 pieces from the board. Your opponent's streak resets to zero.",
+    "3 ألغاز متتالية — يفتح قوة: بادل خانة خصمك بخانتك، أو استخرج حتى قطعتين من اللوحة. تُصفَّر سلسلة خصمك.",
+    "3 seguidos — Desbloquea un poder: cambia una celda rival por la tuya, o extrae hasta 2 piezas del tablero. La racha del rival se resetea."
+  ],
+  mSerie5: [
+    "5 puzzles d'affilée — Victoire immédiate de la manche. Personne ne peut t'arrêter.",
+    "5 in a row — Immediate round victory. Nobody can stop you.",
+    "5 ألغاز متتالية — نصر فوري للجولة. لا أحد يستطيع إيقافك.",
+    "5 seguidos — Victoria inmediata de la ronda. Nadie puede detenerte."
+  ],
+
+  // ── Fin de partie ─────────────────────────────────────────
+  mFinQuand: [
+    "La manche se termine quand un joueur ne peut plus poser aucune pièce intersectant un puzzle actif. Le joueur avec le plus de cellules gagnées remporte la manche.",
+    "The round ends when a player can no longer place any piece intersecting an active puzzle. The player with the most won cells wins the round.",
+    "تنتهي الجولة عندما لا يستطيع لاعب وضع أي قطعة تتقاطع مع لغز نشط. اللاعب بأكبر عدد من الخلايا المكتسبة يفوز بالجولة.",
+    "La ronda termina cuando un jugador no puede colocar ninguna pieza que intersecte un puzzle activo. El jugador con más celdas ganadas gana la ronda."
+  ],
+  mFinTimer: [
+    "Si le timer expire, la manche se termine immédiatement. Le score au moment de l'expiration est définitif.",
+    "If the timer expires, the round ends immediately. The score at expiration is final.",
+    "إذا انتهى الوقت، تنتهي الجولة فوراً. النتيجة عند انتهاء الوقت نهائية.",
+    "Si el tiempo expira, la ronda termina de inmediato. La puntuación al expirar es definitiva."
+  ],
+
+  // ── Conseils ──────────────────────────────────────────────
+  mConseilBords: [
+    "Survole les bords colorés du plateau pour voir les limites exactes de chaque puzzle en surbrillance.",
+    "Hover over the colored borders on the board to highlight the exact boundaries of each puzzle.",
+    "مرر المؤشر فوق الحدود الملونة في اللوحة لرؤية الحدود الدقيقة لكل لغز مُضاءة.",
+    "Pasa el cursor sobre los bordes de color en el tablero para ver los límites exactos de cada puzzle resaltados."
+  ],
+  mConseilCouleur: [
+    "Si le fond du plateau est très sombre et que les pièces sont difficiles à distinguer, utilise le bouton C/J (Cyan/Jaune) dans le header pour changer la palette de couleurs.",
+    "If the board background is very dark and pieces are hard to distinguish, use the C/J (Cyan/Yellow) button in the header to switch the color palette.",
+    "إذا كانت خلفية اللوحة داكنة جداً ويصعب تمييز القطع، استخدم زر C/J (سماوي/أصفر) في الرأس لتغيير لوحة الألوان.",
+    "Si el fondo del tablero es muy oscuro y las piezas son difíciles de distinguir, usa el botón C/J (Cian/Amarillo) en el encabezado para cambiar la paleta de colores."
+  ],
+  mConseilElmaas: [
+    "N'utilise pas les pièces ELMAAS sur des puzzles déjà complétés par l'adversaire — ça ne retire pas ses points. Cible plutôt ses puzzles en cours.",
+    "Don't waste ELMAAS pieces on puzzles already completed by your opponent — it won't remove their points. Target their in-progress puzzles instead.",
+    "لا تُهدر قطع ELMAAS على ألغاز أكملها خصمك — لن تُزيل نقاطه. استهدف الألغاز التي لا يزال يعمل عليها.",
+    "No desperdicies piezas ELMAAS en puzzles ya completados por el rival — no les quitará puntos. Apunta a sus puzzles en progreso."
+  ],
+
+  // ── Anciens (gardés pour compatibilité) ───────────────────
   objectif: ["Objectif", "Objective", "الهدف", "Objetivo"],
   objectifDesc: [
     "Complétez le maximum de puzzles à votre couleur pour accumuler des cellules. Le joueur avec le plus de cellules remporte la manche.",
@@ -1186,42 +1331,42 @@ export const T = {
   ],
   actionsParTour: ["Actions par tour", "Actions per turn", "الإجراءات لكل دور", "Acciones por turno"],
   actionPoser: [
-    "Poser : sélectionne une pièce dans ta main, puis clique sur le plateau pour la placer. La pièce doit entrer dans les puzzles de ta couleur.",
-    "Place: select a piece from your hand, then click the board. The piece must fit within puzzles of your color.",
-    "الوضع: اختر قطعة من يدك ثم انقر على اللوحة لوضعها. يجب أن تناسب الألغاز ذات لونك.",
-    "Colocar: selecciona una pieza de tu mano, luego haz clic en el tablero. La pieza debe encajar en los puzzles de tu color."
+    "Poser : sélectionne une pièce dans ta main, puis clique sur le plateau pour la placer.",
+    "Place: select a piece from your hand, then click the board to place it.",
+    "الوضع: اختر قطعة من يدك ثم انقر على اللوحة لوضعها.",
+    "Colocar: selecciona una pieza de tu mano, luego haz clic en el tablero."
   ],
   actionRepiocher: [
-    "Repiocher : remplace toute ta main par de nouvelles pièces. Utile si aucune pièce ne convient.",
-    "Redraw: replace your entire hand with new pieces. Useful when no piece fits.",
-    "السحب: استبدل يدك بالكامل بقطع جديدة. مفيد عندما لا تناسب أي قطعة.",
-    "Robar: reemplaza tu mano completa con piezas nuevas. Útil cuando ninguna pieza encaja."
+    "Repiocher : remplace toute ta main par de nouvelles pièces.",
+    "Redraw: replace your entire hand with new pieces.",
+    "السحب: استبدل يدك بالكامل بقطع جديدة.",
+    "Robar: reemplaza tu mano completa con piezas nuevas."
   ],
   actionScout: [
-    "Scout : aperçu des 3 prochaines pièces de ta réserve. Planifie à l'avance.",
-    "Scout: preview the next 3 pieces in your reserve. Plan ahead.",
-    "الاستكشاف: معاينة القطع الثلاث القادمة في احتياطيك. خطط مسبقاً.",
-    "Explorar: vista previa de las próximas 3 piezas de tu reserva. Planifica con anticipación."
+    "Scout : aperçu des 3 prochaines pièces de ta réserve.",
+    "Scout: preview the next 3 pieces in your reserve.",
+    "الاستكشاف: معاينة القطع الثلاث القادمة في احتياطيك.",
+    "Explorar: vista previa de las próximas 3 piezas de tu reserva."
   ],
   series: ["Séries & Récompenses", "Streaks & Rewards", "السلاسل والمكافآت", "Rachas y Recompensas"],
   serie3Desc: [
-    "3 puzzles d'affilée → tu peux échanger une case adverse ou extraire jusqu'à 2 pièces du plateau.",
-    "3 puzzles in a row → exchange an opponent cell or extract up to 2 pieces from the board.",
-    "3 ألغاز متتالية → يمكنك تبادل خانة الخصم أو استخراج حتى قطعتين من اللوحة.",
-    "3 puzzles seguidos → intercambia una celda rival o extrae hasta 2 piezas del tablero."
+    "3 puzzles d'affilée → échange une case adverse ou extrait jusqu'à 2 pièces.",
+    "3 puzzles in a row → exchange an opponent cell or extract up to 2 pieces.",
+    "3 ألغاز متتالية → تبادل خانة الخصم أو استخراج حتى قطعتين.",
+    "3 puzzles seguidos → intercambia una celda rival o extrae hasta 2 piezas."
   ],
   serie5Desc: [
-    "5 puzzles d'affilée → victoire immédiate de la manche !",
-    "5 puzzles in a row → immediate round victory!",
-    "5 ألغاز متتالية → نصر فوري للجولة!",
-    "5 puzzles seguidos → ¡victoria inmediata de la ronda!"
+    "5 puzzles d'affilée → victoire immédiate !",
+    "5 puzzles in a row → immediate victory!",
+    "5 ألغاز متتالية → نصر فوري!",
+    "5 puzzles seguidos → ¡victoria inmediata!"
   ],
   astuceTitre: ["Astuce", "Pro Tip", "نصيحة الخبراء", "Consejo Pro"],
   astuceDesc: [
-    "Si tu ne peux plus poser de pièce, la manche se termine automatiquement. Surveille l'espace disponible sur le plateau !",
-    "If you can't place any piece, the round ends automatically. Keep an eye on available board space!",
-    "إن لم تستطع وضع أي قطعة، تنتهي الجولة تلقائياً. راقب المساحة المتاحة على اللوحة!",
-    "Si no puedes colocar ninguna pieza, la ronda termina automáticamente. ¡Vigila el espacio disponible en el tablero!"
+    "Survole les bords du plateau pour voir les puzzles en surbrillance.",
+    "Hover the board borders to highlight puzzles.",
+    "مرر المؤشر فوق الحدود لإبراز الألغاز.",
+    "Pasa el cursor sobre los bordes para resaltar los puzzles."
   ],
 
   tempsEcoule: ["Temps écoulé", "Time's up", "انتهى الوقت", "Tiempo agotado"],
@@ -1310,18 +1455,6 @@ export const T = {
   analyseSerie: ["Série", "Streak", "السلسلة", "Racha"],
   analyseForme: ["Forme", "Shape", "الشكل", "Forma"],
   analyseVoirMeilleur: ["Voir le meilleur coup", "See best move", "رؤية أفضل حركة", "Ver mejor jugada"],
-  analyseVoirUnMeilleur: [
-    "Voir un coup meilleur selon ELMAAS",
-    "See a stronger move, per ELMAAS",
-    "اقتراح ELMAAS لحركة أقوى",
-    "Ver una jugada más fuerte según ELMAAS"
-  ],
-  analyseDisclaimer: [
-    "L'analyse ELMAAS n'est pas absolue — chaque joueur a sa perspective, et le hasard fait partie du jeu.",
-    "ELMAAS analysis is not absolute — every player has their own view, and chance is part of the game.",
-    "تحليل ELMAAS ليس مطلقاً — لكلٍّ منظوره، والحظ جزء من اللعبة.",
-    "El análisis ELMAAS no es absoluto — cada jugador tiene su perspectiva, y el azar es parte del juego."
-  ],
   analyseRetourCoup: ["Retour au coup joué", "Back to played move", "العودة للحركة المُلعبة", "Volver a la jugada"],
   analyseMeilleurCoupLabel: ["Meilleur coup", "Best move", "أفضل حركة", "Mejor jugada"],
   analysePiece: ["Pièce", "Piece", "القطعة", "Pieza"],

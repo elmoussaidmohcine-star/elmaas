@@ -5,7 +5,6 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import Board from "./Board";
 import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, getSloganVictoire, getSloganDefaite, getSloganAnalyse, CLASSIFICATION_COUP } from "./translations";
-import * as Audio from "./audio";
 import "./App.css";
 import EcranAnalyse from "./EcranAnalyse";
 
@@ -876,34 +875,198 @@ function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite, L })
   );
 }
 
+// ── Icônes SVG pour le manuel ──────────────────────────────
+const IconPlateau = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <rect x="1" y="1" width="6" height="6" stroke="var(--accent-culture)" strokeWidth="1.2" rx="0.5"/>
+    <rect x="9" y="1" width="6" height="6" stroke="var(--rouge-c)" strokeWidth="1.2" rx="0.5"/>
+    <rect x="1" y="9" width="6" height="6" stroke="var(--muted)" strokeWidth="1.2" rx="0.5"/>
+    <rect x="9" y="9" width="6" height="6" stroke="var(--accent-culture)" strokeWidth="1.2" rx="0.5" strokeDasharray="2 1"/>
+  </svg>
+);
+const IconJouer = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <polygon points="3,2 13,8 3,14" fill="var(--accent-culture)" opacity="0.85"/>
+  </svg>
+);
+const IconPuzzle = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <path d="M2 2h5v3.5c0 .8.7 1.5 1.5 1.5s1.5-.7 1.5-1.5V2h4v12H9.5c.3-.5.5-1 .5-1.5 0-.8-.7-1.5-1.5-1.5S7 11.7 7 12.5c0 .5.2 1 .5 1.5H2V2z" stroke="var(--accent-culture)" strokeWidth="1" fill="none"/>
+  </svg>
+);
+const IconElmaas = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <polygon points="8,1 15,8 8,15 1,8" stroke="#00BFFF" strokeWidth="1.2" fill="#00BFFF18"/>
+    <circle cx="8" cy="8" r="2" fill="#00BFFF" opacity="0.7"/>
+  </svg>
+);
+const IconSerie = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <circle cx="3" cy="8" r="2" fill="var(--accent-culture)" opacity="0.5"/>
+    <circle cx="8" cy="8" r="2" fill="var(--accent-culture)" opacity="0.75"/>
+    <circle cx="13" cy="8" r="2" fill="var(--accent-culture)"/>
+    <line x1="5" y1="8" x2="6" y2="8" stroke="var(--accent-culture)" strokeWidth="1"/>
+    <line x1="10" y1="8" x2="11" y2="8" stroke="var(--accent-culture)" strokeWidth="1"/>
+  </svg>
+);
+const IconFin = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <rect x="1" y="1" width="14" height="14" rx="1" stroke="var(--accent-culture)" strokeWidth="1"/>
+    <line x1="4" y1="8" x2="8" y2="12" stroke="var(--accent-culture)" strokeWidth="1.5" strokeLinecap="round"/>
+    <line x1="8" y1="12" x2="13" y2="4" stroke="var(--accent-culture)" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+const IconConseil = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <circle cx="8" cy="6" r="4" stroke="var(--accent-culture)" strokeWidth="1.2"/>
+    <line x1="8" y1="11" x2="8" y2="14" stroke="var(--accent-culture)" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="8" cy="6" r="1.2" fill="var(--accent-culture)"/>
+  </svg>
+);
+
 function PopupManuel({ onFermer, L }) {
+  const [onglet, setOnglet] = useState(0);
+
+  const sections = [
+    { icon: <IconPlateau />, label: t("mSecPlateau", L) },
+    { icon: <IconJouer />,   label: t("mSecJouer", L) },
+    { icon: <IconPuzzle />,  label: t("mSecPuzzles", L) },
+    { icon: <IconElmaas />,  label: t("mSecElmaas", L) },
+    { icon: <IconSerie />,   label: t("mSecSeries", L) },
+    { icon: <IconFin />,     label: t("mSecFin", L) },
+    { icon: <IconConseil />, label: t("mSecConseils", L) },
+  ];
+
+  const renderSection = () => {
+    const p = (txt, accent) => (
+      <p style={{ marginBottom: 10, color: accent ? "var(--texte)" : "var(--muted)", lineHeight: 1.65, fontSize: 13 }}>{txt}</p>
+    );
+    const rule = (txt) => (
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 9 }}>
+        <div style={{ width: 4, minWidth: 4, height: 4, borderRadius: "50%", background: "var(--accent-culture)", marginTop: 7, opacity: 0.7 }}/>
+        <p style={{ margin: 0, color: "var(--muted)", lineHeight: 1.65, fontSize: 13 }}>{txt}</p>
+      </div>
+    );
+    const important = (txt) => (
+      <div style={{ marginBottom: 10, padding: "8px 10px", borderLeft: "2px solid var(--accent-culture)", background: "var(--accent-culture)08", borderRadius: "0 4px 4px 0" }}>
+        <p style={{ margin: 0, color: "var(--texte)", lineHeight: 1.6, fontSize: 12, fontStyle: "italic" }}>{txt}</p>
+      </div>
+    );
+
+    switch(onglet) {
+      case 0: return ( // Plateau
+        <>
+          {p(t("mPlateauDesc", L), true)}
+          {important(t("mPlateauBords", L))}
+          {rule(t("mPlateauSurpuzzle", L))}
+        </>
+      );
+      case 1: return ( // Comment jouer
+        <>
+          {rule(t("mJouerPoser", L))}
+          {rule(t("mJouerRepiocher", L))}
+          {rule(t("mJouerScout", L))}
+        </>
+      );
+      case 2: return ( // Puzzles
+        <>
+          {rule(t("mPuzzleMono", L))}
+          {rule(t("mPuzzleBicolor", L))}
+          {important(t("mPuzzleIntersection", L))}
+          {rule(t("mPuzzleScore", L))}
+        </>
+      );
+      case 3: return ( // ELMAAS
+        <>
+          {p(t("mElmaasQuoi", L), true)}
+          {rule(t("mElmaasEffet", L))}
+          {important(t("mElmaasScore", L))}
+        </>
+      );
+      case 4: return ( // Séries
+        <>
+          {rule(t("mSerie3", L))}
+          {important(t("mSerie5", L))}
+        </>
+      );
+      case 5: return ( // Fin
+        <>
+          {rule(t("mFinQuand", L))}
+          {rule(t("mFinTimer", L))}
+        </>
+      );
+      case 6: return ( // Conseils
+        <>
+          {important(t("mConseilBords", L))}
+          {important(t("mConseilCouleur", L))}
+          {rule(t("mConseilElmaas", L))}
+        </>
+      );
+      default: return null;
+    }
+  };
+
   return (
     <div className="popup-overlay" onClick={onFermer}>
-      <div className="popup-pouvoir" style={{ maxWidth: 600, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div className="popup-titre">{t("manuelTitre", L)}</div>
-        <div style={{ fontSize: 14, color: "var(--muted)", fontStyle: "italic", textAlign: "center" }}>{t("manuelIntro", L)}</div>
-        <div className="manuel-content">
-          <div className="manuel-section">
-            <div className="manuel-titre-section"> {t("objectif", L)}</div>
-            <p>{t("objectifDesc", L)}</p>
+      <div
+        className="popup-pouvoir"
+        style={{ maxWidth: 540, maxHeight: "90vh", padding: "16px 14px", gap: 0 }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontFamily: "var(--titre)", fontSize: 18, color: "var(--texte)", letterSpacing: "0.06em" }}>
+            {t("manuelTitre", L)}
           </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section"> {t("actionsParTour", L)}</div>
-            <p>• {t("actionPoser", L)}</p>
-            <p>• {t("actionRepiocher", L)}</p>
-            <p>• {t("actionScout", L)}</p>
-          </div>
-          <div className="manuel-section">
-            <div className="manuel-titre-section"> {t("series", L)}</div>
-            <p>• {t("serie3Desc", L)}</p>
-            <p>• {t("serie5Desc", L)}</p>
-          </div>
-          <div className="manuel-section" style={{ borderColor: "var(--accent-culture)" }}>
-            <div className="manuel-titre-section"> {t("astuceTitre", L)}</div>
-            <p style={{ fontStyle: "italic" }}>{t("astuceDesc", L)}</p>
-          </div>
+          <button onClick={onFermer} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>&times;</button>
         </div>
-        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
+
+        {/* Intro culturelle */}
+        <div style={{ fontSize: 12, color: "var(--accent-culture)", fontStyle: "italic", textAlign: "center", marginBottom: 14, opacity: 0.8, fontFamily: "var(--brush)" }}>
+          {t("manuelIntro", L)}
+        </div>
+
+        {/* Onglets */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 14, borderBottom: "1px solid var(--bord)", paddingBottom: 10 }}>
+          {sections.map((sec, i) => (
+            <button key={i} onClick={() => setOnglet(i)} style={{
+              display: "flex", alignItems: "center", gap: 5,
+              padding: "5px 9px",
+              background: onglet === i ? "var(--accent-culture)18" : "transparent",
+              border: onglet === i ? "1px solid var(--accent-culture)55" : "1px solid var(--bord)",
+              borderRadius: "var(--btn-radius, 4px)",
+              color: onglet === i ? "var(--accent-culture)" : "var(--muted)",
+              fontSize: 11, cursor: "pointer", fontFamily: "var(--brush)",
+              whiteSpace: "nowrap"
+            }}>
+              {sec.icon}
+              <span>{sec.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Contenu section */}
+        <div style={{ flex: 1, overflowY: "auto", maxHeight: "52vh", paddingRight: 4 }}>
+          {renderSection()}
+        </div>
+
+        {/* Footer navigation */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--bord)" }}>
+          <button
+            onClick={() => setOnglet(o => Math.max(0, o - 1))}
+            disabled={onglet === 0}
+            style={{ background: "none", border: "1px solid var(--bord)", color: onglet === 0 ? "var(--bord)" : "var(--muted)", padding: "5px 12px", cursor: onglet === 0 ? "default" : "pointer", borderRadius: "var(--btn-radius, 4px)", fontSize: 12, fontFamily: "var(--brush)" }}>
+            &larr;
+          </button>
+          <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)" }}>
+            {onglet + 1} / {sections.length}
+          </span>
+          <button
+            onClick={() => onglet < sections.length - 1 ? setOnglet(o => o + 1) : onFermer()}
+            style={{ background: onglet === sections.length - 1 ? "var(--accent-culture)22" : "none", border: "1px solid var(--accent-culture)44", color: "var(--accent-culture)", padding: "5px 14px", cursor: "pointer", borderRadius: "var(--btn-radius, 4px)", fontSize: 12, fontFamily: "var(--brush)" }}>
+            {onglet === sections.length - 1 ? t("fermer", L) : "→"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1037,14 +1200,11 @@ export default function App() {
   const [analyseJoueur, setAnalyseJoueur] = useState(null);
   const [analyseAdv, setAnalyseAdv] = useState(null);
   const [analyseChargement, setAnalyseChargement] = useState(false);
-  const [audioMuted, setAudioMuted] = useState(false);
-  const waitingTimerRef = useRef(null);
   const [dernierCoupClassif, setDernierCoupClassif] = useState(null);
 
   const lancerAnalyse = async () => {
     if (!partieId) return;
     setAnalyseChargement(true);
-    Audio.play("analyse");
     try {
       const couleurMoi = modeIA !== "aucune"
         ? (modeIA === "j1" ? "noir" : "rouge")
@@ -1088,17 +1248,7 @@ export default function App() {
     appliquerTheme(idx);
   };
 
-  useEffect(() => {
-    appliquerTheme(indexLangue);
-    Audio.setLangue(indexLangue);
-  }, [indexLangue]);
-
-  // Init audio au premier geste utilisateur
-  useEffect(() => {
-    const init = () => { Audio.initAudio(); Audio.preloadAll(); document.removeEventListener("click", init); };
-    document.addEventListener("click", init);
-    return () => document.removeEventListener("click", init);
-  }, []);
+  useEffect(() => { appliquerTheme(indexLangue); }, [indexLangue]);
   
 
   // Retour Google OAuth
@@ -1218,7 +1368,6 @@ export default function App() {
       const restant = Math.max(0, timerChoisi - ecoule);
       if (etat.tour_actuel === 0) {
         setTimerRouge(restant);
-        if (restant === 10 || restant === 5 || restant === 3) Audio.play("warning");
         if (restant <= 0) {
           clearInterval(timerRef.current);
           setMancheTermineeInfo({
@@ -1228,7 +1377,6 @@ export default function App() {
         }
       } else {
         setTimerNoir(restant);
-        if (restant === 10 || restant === 5 || restant === 3) Audio.play("warning");
         if (restant <= 0) {
           clearInterval(timerRef.current);
           setMancheTermineeInfo({
@@ -1266,11 +1414,10 @@ export default function App() {
             }
           }).catch(() => {});
       }
-      setTimeout(() => { setEtape("jeu"); Audio.play("drop"); }, 800);
+      setTimeout(() => setEtape("jeu"), 800);
     });
     socket.on("etat_mis_a_jour", (data) => {
       setEtat(data.etat);
-      Audio.play("turn");
       if (data.scores_manches) setScoresManches(data.scores_manches);
       if (data.manche_terminee && data.gagnant) {
         const scores = calculer_scores_locaux(data.etat);
@@ -1402,27 +1549,6 @@ export default function App() {
     return false;
   }, [L]);
 
-  const toggleMute = () => {
-    setAudioMuted(prev => {
-      const next = !prev;
-      Audio.setMute(next);
-      return next;
-    });
-  };
-
-  // Son d attente adversaire — goutte rare toutes les 15-25s
-  useEffect(() => {
-    if (etape !== "jeu" || !etat || etat.manche_terminee || estMonTour || audioMuted) {
-      clearInterval(waitingTimerRef.current);
-      return;
-    }
-    const delay = 15000 + Math.random() * 10000;
-    waitingTimerRef.current = setInterval(() => {
-      if (!Audio.isMuted()) Audio.play("waiting");
-    }, delay);
-    return () => clearInterval(waitingTimerRef.current);
-  }, [etape, etat?.tour_actuel, etat?.manche_terminee, estMonTour, audioMuted]);
-
   const declencherIA = useCallback(async (etatCourant, partieIdCourant, mode, niveau) => {
     if (!partieIdCourant || !etatCourant || mode === "aucune") return;
     const tourIA = mode === "j1" ? 0 : 1;
@@ -1475,23 +1601,9 @@ export default function App() {
       if (res.data.manche_terminee || res.data.victoire_immediate) {
         const scores = calculer_scores_locaux(res.data.etat);
         setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
-        const maCouleurAudio = modeIA !== "aucune"
-          ? (modeIA === "j1" ? "noir" : "rouge")
-          : (monRole === "joueur2" ? "noir" : "rouge");
-        Audio.play(res.data.gagnant === maCouleurAudio ? "victory" : "defeat");
         return;
       }
       const puzzlesCompletes = res.data.puzzles_completes || [];
-      // Sons pièce posée
-      const pieceJouee = res.data.etat;
-      if (puzzlesCompletes.length >= 2) {
-        const serie = res.data.etat?.joueur1?.serie_actuelle ?? res.data.etat?.joueur2?.serie_actuelle ?? 0;
-        Audio.play(serie >= 3 ? "serie" : "puzzle");
-      } else if (puzzlesCompletes.length === 1) {
-        Audio.play("puzzle");
-      } else {
-        Audio.play("place");
-      }
       const attenteServeur = res.data.attente_pouvoir === true;
       if (puzzlesCompletes.length > 0 || attenteServeur) {
         const tourJoueur = res.data.etat?.tour_actuel ?? 0;
@@ -2020,13 +2132,6 @@ export default function App() {
             </button>
           )}
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
-          <button
-            className="btn-manuel"
-            onClick={toggleMute}
-            title={audioMuted ? "Son off" : "Son on"}
-            style={{ fontSize: 9, fontFamily: "var(--titre)", opacity: audioMuted ? 0.3 : 0.8, letterSpacing: "0.05em" }}>
-            {audioMuted ? "OFF" : "SND"}
-          </button>
           <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
         </div>
       </header>
