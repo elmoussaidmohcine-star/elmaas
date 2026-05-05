@@ -1310,6 +1310,18 @@ export const T = {
   analyseSerie: ["Série", "Streak", "السلسلة", "Racha"],
   analyseForme: ["Forme", "Shape", "الشكل", "Forma"],
   analyseVoirMeilleur: ["Voir le meilleur coup", "See best move", "رؤية أفضل حركة", "Ver mejor jugada"],
+  analyseVoirUnMeilleur: [
+    "Voir un coup meilleur selon ELMAAS",
+    "See a stronger move, per ELMAAS",
+    "اقتراح ELMAAS لحركة أقوى",
+    "Ver una jugada más fuerte según ELMAAS"
+  ],
+  analyseDisclaimer: [
+    "L'analyse ELMAAS n'est pas absolue — chaque joueur a sa perspective, et le hasard fait partie du jeu.",
+    "ELMAAS analysis is not absolute — every player has their own view, and chance is part of the game.",
+    "تحليل ELMAAS ليس مطلقاً — لكلٍّ منظوره، والحظ جزء من اللعبة.",
+    "El análisis ELMAAS no es absoluto — cada jugador tiene su perspectiva, y el azar es parte del juego."
+  ],
   analyseRetourCoup: ["Retour au coup joué", "Back to played move", "العودة للحركة المُلعبة", "Volver a la jugada"],
   analyseMeilleurCoupLabel: ["Meilleur coup", "Best move", "أفضل حركة", "Mejor jugada"],
   analysePiece: ["Pièce", "Piece", "القطعة", "Pieza"],

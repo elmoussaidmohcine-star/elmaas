@@ -183,10 +183,10 @@ export default function EcranAnalyse({
         {/* En-tete */}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          marginBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 10
+          marginBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 8
         }}>
           <h2 style={{
-            margin: 0, fontSize: 22, color: "var(--texte)",
+            margin: 0, fontSize: 18, color: "var(--texte)",
             fontFamily: "var(--titre)", letterSpacing: "0.08em", fontWeight: 400
           }}>
             {t("analyseTitre", L)}
@@ -215,7 +215,7 @@ export default function EcranAnalyse({
         {/* Legende */}
         {showLegende && (
           <div style={{
-            marginBottom: 16, padding: 14, borderRadius: 8,
+            marginBottom: 8, padding: 10, borderRadius: 6,
             background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)"
           }}>
             <div style={{
@@ -339,8 +339,41 @@ export default function EcranAnalyse({
                 />
               </div>
             ) : (
-              <div style={{ color: "var(--muted)", textAlign: "center", padding: 40, fontFamily: "var(--brush)" }}>
-                {t("analyseChargement", L)}
+              <div style={{ textAlign: "center", padding: "28px 16px", fontFamily: "var(--brush)" }}>
+                <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12 }}>
+                  {t("analyseChargement", L)}
+                </div>
+                <div style={{
+                  color: "#e8c840",
+                  fontSize: 11,
+                  fontStyle: "italic",
+                  lineHeight: 1.6,
+                  maxWidth: 320,
+                  margin: "0 auto",
+                  opacity: 0.85,
+                  borderTop: "1px solid #e8c84022",
+                  paddingTop: 10,
+                }}>
+                  {t("analyseDisclaimer", L)}
+                </div>
+              </div>
+            )}
+
+            {/* ── Disclaimer ELMAAS ── */}
+            {coups.length > 0 && (
+              <div style={{
+                margin: "8px 0 4px",
+                padding: "6px 10px",
+                borderTop: "1px solid #e8c84018",
+                color: "#e8c840",
+                fontSize: 10,
+                fontStyle: "italic",
+                fontFamily: "var(--brush)",
+                lineHeight: 1.5,
+                opacity: 0.75,
+                textAlign: "center",
+              }}>
+                {t("analyseDisclaimer", L)}
               </div>
             )}
 
@@ -546,39 +579,42 @@ export default function EcranAnalyse({
               )}
             </div>
 
-            {/* Bouton meilleur coup */}
-            {coupActuel?.meilleur_alternative && (
+            {/* Bouton meilleur coup — caché si coup déjà optimal (ELMAAS/ELMAASYON/MASSY) */}
+            {coupActuel?.meilleur_alternative &&
+             !["ELMAAS","ELMAASYON","MASSY"].includes(coupActuel?.classification) && (
               <div style={{ marginBottom: 10 }}>
                 <button
                   onClick={() => setShowMeilleurCoup(!showMeilleurCoup)}
                   style={{
-                    padding: "10px 14px",
-                    background: showMeilleurCoup ? "rgba(255,255,255,0.04)" : "rgba(102,0,204,0.15)",
-                    color: "#fff", border: "1px solid rgba(153,51,255,0.4)",
-                    borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600,
-                    width: "100%", fontFamily: "var(--titre)", letterSpacing: "0.05em"
+                    padding: "9px 12px",
+                    background: showMeilleurCoup ? "rgba(255,255,255,0.04)" : "rgba(102,0,204,0.12)",
+                    color: showMeilleurCoup ? "var(--muted)" : "#cc99ff",
+                    border: "1px solid rgba(153,51,255,0.35)",
+                    borderRadius: 4, cursor: "pointer", fontSize: 11, fontWeight: 600,
+                    width: "100%", fontFamily: "var(--titre)", letterSpacing: "0.04em",
+                    fontStyle: "italic"
                   }}>
                   {showMeilleurCoup
                     ? t("analyseRetourCoup", L)
-                    : t("analyseVoirMeilleur", L)}
+                    : t("analyseVoirUnMeilleur", L)}
                 </button>
 
                 {showMeilleurCoup && (
                   <div style={{
-                    marginTop: 8, padding: 10,
-                    background: "rgba(102,0,204,0.08)", borderRadius: 6,
-                    border: "1px solid rgba(153,51,255,0.25)", fontSize: 11, fontFamily: "var(--brush)"
+                    marginTop: 6, padding: "8px 10px",
+                    background: "rgba(102,0,204,0.07)", borderRadius: 4,
+                    border: "1px solid rgba(153,51,255,0.2)", fontSize: 11, fontFamily: "var(--brush)"
                   }}>
                     <div style={{
                       color: "#aa88ff", fontWeight: 600, marginBottom: 4,
-                      fontFamily: "var(--titre)", letterSpacing: "0.05em"
+                      fontFamily: "var(--titre)", letterSpacing: "0.04em", fontSize: 10
                     }}>{t("analyseMeilleurCoupLabel", L)} :</div>
                     <div>{t("analysePiece", L)} #{(coupActuel.meilleur_alternative.piece_index ?? 0) + 1}</div>
                     <div style={{ color: "#ffaa44" }}>
                       {t("analyseOrigine", L)} : [{coupActuel.meilleur_alternative.origine?.join(", ")}]
                     </div>
                     {coupActuel.meilleur_alternative.est_elmaas && (
-                      <div style={{ color: "#00BFFF", marginTop: 4, fontWeight: 600 }}>
+                      <div style={{ color: "#00BFFF", marginTop: 3, fontWeight: 600, fontSize: 10 }}>
                         {t("analyseElmaasDisponible", L)}
                       </div>
                     )}
