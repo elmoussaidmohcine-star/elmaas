@@ -5,6 +5,7 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import Board from "./Board";
 import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, getSloganVictoire, getSloganDefaite, getSloganAnalyse, CLASSIFICATION_COUP } from "./translations";
+import * as Audio from "./audio";
 import "./App.css";
 import EcranAnalyse from "./EcranAnalyse";
 
@@ -1036,11 +1037,14 @@ export default function App() {
   const [analyseJoueur, setAnalyseJoueur] = useState(null);
   const [analyseAdv, setAnalyseAdv] = useState(null);
   const [analyseChargement, setAnalyseChargement] = useState(false);
+  const [audioMuted, setAudioMuted] = useState(false);
+  const waitingTimerRef = useRef(null);
   const [dernierCoupClassif, setDernierCoupClassif] = useState(null);
 
   const lancerAnalyse = async () => {
     if (!partieId) return;
     setAnalyseChargement(true);
+    Audio.play("analyse");
     try {
       const couleurMoi = modeIA !== "aucune"
         ? (modeIA === "j1" ? "noir" : "rouge")
@@ -1084,7 +1088,17 @@ export default function App() {
     appliquerTheme(idx);
   };
 
-  useEffect(() => { appliquerTheme(indexLangue); }, [indexLangue]);
+  useEffect(() => {
+    appliquerTheme(indexLangue);
+    Audio.setLangue(indexLangue);
+  }, [indexLangue]);
+
+  // Init audio au premier geste utilisateur
+  useEffect(() => {
+    const init = () => { Audio.initAudio(); document.removeEventListener("click", init); };
+    document.addEventListener("click", init);
+    return () => document.removeEventListener("click", init);
+  }, []);
   
 
   // Retour Google OAuth
@@ -1204,6 +1218,7 @@ export default function App() {
       const restant = Math.max(0, timerChoisi - ecoule);
       if (etat.tour_actuel === 0) {
         setTimerRouge(restant);
+        if (restant === 10 || restant === 5 || restant === 3) Audio.play("warning");
         if (restant <= 0) {
           clearInterval(timerRef.current);
           setMancheTermineeInfo({
@@ -1213,6 +1228,7 @@ export default function App() {
         }
       } else {
         setTimerNoir(restant);
+        if (restant === 10 || restant === 5 || restant === 3) Audio.play("warning");
         if (restant <= 0) {
           clearInterval(timerRef.current);
           setMancheTermineeInfo({
@@ -1250,10 +1266,11 @@ export default function App() {
             }
           }).catch(() => {});
       }
-      setTimeout(() => setEtape("jeu"), 800);
+      setTimeout(() => { setEtape("jeu"); Audio.play("drop"); }, 800);
     });
     socket.on("etat_mis_a_jour", (data) => {
       setEtat(data.etat);
+      Audio.play("turn");
       if (data.scores_manches) setScoresManches(data.scores_manches);
       if (data.manche_terminee && data.gagnant) {
         const scores = calculer_scores_locaux(data.etat);
@@ -1385,6 +1402,27 @@ export default function App() {
     return false;
   }, [L]);
 
+  const toggleMute = () => {
+    setAudioMuted(prev => {
+      const next = !prev;
+      Audio.setMute(next);
+      return next;
+    });
+  };
+
+  // Son d attente adversaire — goutte rare toutes les 15-25s
+  useEffect(() => {
+    if (etape !== "jeu" || !etat || etat.manche_terminee || estMonTour || audioMuted) {
+      clearInterval(waitingTimerRef.current);
+      return;
+    }
+    const delay = 15000 + Math.random() * 10000;
+    waitingTimerRef.current = setInterval(() => {
+      if (!Audio.isMuted()) Audio.play("waiting");
+    }, delay);
+    return () => clearInterval(waitingTimerRef.current);
+  }, [etape, etat?.tour_actuel, etat?.manche_terminee, estMonTour, audioMuted]);
+
   const declencherIA = useCallback(async (etatCourant, partieIdCourant, mode, niveau) => {
     if (!partieIdCourant || !etatCourant || mode === "aucune") return;
     const tourIA = mode === "j1" ? 0 : 1;
@@ -1437,9 +1475,23 @@ export default function App() {
       if (res.data.manche_terminee || res.data.victoire_immediate) {
         const scores = calculer_scores_locaux(res.data.etat);
         setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
+        const maCouleurAudio = modeIA !== "aucune"
+          ? (modeIA === "j1" ? "noir" : "rouge")
+          : (monRole === "joueur2" ? "noir" : "rouge");
+        Audio.play(res.data.gagnant === maCouleurAudio ? "victory" : "defeat");
         return;
       }
       const puzzlesCompletes = res.data.puzzles_completes || [];
+      // Sons pièce posée
+      const pieceJouee = res.data.etat;
+      if (puzzlesCompletes.length >= 2) {
+        const serie = res.data.etat?.joueur1?.serie_actuelle ?? res.data.etat?.joueur2?.serie_actuelle ?? 0;
+        Audio.play(serie >= 3 ? "serie" : "puzzle");
+      } else if (puzzlesCompletes.length === 1) {
+        Audio.play("puzzle");
+      } else {
+        Audio.play("place");
+      }
       const attenteServeur = res.data.attente_pouvoir === true;
       if (puzzlesCompletes.length > 0 || attenteServeur) {
         const tourJoueur = res.data.etat?.tour_actuel ?? 0;
@@ -1615,7 +1667,7 @@ export default function App() {
                 pseudo: utilisateur?.pseudo || ""
               });
               
-              // Récupérer pixels + état — poll jusqu'à avoir les deux → transition vers jeu
+              // Récupérer les pixels en arrière-plan — poll rapide
               let tentatives = 0;
               const pollerPartie = async () => {
                 tentatives++;
@@ -1624,23 +1676,17 @@ export default function App() {
                   if (res.data?.pixels_photo) {
                     setPixelsPhoto(res.data.pixels_photo);
                     setTaille(res.data.taille || 16);
+                    if (res.data.etat) setEtat(res.data.etat);
                     if (res.data.indice) setIndiceReconnaissance(res.data.indice);
                     if (res.data.timer_sec) {
                       setTimerChoisi(res.data.timer_sec);
                       setTimerRouge(res.data.timer_sec);
                       setTimerNoir(res.data.timer_sec);
                     }
-                    if (res.data.etat) {
-                      // On a tout : pixels + état → on passe directement en jeu
-                      setEtat(res.data.etat);
-                      setStatutConnexion("connecte");
-                      setEtape("jeu");
-                      return; // succès complet
-                    }
-                    // On a les pixels mais pas encore l'état → continuer à poller
+                    return; // succès
                   }
                 } catch (e) {}
-                if (tentatives < 40) setTimeout(pollerPartie, 600); // poll toutes les 600ms, max 24s
+                if (tentatives < 20) setTimeout(pollerPartie, 800); // poll rapide 0.8s
               };
               pollerPartie();
             }
@@ -1974,6 +2020,13 @@ export default function App() {
             </button>
           )}
           <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
+          <button
+            className="btn-manuel"
+            onClick={toggleMute}
+            title={audioMuted ? "Son off" : "Son on"}
+            style={{ fontSize: 9, fontFamily: "var(--titre)", opacity: audioMuted ? 0.3 : 0.8, letterSpacing: "0.05em" }}>
+            {audioMuted ? "OFF" : "SND"}
+          </button>
           <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
         </div>
       </header>
