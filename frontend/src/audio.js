@@ -28,7 +28,7 @@
 // ============================================================
 
 let _ctx = null;
-let _volume = 0.55;
+let _volume = 0.18;
 let _muted = false;
 let _langue = 0;  // 0=FR 1=EN 2=AR 3=ES
 
@@ -132,7 +132,7 @@ function sound_drop() {
   const t = c.currentTime + 0.05;
 
   // Corps de la goutte — sinusoïde qui descend
-  const g1 = gain(0.35 * vm);
+  const g1 = gain(0.03 * vm);
   const o1 = c.createOscillator();
   o1.type = "sine";
   o1.frequency.setValueAtTime(480 * pm, t);
@@ -140,11 +140,11 @@ function sound_drop() {
   o1.connect(g1);
   o1.start(t);
   o1.stop(t + 0.6);
-  g1.gain.setValueAtTime(0.35 * vm, t);
+  g1.gain.setValueAtTime(0.10 * vm, t);
   g1.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
 
   // Harmonique secondaire
-  const g2 = gain(0.15 * vm);
+  const g2 = gain(0.01 * vm);
   const o2 = c.createOscillator();
   o2.type = "sine";
   o2.frequency.setValueAtTime(960 * pm, t);
@@ -152,7 +152,7 @@ function sound_drop() {
   o2.connect(g2);
   o2.start(t);
   o2.stop(t + 0.3);
-  g2.gain.setValueAtTime(0.15 * vm, t);
+  g2.gain.setValueAtTime(0.04 * vm, t);
   g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
 
   // Réverbération
@@ -175,7 +175,7 @@ function sound_drop() {
 
   // AR uniquement : souffle grave en plus
   if (_langue === 2) {
-    const gn = gain(0.08);
+    const gn = gain(0.02);
     const filt = c.createBiquadFilter();
     filt.type = "lowpass";
     filt.frequency.value = 200;
@@ -194,7 +194,7 @@ function sound_place() {
   const [rt, rd, vm, pm, atk] = culturalParams();
   const t = c.currentTime + 0.01;
 
-  const g1 = gain(0.28 * vm);
+  const g1 = gain(0.02 * vm);
   const filt = c.createBiquadFilter();
   filt.type = "bandpass";
   filt.frequency.value = 600 * pm;
@@ -203,11 +203,11 @@ function sound_place() {
   filt.connect(c.destination);
 
   noise(g1, t, 0.06 / atk);
-  g1.gain.setValueAtTime(0.28 * vm, t);
+  g1.gain.setValueAtTime(0.08 * vm, t);
   g1.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
 
   // Résonance courte
-  const g2 = gain(0.12 * vm);
+  const g2 = gain(0.01 * vm);
   osc("sine", 280 * pm, g2, t + 0.01, 0.2);
 }
 
@@ -225,13 +225,13 @@ function sound_place_elmaas() {
   g1.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
 
   // Harmonique froide
-  const g2 = gain(0.15 * vm);
+  const g2 = gain(0.01 * vm);
   osc("triangle", 2400 * pm, g2, t, 0.8);
-  g2.gain.setValueAtTime(0.15 * vm, t);
+  g2.gain.setValueAtTime(0.04 * vm, t);
   g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
 
   // Souffle grave (toutes langues, plus marqué en AR)
-  const gn = gain(0.06 * (_langue === 2 ? 1.8 : 1));
+  const gn = gain(0.02 * (_langue === 2 ? 1.8 : 1));
   const filt = c.createBiquadFilter();
   filt.type = "highpass";
   filt.frequency.value = 3000;
@@ -245,7 +245,7 @@ function sound_place_elmaas() {
   const rev = reverb(rt * 1.2, rd);
   if (rev) {
     const gr = c.createGain();
-    gr.gain.value = 0.18 * vm;
+    gr.gain.value = 0.04 * vm;
     gr.connect(rev);
     rev.connect(c.destination);
     osc("sine", 1800 * pm, gr, t, 1.5);
@@ -266,14 +266,14 @@ function sound_puzzle() {
   const delays = [0, 0.12, 0.24];
 
   freqs.forEach((freq, i) => {
-    const g = gain(0.22 * vm);
+    const g = gain(0.02 * vm);
     const dt = t + delays[i];
     osc("sine", freq, g, dt, 0.8);
     g.gain.setValueAtTime(0.22 * vm, dt);
     g.gain.exponentialRampToValueAtTime(0.0001, dt + 0.8);
 
     // Harmonique
-    const g2 = gain(0.08 * vm);
+    const g2 = gain(0.02 * vm);
     osc("triangle", freq * 2, g2, dt, 0.4);
     g2.gain.setValueAtTime(0.08 * vm, dt);
     g2.gain.exponentialRampToValueAtTime(0.0001, dt + 0.4);
@@ -283,7 +283,7 @@ function sound_puzzle() {
   const rev = reverb(rt, rd);
   if (rev) {
     const gr = c.createGain();
-    gr.gain.value = 0.15 * vm;
+    gr.gain.value = 0.03 * vm;
     gr.connect(rev);
     rev.connect(c.destination);
     osc("sine", freqs[2], gr, t + 0.24, 1.2);
@@ -301,7 +301,7 @@ function sound_serie() {
 
   // Accord parfait qui monte
   [1, 1.25, 1.5, 2].forEach((ratio, i) => {
-    const g = gain(0.18 * vm * (1 - i * 0.1));
+    const g = gain(0.05 * vm * (1 - i * 0.1));
     const dt = t + i * 0.06;
     osc("sine", 330 * pm * ratio, g, dt, 1.5 - i * 0.1);
     g.gain.setValueAtTime(0.18 * vm, dt);
@@ -309,10 +309,10 @@ function sound_serie() {
   });
 
   // Shimmer haute fréquence
-  const gs = gain(0.08 * vm);
+  const gs = gain(0.02 * vm);
   osc("sine", 2200 * pm, gs, t + 0.2, 1.2);
   gs.gain.setValueAtTime(0, t + 0.2);
-  gs.gain.linearRampToValueAtTime(0.08 * vm, t + 0.4);
+  gs.gain.linearRampToValueAtTime(0.02 * vm, t + 0.4);
   gs.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
 }
 
@@ -333,8 +333,8 @@ function sound_victory() {
   o1.start(t);
   o1.stop(t + 4.0);
   g1.gain.setValueAtTime(0.0001, t);
-  g1.gain.linearRampToValueAtTime(0.35 * vm, t + 1.2);
-  g1.gain.linearRampToValueAtTime(0.25 * vm, t + 2.5);
+  g1.gain.linearRampToValueAtTime(0.09 * vm, t + 1.2);
+  g1.gain.linearRampToValueAtTime(0.07 * vm, t + 2.5);
   g1.gain.exponentialRampToValueAtTime(0.0001, t + 4.0);
 
   // Harmonique froide
@@ -347,21 +347,21 @@ function sound_victory() {
   o2.start(t + 0.5);
   o2.stop(t + 4.5);
   g2.gain.setValueAtTime(0.0001, t + 0.5);
-  g2.gain.linearRampToValueAtTime(0.18 * vm, t + 1.5);
+  g2.gain.linearRampToValueAtTime(0.04 * vm, t + 1.5);
   g2.gain.exponentialRampToValueAtTime(0.0001, t + 4.5);
 
   // Tintement cristallin final
-  const g3 = gain(0.25 * vm);
+  const g3 = gain(0.07 * vm);
   osc("sine", 880 * pm, g3, t + 2.0, 2.5);
   g3.gain.setValueAtTime(0.0001, t + 2.0);
-  g3.gain.linearRampToValueAtTime(0.25 * vm, t + 2.2);
+  g3.gain.linearRampToValueAtTime(0.07 * vm, t + 2.2);
   g3.gain.exponentialRampToValueAtTime(0.0001, t + 4.5);
 
   // Réverb profonde
   const rev = reverb(rt * 1.5, rd * 0.7);
   if (rev) {
     const gr = c.createGain();
-    gr.gain.value = 0.2 * vm;
+    gr.gain.value = 0.04 * vm;
     gr.connect(rev);
     rev.connect(c.destination);
     const or = c.createOscillator();
@@ -378,7 +378,7 @@ function sound_victory() {
 
   // AR : souffle grave supplémentaire
   if (_langue === 2) {
-    const gn = gain(0.06);
+    const gn = gain(0.02);
     const filt = c.createBiquadFilter();
     filt.type = "lowpass";
     filt.frequency.value = 300;
@@ -386,7 +386,7 @@ function sound_victory() {
     filt.connect(c.destination);
     noise(gn, t + 1.0, 2.0);
     gn.gain.setValueAtTime(0, t + 1.0);
-    gn.gain.linearRampToValueAtTime(0.06, t + 1.5);
+    gn.gain.linearRampToValueAtTime(0.015, t + 1.5);
     gn.gain.exponentialRampToValueAtTime(0.0001, t + 3.0);
   }
 }
@@ -399,7 +399,7 @@ function sound_defeat() {
   const t = c.currentTime + 0.05;
 
   // Son grave qui descend
-  const g1 = gain(0.32 * vm);
+  const g1 = gain(0.09 * vm);
   const o1 = c.createOscillator();
   o1.type = "sine";
   o1.frequency.setValueAtTime(200 * pm, t);
@@ -407,18 +407,18 @@ function sound_defeat() {
   o1.connect(g1);
   o1.start(t);
   o1.stop(t + 3.5);
-  g1.gain.setValueAtTime(0.32 * vm, t + 0.1);
+  g1.gain.setValueAtTime(0.09 * vm, t + 0.1);
   g1.gain.exponentialRampToValueAtTime(0.0001, t + 3.5);
 
   // Cloche lointaine unique
-  const g2 = gain(0.15 * vm);
+  const g2 = gain(0.01 * vm);
   osc("sine", 320 * pm, g2, t + 1.2, 3.0);
   g2.gain.setValueAtTime(0.0001, t + 1.2);
-  g2.gain.linearRampToValueAtTime(0.15 * vm, t + 1.4);
+  g2.gain.linearRampToValueAtTime(0.04 * vm, t + 1.4);
   g2.gain.exponentialRampToValueAtTime(0.0001, t + 4.2);
 
   // Bruit grave filtré — "quelque chose s'éteint"
-  const gn = gain(0.12 * vm);
+  const gn = gain(0.01 * vm);
   const filt = c.createBiquadFilter();
   filt.type = "lowpass";
   filt.frequency.value = 150;
@@ -426,14 +426,14 @@ function sound_defeat() {
   gn.connect(filt);
   filt.connect(c.destination);
   noise(gn, t + 0.3, 2.5);
-  gn.gain.setValueAtTime(0.12 * vm, t + 0.3);
+  gn.gain.setValueAtTime(0.02 * vm, t + 0.3);
   gn.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
 
   // Réverb longue
   const rev = reverb(rt * 1.8, rd * 0.8);
   if (rev) {
     const gr = c.createGain();
-    gr.gain.value = 0.2 * vm;
+    gr.gain.value = 0.04 * vm;
     gr.connect(rev);
     rev.connect(c.destination);
     osc("sine", 160 * pm, gr, t, 2.5);
@@ -449,7 +449,7 @@ function sound_hover() {
   const [,, vm, pm] = culturalParams();
   const t = c.currentTime;
 
-  const g = gain(0.06 * vm);
+  const g = gain(0.02 * vm);
   const filt = c.createBiquadFilter();
   filt.type = "bandpass";
   filt.frequency.value = _langue === 1 ? 3200 : (_langue === 2 ? 1800 : (_langue === 3 ? 2200 : 2600));
@@ -457,8 +457,8 @@ function sound_hover() {
   g.connect(filt);
   filt.connect(c.destination);
 
-  noise(g, t, 0.04);
-  g.gain.setValueAtTime(0.06 * vm, t);
+  noise(g, t, 0.06);
+  g.gain.setValueAtTime(0.015 * vm, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
 }
 
@@ -469,7 +469,7 @@ function sound_click() {
   const [,, vm, pm, atk] = culturalParams();
   const t = c.currentTime;
 
-  const g = gain(0.15 * vm);
+  const g = gain(0.01 * vm);
   const filt = c.createBiquadFilter();
   filt.type = "bandpass";
   filt.frequency.value = 800 * pm;
@@ -477,11 +477,11 @@ function sound_click() {
   g.connect(filt);
   filt.connect(c.destination);
 
-  noise(g, t, 0.03 / atk);
-  g.gain.setValueAtTime(0.15 * vm, t);
+  noise(g, t, 0.05);
+  g.gain.setValueAtTime(0.04 * vm, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
 
-  const g2 = gain(0.08 * vm);
+  const g2 = gain(0.02 * vm);
   osc("sine", 400 * pm, g2, t, 0.1);
   g2.gain.setValueAtTime(0.08 * vm, t);
   g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
@@ -494,7 +494,7 @@ function sound_turn() {
   const [,, vm, pm] = culturalParams();
   const t = c.currentTime;
 
-  const g = gain(0.12 * vm);
+  const g = gain(0.01 * vm);
   osc("sine", 660 * pm, g, t, 0.4);
   g.gain.setValueAtTime(0.12 * vm, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
@@ -520,7 +520,7 @@ function sound_analyse() {
   });
 
   // Murmure mécanique en fond
-  const gn = gain(0.04 * vm);
+  const gn = gain(0.01 * vm);
   const filt = c.createBiquadFilter();
   filt.type = "bandpass";
   filt.frequency.value = 2000 * pm;
@@ -545,7 +545,7 @@ function sound_waiting() {
 
   if (variant === 0) {
     // Goutte légère
-    const g = gain(0.18 * vm);
+    const g = gain(0.05 * vm);
     const o = c.createOscillator();
     o.type = "sine";
     o.frequency.setValueAtTime(340 * pm, t);
@@ -574,7 +574,7 @@ function sound_waiting() {
     }
   } else if (variant === 1) {
     // Pulsation grave — radar lent
-    const g = gain(0.12 * vm);
+    const g = gain(0.01 * vm);
     const o = c.createOscillator();
     o.type = "sine";
     o.frequency.value = 55 * pm;
@@ -582,7 +582,7 @@ function sound_waiting() {
     o.start(t);
     o.stop(t + 0.8);
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.12 * vm, t + 0.1);
+    g.gain.linearRampToValueAtTime(0.03 * vm, t + 0.1);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8);
   } else {
     // Tintement lointain
@@ -609,8 +609,8 @@ function sound_warning() {
   g.connect(filt);
   filt.connect(c.destination);
 
-  noise(g, t, 0.025);
-  g.gain.setValueAtTime(0.2 * vm, t);
+  noise(g, t, 0.06);
+  g.gain.setValueAtTime(0.04 * vm, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
 }
 
