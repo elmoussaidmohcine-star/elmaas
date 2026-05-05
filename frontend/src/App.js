@@ -1564,7 +1564,7 @@ export default function App() {
     const maintenant = Date.now();
     if (maintenant - lastMsgTime.current < 3000) return;
     lastMsgTime.current = maintenant;
-    const couleurMoi = monRole === "joueur2" ? "noir" : "rouge";
+    const couleurMoi = modeIA !== "aucune" ? (modeIA === "j1" ? "noir" : "rouge") : (monRole === "joueur2" ? "noir" : "rouge");
     socketRef.current?.emit("message_envoye", {
       partie_id: partieId, texte: messageChat.slice(0, 30), couleur: couleurMoi
     });
@@ -1725,7 +1725,7 @@ export default function App() {
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
             {(() => {
               const g = mancheTermineeInfo.gagnant;
-              const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+              const maCouleur = modeIA !== "aucune" ? (modeIA === "j1" ? "noir" : "rouge") : (monRole === "joueur2" ? "noir" : "rouge");
               const jaiGagne = g === maCouleur;
               const egalite = g === "egalite";
               return (
