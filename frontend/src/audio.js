@@ -1,580 +1,197 @@
 // ============================================================
-// ELMAAS — audio.js
-// Philosophie sonore corrigée
+//  ELMAAS — audio.js  v2.0
+//  Sons physiques réels — WAV modélisés (goutte, verre, zellige, bois, fer)
+//  Zéro copyright — générés algorithmiquement
 //
-// → Minimalisme premium
-// → Sons courts
-// → Pas de peur
-// → Pas de drones cosmiques
-// → Silence dominant
-// → Texture luxe / verre / céramique / interface premium
+//  Structure fichiers attendue :
+//    public/sounds/drop.wav          — goutte d'eau
+//    public/sounds/place.wav         — verre cristal
+//    public/sounds/place_elmaas.wav  — zellige sur sol
+//    public/sounds/puzzle.wav        — bois noble (3 coups)
+//    public/sounds/serie.wav         — métal forgé
+//    public/sounds/victory.wav       — verre + métal (victoire)
+//    public/sounds/defeat.wav        — bois grave + cloche
+//    public/sounds/warning.wav       — fer léger
+//    public/sounds/waiting.wav       — petite goutte (attente)
+//    public/sounds/analyse.wav       — petits clics bois
+//
+//  API :
+//    play(name)       — jouer un son
+//    setVolume(0–1)   — volume global
+//    setMute(bool)    — couper/activer
+//    setLangue(0–3)   — identité culturelle (légères variations)
+//    isMuted()
+//    initAudio()      — à appeler sur premier geste utilisateur
+//    preloadAll()     — précharger tous les sons
 // ============================================================
 
 let _ctx = null;
-let _volume = 0.12;
+let _volume = 0.55;
 let _muted = false;
 let _langue = 0;
+const _buffers = {};
+const _loading = {};
 
-// ─────────────────────────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────────────────────────
+// Paramètres culturels : [volumeMult, pitchMult, reverbMix, lpFreq|null]
+const CULTURAL = [
+  [1.0,  1.0,  0.20, null],  // FR — élégant, neutre
+  [0.88, 1.04, 0.10, null],  // EN — sec, plus aigu
+  [1.08, 0.93, 0.35, 800],   // AR — reverb longue, plus grave, filtre doux
+  [1.15, 0.97, 0.18, null],  // ES — plus fort, organique
+];
 
-function ctx() {
+function getCtx() {
   if (!_ctx) {
     try {
       _ctx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch {
-      return null;
-    }
+    } catch (e) { return null; }
   }
-
-  if (_ctx.state === "suspended") {
-    _ctx.resume().catch(() => {});
-  }
-
+  if (_ctx.state === "suspended") _ctx.resume().catch(() => {});
   return _ctx;
 }
 
-function gain(v = 1) {
-  const c = ctx();
-  if (!c) return null;
-
-  const g = c.createGain();
-  g.gain.value = v * _volume * (_muted ? 0 : 1);
-  g.connect(c.destination);
-
-  return g;
+export function initAudio() {
+  getCtx();
 }
 
-function osc(type, freq, g, start, duration) {
-  const c = ctx();
-  if (!c || !g) return;
-
-  const o = c.createOscillator();
-
-  o.type = type;
-  o.frequency.setValueAtTime(freq, start);
-
-  o.connect(g);
-
-  o.start(start);
-  o.stop(start + duration);
-
-  return o;
+function loadBuffer(name) {
+  if (_buffers[name] || _loading[name]) return;
+  _loading[name] = true;
+  fetch(`/sounds/${name}.wav`)
+    .then(r => { if (!r.ok) throw new Error(name); return r.arrayBuffer(); })
+    .then(ab => {
+      const c = getCtx();
+      if (!c) return;
+      return c.decodeAudioData(ab);
+    })
+    .then(buf => { _buffers[name] = buf; delete _loading[name]; })
+    .catch(() => { delete _loading[name]; });
 }
 
-function tinyReverb(seconds = 0.35, decay = 2) {
-  const c = ctx();
-  if (!c) return null;
+const ALL_SOUNDS = ["drop","place","place_elmaas","puzzle","serie","victory","defeat","warning","waiting","analyse"];
 
-  const convolver = c.createConvolver();
+export function preloadAll() {
+  if (!getCtx()) return;
+  ALL_SOUNDS.forEach(loadBuffer);
+}
 
-  const rate = c.sampleRate;
-  const length = rate * seconds;
-
-  const impulse = c.createBuffer(2, length, rate);
-
+function makeReverb(ctx, seconds = 1.2, decay = 2.5) {
+  const rate = ctx.sampleRate;
+  const len = Math.floor(rate * seconds);
+  const buf = ctx.createBuffer(2, len, rate);
   for (let ch = 0; ch < 2; ch++) {
-    const data = impulse.getChannelData(ch);
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, decay);
+  }
+  const conv = ctx.createConvolver();
+  conv.buffer = buf;
+  return conv;
+}
 
-    for (let i = 0; i < length; i++) {
-      data[i] =
-        (Math.random() * 2 - 1) *
-        Math.pow(1 - i / length, decay);
-    }
+function playBuffer(name, options = {}) {
+  if (_muted) return;
+  const c = getCtx();
+  if (!c) return;
+  const buf = _buffers[name];
+  if (!buf) { loadBuffer(name); return; }
+
+  const [volMult, pitchMult, reverbMix, lpFreq] = CULTURAL[_langue] || CULTURAL[0];
+  const vol   = (options.volume ?? 1.0) * _volume * volMult;
+  const pitch = (options.pitch  ?? 1.0) * pitchMult;
+  const rev   = options.reverb !== undefined ? options.reverb : reverbMix;
+
+  const source = c.createBufferSource();
+  source.buffer = buf;
+  source.playbackRate.value = pitch;
+
+  const gainNode = c.createGain();
+  gainNode.gain.value = vol;
+
+  let lastNode = source;
+  if (lpFreq) {
+    const filt = c.createBiquadFilter();
+    filt.type = "lowpass";
+    filt.frequency.value = lpFreq;
+    source.connect(filt);
+    lastNode = filt;
+  }
+  lastNode.connect(gainNode);
+
+  if (rev > 0.01) {
+    const dry = c.createGain(); dry.gain.value = 1 - rev * 0.5;
+    gainNode.connect(dry); dry.connect(c.destination);
+    const wet = c.createGain(); wet.gain.value = rev;
+    const conv = makeReverb(c, 1.5, 2.5);
+    gainNode.connect(wet); wet.connect(conv); conv.connect(c.destination);
+  } else {
+    gainNode.connect(c.destination);
   }
 
-  convolver.buffer = impulse;
-
-  return convolver;
+  source.start(c.currentTime + 0.01);
 }
 
-// ─────────────────────────────────────────────────────────────
-// IDENTITÉ CULTURELLE
-// ─────────────────────────────────────────────────────────────
+// ── Sons ─────────────────────────────────────────────────────
 
-// FR → verre / luxe / calme
-// EN → tech / précis / sec
-// AR → eau / cuivre / chaleur légère
-// ES → artistique / organique / vivant
-
-function cultural() {
-  return [
-    { pitch: 1.00, rev: 0.45, attack: 0.8 },
-    { pitch: 1.05, rev: 0.18, attack: 1.2 },
-    { pitch: 0.92, rev: 0.55, attack: 0.7 },
-    { pitch: 0.97, rev: 0.30, attack: 1.0 },
-  ][_langue] || { pitch: 1, rev: 0.3, attack: 1 };
-}
-
-// ─────────────────────────────────────────────────────────────
-// UTILS
-// ─────────────────────────────────────────────────────────────
-
-function randomize(freq) {
-  return freq * (0.985 + Math.random() * 0.03);
-}
-
-function envelope(g, start, peak, end, duration) {
-  g.gain.setValueAtTime(0.0001, start);
-  g.gain.linearRampToValueAtTime(peak, start + 0.01);
-  g.gain.exponentialRampToValueAtTime(
-    end,
-    start + duration
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// SONS
-// ─────────────────────────────────────────────────────────────
-
-// ===== DROP =====
-
-function sound_drop() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-  const { pitch, rev } = cultural();
-
-  const g = gain(0.03);
-
-  const o = osc(
-    "sine",
-    randomize(620 * pitch),
-    g,
-    t,
-    0.28
-  );
-
-  o.frequency.exponentialRampToValueAtTime(
-    320 * pitch,
-    t + 0.22
-  );
-
-  envelope(g, t, 0.025, 0.0001, 0.28);
-
-  // petite résonance élégante
-  const r = tinyReverb(rev);
-
-  if (r) {
-    const rg = c.createGain();
-    rg.gain.value = 0.05;
-
-    rg.connect(r);
-    r.connect(c.destination);
-
-    const ro = osc(
-      "sine",
-      640 * pitch,
-      rg,
-      t,
-      0.4
-    );
-
-    ro.frequency.exponentialRampToValueAtTime(
-      280 * pitch,
-      t + 0.3
-    );
-  }
-}
-
-// ===== PLACE =====
-
-function sound_place() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-  const { pitch } = cultural();
-
-  const g = gain(0.018);
-
-  const o = osc(
-    "triangle",
-    randomize(420 * pitch),
-    g,
-    t,
-    0.08
-  );
-
-  envelope(g, t, 0.018, 0.0001, 0.08);
-
-  o.frequency.exponentialRampToValueAtTime(
-    280 * pitch,
-    t + 0.08
-  );
-}
-
-// ===== DIAMANT ELMAAS =====
-
-function sound_place_elmaas() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-  const { pitch } = cultural();
-
-  const freqs = [1200, 1800, 2400];
-
-  freqs.forEach((f, i) => {
-    const g = gain(0.012 - i * 0.002);
-
-    osc(
-      "sine",
-      randomize(f * pitch),
-      g,
-      t + i * 0.015,
-      0.35
-    );
-
-    envelope(
-      g,
-      t + i * 0.015,
-      0.012,
-      0.0001,
-      0.35
-    );
-  });
-}
-
-// ===== PUZZLE =====
-
-function sound_puzzle() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  [520, 660, 840].forEach((f, i) => {
-    const g = gain(0.018);
-
-    osc(
-      "sine",
-      randomize(f),
-      g,
-      t + i * 0.06,
-      0.25
-    );
-
-    envelope(
-      g,
-      t + i * 0.06,
-      0.018,
-      0.0001,
-      0.25
-    );
-  });
-}
-
-// ===== COMBO =====
-
-function sound_serie() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  [440, 560, 720].forEach((f, i) => {
-    const g = gain(0.015);
-
-    osc(
-      "triangle",
-      randomize(f),
-      g,
-      t + i * 0.04,
-      0.2
-    );
-
-    envelope(
-      g,
-      t + i * 0.04,
-      0.015,
-      0.0001,
-      0.2
-    );
-  });
-}
-
-// ===== VICTORY =====
-
-function sound_victory() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  [520, 720, 980].forEach((f, i) => {
-    const g = gain(0.022);
-
-    osc(
-      "sine",
-      randomize(f),
-      g,
-      t + i * 0.08,
-      0.45
-    );
-
-    envelope(
-      g,
-      t + i * 0.08,
-      0.022,
-      0.0001,
-      0.45
-    );
-  });
-}
-
-// ===== DEFEAT =====
-
-function sound_defeat() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  const g = gain(0.02);
-
-  const o = osc(
-    "triangle",
-    randomize(360),
-    g,
-    t,
-    0.5
-  );
-
-  o.frequency.exponentialRampToValueAtTime(
-    180,
-    t + 0.5
-  );
-
-  envelope(g, t, 0.02, 0.0001, 0.5);
-}
-
-// ===== HOVER =====
+function sound_drop()         { playBuffer("drop",         { volume: 0.85, reverb: CULTURAL[_langue][2]*1.5 }); }
+function sound_place()        { playBuffer("place",        { volume: 0.70, pitch: 0.92+Math.random()*0.16 }); }
+function sound_place_elmaas() { playBuffer("place_elmaas", { volume: 0.80 }); }
+function sound_puzzle()       { playBuffer("puzzle",       { volume: 0.75 }); }
+function sound_serie()        { playBuffer("serie",        { volume: 0.65, reverb: CULTURAL[_langue][2]*1.8 }); }
+function sound_victory()      { playBuffer("victory",      { volume: 0.70, reverb: CULTURAL[_langue][2]*2.0 }); }
+function sound_defeat()       { playBuffer("defeat",       { volume: 0.60, reverb: CULTURAL[_langue][2]*2.5 }); }
+function sound_warning()      { playBuffer("warning",      { volume: 0.55 }); }
+function sound_waiting()      { playBuffer("waiting",      { volume: 0.50, pitch: 0.88+Math.random()*0.24 }); }
+function sound_analyse()      { playBuffer("analyse",      { volume: 0.55 }); }
 
 function sound_hover() {
-  const c = ctx();
-  if (!c) return;
-
+  if (_muted) return;
+  const c = getCtx(); if (!c) return;
   const t = c.currentTime;
-
-  const g = gain(0.004);
-
-  osc(
-    "sine",
-    randomize(1600),
-    g,
-    t,
-    0.03
-  );
-
-  envelope(g, t, 0.004, 0.0001, 0.03);
+  const g = c.createGain(); g.gain.value = 0.04 * _volume;
+  const filt = c.createBiquadFilter(); filt.type="bandpass"; filt.frequency.value=2200; filt.Q.value=6;
+  g.connect(filt); filt.connect(c.destination);
+  const buf = c.createBuffer(1, Math.floor(0.04*c.sampleRate), c.sampleRate);
+  const d = buf.getChannelData(0); for (let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  const src = c.createBufferSource(); src.buffer=buf; src.connect(g);
+  g.gain.setValueAtTime(0.04*_volume, t); g.gain.exponentialRampToValueAtTime(0.0001, t+0.04);
+  src.start(t);
 }
-
-// ===== CLICK =====
 
 function sound_click() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  const g = gain(0.012);
-
-  osc(
-    "triangle",
-    randomize(520),
-    g,
-    t,
-    0.05
-  );
-
-  envelope(g, t, 0.012, 0.0001, 0.05);
+  if (_muted) return;
+  const c = getCtx(); if (!c) return;
+  if (_buffers["place"]) {
+    const src = c.createBufferSource(); src.buffer=_buffers["place"]; src.playbackRate.value=0.75;
+    const g = c.createGain(); g.gain.value=0.25*_volume;
+    src.connect(g); g.connect(c.destination);
+    src.start(c.currentTime); src.stop(c.currentTime+0.08);
+  }
 }
-
-// ===== TURN =====
 
 function sound_turn() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  const g = gain(0.01);
-
-  osc(
-    "sine",
-    randomize(760),
-    g,
-    t,
-    0.12
-  );
-
-  envelope(g, t, 0.01, 0.0001, 0.12);
+  if (_muted) return;
+  const c = getCtx(); if (!c) return;
+  if (_buffers["warning"]) {
+    const src = c.createBufferSource(); src.buffer=_buffers["warning"]; src.playbackRate.value=0.65;
+    const g = c.createGain(); g.gain.value=0.30*_volume;
+    src.connect(g); g.connect(c.destination); src.start(c.currentTime);
+  }
 }
 
-// ===== ANALYSE =====
+// ── API publique ──────────────────────────────────────────────
 
-function sound_analyse() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  [1000, 1200, 900].forEach((f, i) => {
-    const g = gain(0.008);
-
-    osc(
-      "square",
-      randomize(f),
-      g,
-      t + i * 0.05,
-      0.06
-    );
-
-    envelope(
-      g,
-      t + i * 0.05,
-      0.008,
-      0.0001,
-      0.06
-    );
-  });
-}
-
-// ===== WAITING =====
-
-function sound_waiting() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  const variants = [
-    () => {
-      const g = gain(0.01);
-
-      osc(
-        "sine",
-        randomize(420),
-        g,
-        t,
-        0.2
-      );
-
-      envelope(g, t, 0.01, 0.0001, 0.2);
-    },
-
-    () => {
-      const g = gain(0.008);
-
-      osc(
-        "triangle",
-        randomize(680),
-        g,
-        t,
-        0.15
-      );
-
-      envelope(g, t, 0.008, 0.0001, 0.15);
-    },
-
-    () => {
-      const g = gain(0.006);
-
-      osc(
-        "sine",
-        randomize(300),
-        g,
-        t,
-        0.25
-      );
-
-      envelope(g, t, 0.006, 0.0001, 0.25);
-    },
-  ];
-
-  variants[Math.floor(Math.random() * variants.length)]();
-}
-
-// ===== WARNING =====
-
-function sound_warning() {
-  const c = ctx();
-  if (!c) return;
-
-  const t = c.currentTime;
-
-  const g = gain(0.014);
-
-  osc(
-    "square",
-    randomize(1100),
-    g,
-    t,
-    0.04
-  );
-
-  envelope(g, t, 0.014, 0.0001, 0.04);
-}
-
-// ─────────────────────────────────────────────────────────────
-// MAP
-// ─────────────────────────────────────────────────────────────
-
-const SOUNDS = {
-  drop: sound_drop,
-  place: sound_place,
-  place_elmaas: sound_place_elmaas,
-  puzzle: sound_puzzle,
-  serie: sound_serie,
-  victory: sound_victory,
-  defeat: sound_defeat,
-  hover: sound_hover,
-  click: sound_click,
-  turn: sound_turn,
-  analyse: sound_analyse,
-  waiting: sound_waiting,
-  warning: sound_warning,
-};
-
-// ─────────────────────────────────────────────────────────────
-// API
-// ─────────────────────────────────────────────────────────────
+const SOUNDS = { drop:sound_drop, place:sound_place, place_elmaas:sound_place_elmaas,
+  puzzle:sound_puzzle, serie:sound_serie, victory:sound_victory, defeat:sound_defeat,
+  warning:sound_warning, waiting:sound_waiting, analyse:sound_analyse,
+  hover:sound_hover, click:sound_click, turn:sound_turn };
 
 export function play(name) {
   if (_muted) return;
-
-  const fn = SOUNDS[name];
-
-  if (!fn) return;
-
-  try {
-    fn();
-  } catch {}
+  try { SOUNDS[name]?.(); } catch(e) {}
 }
 
-export function setVolume(v) {
-  _volume = Math.max(0, Math.min(1, v));
-}
-
-export function setMute(v) {
-  _muted = !!v;
-}
-
-export function setLangue(l) {
-  _langue = l >= 0 && l <= 3 ? l : 0;
-}
-
-export function isMuted() {
-  return _muted;
-}
-
-export function isEnabled() {
-  return !_muted;
-}
-
-export function initAudio() {
-  ctx();
-}
+export function setVolume(v) { _volume = Math.max(0, Math.min(1, v)); }
+export function setMute(v)   { _muted = !!v; }
+export function setLangue(l) { _langue = (l>=0&&l<=3) ? l : 0; }
+export function isMuted()    { return _muted; }
+export function isEnabled()  { return !_muted; }

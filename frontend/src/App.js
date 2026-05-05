@@ -1095,7 +1095,7 @@ export default function App() {
 
   // Init audio au premier geste utilisateur
   useEffect(() => {
-    const init = () => { Audio.initAudio(); document.removeEventListener("click", init); };
+    const init = () => { Audio.initAudio(); Audio.preloadAll(); document.removeEventListener("click", init); };
     document.addEventListener("click", init);
     return () => document.removeEventListener("click", init);
   }, []);
