@@ -1,1174 +1,2161 @@
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&family=Cinzel:wght@400;600;700&family=Rajdhani:wght@300;400;500;600&family=Amiri:wght@400;700&family=Playfair+Display:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap');
+// ELMAAS App.js — VERSION CORRIGÉE (Analyse profonde uniquement)
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+import { useState, useCallback, useEffect, useRef } from "react";
+import axios from "axios";
+import { io } from "socket.io-client";
+import Board from "./Board";
+import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, getSloganVictoire, getSloganDefaite, getSloganAnalyse, CLASSIFICATION_COUP } from "./translations";
+import "./App.css";
+import EcranAnalyse from "./EcranAnalyse";
 
-/* ══════════════════════════════════════════════════════════
-   THÈMES PAR LANGUE — Identité culturelle pure
-   Dessin · Couleur · Style — sans transition
-   ══════════════════════════════════════════════════════════ */
-
-/* ── FRANÇAIS — Nuit parisienne, parquet de Versailles ──── */
-:root {
-  --bg: #07070f;
-  --bg2: #0d0d14;
-  --bg3: #111118;
-  --rouge: #cc2200;
-  --rouge-c: #ff4422;
-  --noir: #111111;
-  --noir-c: #444444;
-  --texte: #e8e4f0;
-  --muted: #555570;
-  --bord: #1e1e2a;
-  --brush: 'Dancing Script', cursive;
-  --titre: 'Playfair Display', serif;
-  --accent-culture: #cc2200;
-  /* Parquet losange de Versailles — lignes dorées très fines */
-  --pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M20 0 L40 20 L20 40 L0 20 Z' fill='none' stroke='%23ffffff' stroke-width='0.3' stroke-opacity='0.04'/%3E%3C/svg%3E");
-  --gradient-culture:
-    radial-gradient(ellipse at 25% 35%, #0a0a3344, transparent 55%),
-    radial-gradient(ellipse at 75% 65%, #1a0a0020, transparent 55%);
-  --border-culture: 1px solid #cc220018;
-  --shadow-culture: 0 0 30px #cc220012;
-  --btn-radius: 4px;
-  --card-radius: 6px;
+const API = "https://elmaas-backend.onrender.com";
+//const API = "http://localhost:3000/";
+function getToken() { return localStorage.getItem("elmaas_token"); }
+function getUser()  {
+  try { return JSON.parse(localStorage.getItem("elmaas_user") || "null"); }
+  catch { return null; }
+}
+function getLangueInitiale() {
+  const saved = localStorage.getItem("elmaas_langue");
+  const idx = parseInt(saved);
+  if (!isNaN(idx) && idx >= 0 && idx < LANGUES.length) return idx;
+  return 0;
+}
+function appliquerTheme(indexLangue) {
+  const html = document.documentElement;
+  LANGUES.forEach(l => html.classList.remove(l.theme));
+  html.classList.add(LANGUES[indexLangue].theme);
+  html.setAttribute("dir", LANGUES[indexLangue].code === "ar" ? "rtl" : "ltr");
 }
 
-/* ── ANGLAIS — Club victorien, damier tabac et vert bouteille */
-.theme-en {
-  --bg: #080806;
-  --bg2: #0f0f0b;
-  --bg3: #161610;
-  --rouge: #8b6914;
-  --rouge-c: #c9a84c;       /* or victorien */
-  --noir: #0f0f0f;
-  --noir-c: #2d3d2d;
-  --texte: #e8dfc0;
-  --muted: #7a7050;
-  --bord: #28241a;
-  --brush: 'IM Fell English', serif;
-  --titre: 'IM Fell English', serif;
-  --accent-culture: #c9a84c;
-  /* Damier très discret — parquet anglais */
-  --pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect width='12' height='12' fill='%23ffffff' fill-opacity='0.015'/%3E%3Crect x='12' y='12' width='12' height='12' fill='%23ffffff' fill-opacity='0.015'/%3E%3C/svg%3E");
-  --gradient-culture:
-    radial-gradient(ellipse at 20% 25%, #1a160844, transparent 60%),
-    radial-gradient(ellipse at 80% 75%, #0a180a28, transparent 60%);
-  --border-culture: 1px solid #c9a84c1a;
-  --shadow-culture: 0 0 28px #c9a84c0e;
-  --btn-radius: 2px;   /* angles droits — rigueur britannique */
-  --card-radius: 3px;
+// Gestion des scores cumulés par adversaire (localStorage)
+const KEY_SCORES = "elmaas_scores_cumules";
+const MAX_ADVERSAIRES = 5;
+ 
+function getScoresCumules(pseudoAdverse) {
+  try {
+    const data = JSON.parse(localStorage.getItem(KEY_SCORES) || '{"ordre":[],"scores":{}}');
+    return data.scores[pseudoAdverse] || { moi: 0, lui: 0 };
+  } catch { return { moi: 0, lui: 0 }; }
+}
+ 
+function setScoresCumules(pseudoAdverse, scores) {
+  try {
+    let data = JSON.parse(localStorage.getItem(KEY_SCORES) || '{"ordre":[],"scores":{}}');
+    data.scores[pseudoAdverse] = scores;
+    data.ordre = data.ordre.filter(p => p !== pseudoAdverse);
+    data.ordre.push(pseudoAdverse);
+    while (data.ordre.length > MAX_ADVERSAIRES) {
+      const oublie = data.ordre.shift();
+      delete data.scores[oublie];
+    }
+    localStorage.setItem(KEY_SCORES, JSON.stringify(data));
+  } catch {}
 }
 
-/* ── ARABE — Géométrie islamique, or sur lapis lazuli ────── */
-.theme-ar {
-  --bg: #04040e;
-  --bg2: #08081a;
-  --bg3: #0c0c22;
-  --rouge: #b8860b;
-  --rouge-c: #ffd700;
-  --noir: #080808;
-  --noir-c: #3d2e10;
-  --texte: #f4e4a0;
-  --muted: #907840;
-  --bord: #1a1608;
-  --brush: 'Amiri', serif;
-  --titre: 'Amiri', serif;
-  --accent-culture: #ffd700;
-  /* Étoile à 8 branches — zellige marocain */
-  --pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cg fill='none' stroke='%23ffd700' stroke-width='0.5' stroke-opacity='0.07' transform='translate(30,30)'%3E%3Cpolygon points='0,-20 5,-5 20,0 5,5 0,20 -5,5 -20,0 -5,-5'/%3E%3Cpolygon points='0,-14 3.5,-3.5 14,0 3.5,3.5 0,14 -3.5,3.5 -14,0 -3.5,-3.5' transform='rotate(22.5)'/%3E%3C/g%3E%3C/svg%3E");
-  --gradient-culture:
-    radial-gradient(ellipse at 50% 20%, #2a180066, transparent 60%),
-    radial-gradient(ellipse at 50% 80%, #1a1055aa, transparent 60%),
-    radial-gradient(circle at 5% 95%, #44220033, transparent 35%),
-    radial-gradient(circle at 95% 5%, #44220033, transparent 35%);
-  --border-culture: 1px solid #ffd70022;
-  --shadow-culture: 0 0 35px #ffd70014;
-  --btn-radius: 0px;   /* géométrie droite — art islamique */
-  --card-radius: 0px;
+//  Bouton Paramètres flottant 
+function BtnParamsFlottant({ onClick, L }) {
+  return (
+    <button className="btn-params-flottant" onClick={onClick} title={t("parametres", L)}>&#x2699;</button>
+  );
 }
 
-/* ── ESPAGNOL — Flamenco, sang et nuit andalouse ─────────── */
-.theme-es {
-  --bg: #0a0204;
-  --bg2: #140508;
-  --bg3: #1e080c;
-  --rouge: #b81030;
-  --rouge-c: #e8304a;
-  --noir: #000000;
-  --noir-c: #1a0808;
-  --texte: #f0dcc8;
-  --muted: #804040;
-  --bord: #2a0c10;
-  --brush: 'Playfair Display', serif;
-  --titre: 'Playfair Display', serif;
-  --accent-culture: #e8304a;
-  /* Eventail flamenco stylisé — lignes rayonnantes */
-  --pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='80' r='60' fill='none' stroke='%23e8304a' stroke-width='0.4' stroke-opacity='0.05'/%3E%3Ccircle cx='40' cy='80' r='45' fill='none' stroke='%23e8304a' stroke-width='0.4' stroke-opacity='0.04'/%3E%3Ccircle cx='40' cy='80' r='30' fill='none' stroke='%23e8304a' stroke-width='0.4' stroke-opacity='0.03'/%3E%3C/svg%3E");
-  --gradient-culture:
-    radial-gradient(ellipse at 30% 40%, #cc000033, transparent 55%),
-    radial-gradient(ellipse at 70% 70%, #440000aa, transparent 55%),
-    radial-gradient(circle at 90% 10%, #88002211, transparent 40%);
-  --border-culture: 1px solid #e8304a1e;
-  --shadow-culture: 0 0 32px #b8103014;
-  --btn-radius: 1px;   /* presque carré — austérité espagnole */
-  --card-radius: 2px;
+//  Popup Paramètres 
+function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer, onDeconnecter, onPaiement }) {
+  return (
+    <div className="popup-overlay" onClick={onFermer}>
+      <div className="popup-pouvoir" style={{ minWidth: 340, maxWidth: 440, gap: 14, maxHeight: "85vh", overflowY: "auto" }}
+           onClick={(e) => e.stopPropagation()}>
+        <div className="popup-titre">{t("parametres", L)}</div>
+
+        {utilisateur && (
+          <div style={{ width: "100%", borderBottom: "1px solid var(--bord)", paddingBottom: 12 }}>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>{t("compte", L)}</div>
+            <div style={{ fontSize: 15, color: "var(--texte)", marginBottom: 8 }}>{utilisateur.pseudo || "—"} — {utilisateur.email}</div>
+            <div style={{ fontSize: 13, color: "var(--rouge-c)", marginBottom: 8 }}>{t("elm", L)} {utilisateur.elo}</div>
+            <button className="popup-btn" style={{ fontSize: 13 }} onClick={onDeconnecter}>{t("seDeconnecter", L)}</button>
+          </div>
+        )}
+
+        <div style={{ width: "100%" }}>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>{t("langue", L)} / {t("theme", L)}</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {LANGUES.map((lang, idx) => (
+              <button key={lang.code}
+                className={`ia-btn ${indexLangue === idx ? "actif" : ""}`}
+                style={{ fontSize: 13 }}
+                onClick={() => changerLangue(idx)}>
+                {lang.nom}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {utilisateur && (
+          <div className="plans-section">
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("plans", L)}</div>
+
+            {/* Plan Gratuit */}
+            <div className={`plan-card ${!utilisateur.plan || utilisateur.plan === "gratuit" ? "actif" : ""}`} style={{
+              border: "1px solid rgba(100,140,220,0.3)",
+              background: "rgba(20,30,70,0.25)",
+            }}>
+              <div className="plan-nom" style={{ color: "#6699ff" }}>{t("planGratuit", L)}</div>
+              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                {t("planGratuitDesc", L)}
+              </div>
+              <div className="plan-prix" style={{ color: "#6699ff" }}>0€</div>
+            </div>
+
+            {/* Plan ELMAASYON */}
+            <div className={`plan-card ${utilisateur.plan === "elmaasyon" ? "actif" : "premium"}`} style={{
+              border: utilisateur.plan === "elmaasyon" ? "1px solid #4488ff" : "1px solid #4488ff55",
+              background: utilisateur.plan === "elmaasyon" ? "rgba(30,60,140,0.3)" : "rgba(20,30,70,0.2)",
+              boxShadow: utilisateur.plan === "elmaasyon" ? "0 0 16px #4488ff33" : "none",
+            }}>
+              <div className="plan-nom" style={{ color: "#66aaff" }}>{t("planElmaasyon", L)}</div>
+              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                {t("planElmaasyonDescFull", L)}
+              </div>
+              <div className="plan-prix" style={{ color: "#88bbff" }}>
+                <span style={{ textDecoration: "line-through", fontSize: 13, opacity: 0.45, marginRight: 6 }}>6.99€</span>
+                <strong style={{ color: "#66aaff" }}>3.49€</strong>
+                <small style={{ color: "var(--muted)", fontSize: 10, marginLeft: 5 }}>
+                  /{L===0?"mois":L===1?"month":L===2?"شهر":"mes"} — {L===0?"Lancement -50%":L===1?"-50% Launch":L===2?"إطلاق -50%":"-50% Lanzamiento"}
+                </small>
+              </div>
+              {utilisateur.plan !== "elmaasyon" && utilisateur.plan !== "elmaas" ? (
+                <button className="btn-valider" style={{
+                  fontSize: 13, padding: "8px 16px",
+                  background: "linear-gradient(135deg,#1144cc,#4488ff)", border: "none",
+                }} onClick={() => onPaiement("elmaasyon")}>
+                  {t("passerPremiumBtn", L)}
+                </button>
+              ) : utilisateur.plan === "elmaasyon" && (
+                <button className="btn-valider" style={{
+                  fontSize: 12, padding: "6px 14px", background: "rgba(68,136,255,0.12)",
+                  border: "1px solid #4488ff44",
+                }} onClick={async () => {
+                  const res = await fetch(`${API}/stripe/portal`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
+                  const d = await res.json(); if (d.url) window.location.href = d.url;
+                }}>
+                  {L===0?"Gérer l'abonnement":L===1?"Manage subscription":L===2?"إدارة الاشتراك":"Gestionar suscripción"}
+                </button>
+              )}
+            </div>
+
+            {/* Plan ELMAAS */}
+            <div className={`plan-card ${utilisateur.plan === "elmaas" ? "actif" : "premium"}`} style={{
+              border: utilisateur.plan === "elmaas" ? "1px solid #aa55ff" : "1px solid #aa55ff44",
+              background: utilisateur.plan === "elmaas" ? "rgba(60,20,120,0.3)" : "rgba(30,10,60,0.2)",
+              boxShadow: utilisateur.plan === "elmaas" ? "0 0 20px #aa55ff33" : "none",
+            }}>
+              <div className="plan-nom" style={{ color: "#cc88ff" }}>ELMAAS</div>
+              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+                {t("planElmaasDescFull", L)}
+              </div>
+              <div className="plan-prix" style={{ color: "#cc88ff" }}>
+                <span style={{ textDecoration: "line-through", fontSize: 13, opacity: 0.45, marginRight: 6 }}>12.99€</span>
+                <strong style={{ color: "#aa66ff" }}>6.49€</strong>
+                <small style={{ color: "var(--muted)", fontSize: 10, marginLeft: 5 }}>
+                  /{L===0?"mois":L===1?"month":L===2?"شهر":"mes"} — {L===0?"Lancement -50%":L===1?"-50% Launch":L===2?"إطلاق -50%":"-50% Lanzamiento"}
+                </small>
+              </div>
+              {utilisateur.plan !== "elmaas" ? (
+                <button className="btn-valider" style={{
+                  fontSize: 13, padding: "8px 16px",
+                  background: "linear-gradient(135deg,#6600cc,#aa55ff)", border: "none",
+                }} onClick={() => onPaiement("elmaas")}>
+                  {t("passerPremiumBtn", L)}
+                </button>
+              ) : (
+                <button className="btn-valider" style={{
+                  fontSize: 12, padding: "6px 14px", background: "rgba(170,85,255,0.12)",
+                  border: "1px solid #aa55ff44",
+                }} onClick={async () => {
+                  const res = await fetch(`${API}/stripe/portal`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
+                  const d = await res.json(); if (d.url) window.location.href = d.url;
+                }}>
+                  {L===0?"Gérer l'abonnement":L===1?"Manage subscription":L===2?"إدارة الاشتراك":"Gestionar suscripción"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
+      </div>
+    </div>
+  );
 }
 
-/* ══════════════════════════════════════════════════════════
-   IDENTITÉ VISUELLE PAR THÈME — Détails caractéristiques
-   Dessin · Couleur · Style
-   ══════════════════════════════════════════════════════════ */
-
-/* ── Titre ELMAAS — glow culturel ───────────────────────── */
-.titre-jeu {
-  font-family: var(--titre);
-  font-size: clamp(52px, 10vw, 100px);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--texte);
-  text-shadow: 0 0 40px var(--accent-culture)66,
-               0 2px 0 var(--accent-culture)22;
-  text-align: center;
-}
-.theme-ar .titre-jeu {
-  letter-spacing: 0.18em;
-  text-shadow: 0 0 50px #ffd70066, 0 0 100px #ffd70022, 0 4px 0 #2a1800;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #ffd70030;
-}
-.theme-en .titre-jeu {
-  letter-spacing: 0.06em;
-  text-shadow: 2px 2px 0 #00000066, 0 0 40px #c9a84c44;
-  font-style: italic;
-}
-.theme-es .titre-jeu {
-  letter-spacing: 0.14em;
-  text-shadow: 0 0 60px #e8304a88, 0 0 120px #e8304a22, 2px 3px 0 #00000088;
+//  Écran Auth (Google uniquement + sans compte) 
+function EcranAuth({ onConnecte, L }) {
+  const handleGoogleLogin = () => { window.location.href = `${API}/auth/google`; };
+  return (
+    <div className="ecran-taille">
+      <h1 className="titre-jeu">ELMAAS</h1>
+      <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
+      <p className="sous-phrase-jeu">{t("sousSlogan", L)}</p>
+      <div className="lobby-card" style={{ minWidth: 340, gap: 12 }}>
+        <button className="popup-btn" style={{ justifyContent: "center", gap: 10, padding: "14px" }} onClick={handleGoogleLogin}>
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          {t("continuerAvecGoogle", L)}
+        </button>
+        <button style={{ background:"none", border:"none", color:"var(--muted)", cursor:"pointer", fontSize:13, marginTop:4 }}
+          onClick={() => onConnecte(null)}>
+          {t("continuerSansCompte", L)}
+        </button>
+      </div>
+    </div>
+  );
 }
 
-/* ── Cards et popups — ombre + bordure culturelle ─────── */
-.popup-pouvoir, .popup-scout {
-  box-shadow: var(--shadow-culture), 0 8px 32px #00000066;
-}
-.plan-card {
-  box-shadow: var(--shadow-culture);
+//  Écran Choix Pseudo 
+function EcranPseudo({ onPseudoDefini, L }) {
+  const [pseudo, setPseudo] = useState("");
+  const [statut, setStatut] = useState(null);
+  const [chargement, setChargement] = useState(false);
+  const timer = useRef(null);
+
+  useEffect(() => {
+    clearTimeout(timer.current);
+    if (pseudo.trim().length < 2) { setStatut(null); return; }
+    timer.current = setTimeout(async () => {
+      try {
+        const r = await axios.get(`${API}/auth/pseudo/disponible`, { params: { pseudo } });
+        setStatut(r.data);
+      } catch { setStatut(null); }
+    }, 400);
+    return () => clearTimeout(timer.current);
+  }, [pseudo]);
+
+  const valider = async () => {
+    if (!statut?.disponible) return;
+    setChargement(true);
+    try {
+      const token = getToken();
+      const r = await axios.post(`${API}/auth/pseudo/definir`, { pseudo },
+        { headers: { Authorization: `Bearer ${token}` } });
+      if (r.data.succes) {
+        localStorage.setItem("elmaas_user", JSON.stringify(r.data.utilisateur));
+        onPseudoDefini(r.data.utilisateur);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally { setChargement(false); }
+  };
+
+  return (
+    <div className="ecran-taille">
+      <h1 className="titre-jeu">ELMAAS</h1>
+      <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
+      <div className="lobby-card" style={{ minWidth: 340, gap: 14 }}>
+        <div className="lobby-titre">{t("choisisPseudo", L)}</div>
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("pseudoUnique", L)}</div>
+        <input className="lobby-input" placeholder={t("pseudoPlaceholder", L)}
+          value={pseudo} onChange={e => setPseudo(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && statut?.disponible && valider()} />
+        {pseudo.length >= 2 && statut && (
+          <div style={{ fontSize: 13, color: statut.disponible ? "#88ff88" : "#ff8888" }}>
+            {statut.disponible ? t("pseudoDispo", L)
+              : statut.raison === "mot_sacre" ? t("motSacreErreur", L)
+              : statut.raison === "trop_court" ? t("pseudoTropCourt", L)
+              : t("pseudoPris", L)}
+          </div>
+        )}
+        <button className="btn-valider" onClick={valider} disabled={!statut?.disponible || chargement}>
+          {chargement ? "..." : t("pseudoValider", L)}
+        </button>
+      </div>
+    </div>
+  );
 }
 
-/* AR : double cadre intérieur — porte de mosquée */
-.theme-ar .popup-pouvoir,
-.theme-ar .popup-scout {
-  position: relative;
-  outline: 1px solid #ffd70012;
-  outline-offset: -6px;
+//  Popup "5 min trop cheesy" 
+function PopupCheesy({ onChoisir, onFermer, L }) {
+  const temps = [{v:10,l:"10 s"},{v:20,l:"20 s"},{v:30,l:"30 s"},{v:60,l:"1 min"},{v:120,l:"2 min"}];
+  return (
+    <div className="popup-overlay" onClick={onFermer}>
+      <div className="popup-pouvoir" onClick={e => e.stopPropagation()} style={{ gap: 14 }}>
+        <div className="popup-titre" style={{ fontStyle: "italic" }}>{t("cheesyTitre", L)}</div>
+        <div className="popup-sous-titre">{t("cheesyMessage", L)}</div>
+        <div className="ia-options">
+          {temps.map(x => (
+            <button key={x.v} className="ia-btn" onClick={() => onChoisir(x.v)}>{x.l}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-/* ── Header jeu — bordure et ombre culturelle ──────────── */
-.header-jeu {
-  border-bottom: var(--border-culture, 1px solid var(--bord));
-  box-shadow: var(--shadow-culture), 0 2px 12px #00000033;
+//  Écran Taille 
+const TIMER_OPTIONS = [
+  { label: "10 s", val: 10 }, { label: "20 s", val: 20 }, { label: "30 s", val: 30 },
+  { label: "1 min", val: 60 }, { label: "2 min", val: 120 }, { label: "5 min", val: 300 },
+];
+
+function EcranTaille({ onValider, onPlayOnline, L, utilisateur }) {
+  const [prop1, setProp1] = useState(16);
+  const [modeIA, setModeIA] = useState("aucune");
+  const [niveauIA, setNiveauIA] = useState(2);
+  const [timerSec, setTimerSec] = useState(30);
+  const [showCheesy, setShowCheesy] = useState(false);
+  const tailleFin = Math.max(16, Math.min(20, prop1 % 2 === 0 ? prop1 : prop1 - 1));
+
+  const selectTimer = (v) => {
+    if (v === 300) { setShowCheesy(true); return; }
+    setTimerSec(v);
+  };
+
+  return (
+    <div className="ecran-taille">
+      {showCheesy && <PopupCheesy L={L} onFermer={() => setShowCheesy(false)}
+        onChoisir={(v) => { setTimerSec(v); setShowCheesy(false); }} />}
+      <h1 className="titre-jeu">ELMAAS</h1>
+      <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
+      <p className="sous-phrase-jeu">{t("sousSlogan", L)}</p>
+      <p className="sous-titre">{t("choisissezTaille", L)}</p>
+
+      <div className="taille-inputs">
+        <div className="taille-joueur">
+          <label>{t("tailleDuPlateau", L)}</label>
+          <input type="range" min="16" max="20" step="2" value={prop1} onChange={e => setProp1(Number(e.target.value))} />
+          <span className="taille-val">{prop1}</span>
+        </div>
+        <div className="taille-result">
+          <div className="taille-final">{tailleFin}</div>
+          <div className="taille-label">{t("plateau", L)}</div>
+        </div>
+      </div>
+
+      <div className="ia-section">
+        <div className="ia-titre">{t("tempsParTour", L)}</div>
+        <div className="ia-options">
+          {TIMER_OPTIONS.map(opt => (
+            <button key={opt.val} className={`ia-btn ${timerSec === opt.val ? "actif" : ""}`}
+              onClick={() => selectTimer(opt.val)}>{opt.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ia-section">
+        <div className="ia-titre">{t("modeIA", L)}</div>
+        <div className="ia-options">
+          {[["aucune", t("deuxJoueurs", L)],["j2", t("iaJoueNoir", L)],["j1", t("iaJoueRouge", L)]].map(([val, label]) => (
+            <button key={val} className={`ia-btn ${modeIA === val ? "actif" : ""}`} onClick={() => setModeIA(val)}>{label}</button>
+          ))}
+        </div>
+        {modeIA !== "aucune" && (
+          <div className="ia-niveau">
+            <span>{t("niveauIA", L)}</span>
+            {[
+              { n: 1, label: "Chess",      locked: false, color: "#cc2200" },
+              { n: 2, label: "Amal",       locked: false, color: "#ddaa00" },
+              { n: 3, label: "ELMAASYON",  locked: false, color: "#4477ff" },
+              { n: 4, label: "ELMAAS",     locked: utilisateur?.plan !== "elmaas", color: "#9933ff" },
+            ].map(({ n, label, locked, color }) => (
+              <button key={n}
+                className={`ia-btn-niveau ${niveauIA === n ? "actif" : ""} ${locked ? "verrouille" : ""}`}
+                onClick={() => { if (!locked) setNiveauIA(n); }}
+                title={locked ? (L === 0 ? "Réservé au plan ELMAAS" : L === 1 ? "ELMAAS plan only" : L === 2 ? "حصري لخطة ELMAAS" : "Solo plan ELMAAS") : ""}
+                style={{
+                  borderColor: niveauIA === n ? color : undefined,
+                  color: locked ? "#555" : (niveauIA === n ? color : undefined),
+                  opacity: locked ? 0.5 : 1,
+                  cursor: locked ? "not-allowed" : "pointer",
+                  position: "relative",
+                }}>
+                {label}
+                {locked && <span style={{ fontSize: 10, marginLeft: 4 }}>🔒</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {modeIA !== "aucune" && niveauIA === 4 && (
+          <div style={{
+            marginTop: 12, padding: "10px 14px",
+            background: "rgba(153,51,255,0.08)",
+            borderRadius: 8, border: "1px solid #9933ff44",
+            fontSize: 13, lineHeight: 1.5
+          }}>
+            <div style={{ color: "#9933ff", fontWeight: 700, marginBottom: 4 }}>
+              ELMAAS
+            </div>
+            <div style={{ color: "#cc99ff" }}>
+              {L === 0 ? "ELMAAS réfléchit profondément. Chaque coup peut prendre jusqu'à 30 secondes. Ce délai est inhérent à sa puissance." :
+               L === 1 ? "ELMAAS thinks deeply. Each move may take up to 30 seconds. This delay is inherent to its power." :
+               L === 2 ? "ELMAAS يفكر بعمق. كل حركة قد تستغرق حتى 30 ثانية. هذا التأخير جزء من قوته." :
+               "ELMAAS piensa profundamente. Cada movimiento puede tardar hasta 30 segundos. Este retraso es parte de su poder."}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+        <button className="btn-valider" onClick={() => onValider(prop1, prop1, tailleFin, modeIA, niveauIA, timerSec)}>
+          {modeIA === "aucune" ? t("jouerContreAmi", L) : t("jouerContreIA", L)}
+        </button>
+        {utilisateur && modeIA === "aucune" && (
+          <button className="btn-valider" style={{ background: "linear-gradient(135deg, #228866, #44cc88)" }}
+            onClick={() => onPlayOnline(timerSec)}>
+            {t("jouerOnline", L)}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
-/* ── Boutons popup ────────────────────────────────────── */
-.popup-btn {
-  border-radius: var(--btn-radius, 4px);
-}
-.theme-ar .popup-btn {
-  border: 1px solid #ffd70025;
-  letter-spacing: 0.06em;
-}
-.theme-es .popup-btn {
-  border-left: 3px solid var(--rouge-c);
-  padding-left: 16px;
-}
-.theme-en .popup-btn {
-  border-left: 2px solid var(--accent-culture);
-  padding-left: 18px;
-  text-align: left;
-}
-
-/* ── Score header — typographie culturelle ─────────────── */
-.pseudo-score {
-  font-family: var(--titre);
-  letter-spacing: 0.02em;
-}
-.theme-ar .pseudo-score {
-  font-size: 1.3em;
-  color: var(--accent-culture);
-  text-shadow: 0 0 20px #ffd70044;
-}
-
-/* ── ia-btn (sélection langue/robot) ───────────────────── */
-.ia-btn.actif {
-  border-color: var(--accent-culture);
-  color: var(--accent-culture);
-  background: var(--accent-culture)11;
-  box-shadow: inset 0 0 12px var(--accent-culture)18;
-}
-
-/* ── Mobile infos bar — teinte culturelle ──────────────── */
-.theme-ar .mobile-infos-bar {
-  background: linear-gradient(90deg, #ffd70008, var(--bg3), #ffd70008);
-}
-.theme-es .mobile-infos-bar {
-  background: linear-gradient(90deg, #e8304a06, var(--bg3), #e8304a06);
-}
-.theme-en .mobile-infos-bar {
-  background: linear-gradient(90deg, #c9a84c06, var(--bg3), #c9a84c06);
-}
-
-/* ── Mobile adverse bar — identité ─────────────────────── */
-.theme-ar .mobile-adverse-bar {
-  border-top: 1px solid #ffd70020;
-}
-.theme-es .mobile-adverse-bar {
-  border-top: 1px solid #e8304a20;
-}
-
-/* ── Séparateur culturel ────────────────────────────────── */
-.separateur-culturel {
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent,
-    var(--accent-culture)55,
-    var(--accent-culture)88,
-    var(--accent-culture)55,
-    transparent);
-}
-
-body {
-  background: var(--bg);
-  color: var(--texte);
-  font-family: var(--brush);
-  min-height: 100vh;
-}
-
-html[dir="rtl"] body { text-align: right; }
-
-.app {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    var(--pattern),
-    var(--gradient-culture),
-    var(--bg);
-  background-size: auto, auto, cover;
-}
-.app.jeu {
-  flex-direction: column;
-  align-items: stretch;
-  padding: 0;
-  background:
-    var(--pattern),
-    var(--bg);
-  background-size: auto, cover;
+//  Popup Matchmaking 
+function PopupMatchmaking({ onAnnuler, onMatchTrouve, timerSec, L, utilisateur }) {
+  const [tempsEcoule, setTempsEcoule] = useState(0);
+  const [citation, setCitation] = useState(() => getCitationAttente(getLangueInitiale()));
+  const [echec, setEchec] = useState(false);
+  const [tolerance, setTolerance] = useState(100);
+ 
+  useEffect(() => {
+    const i = setInterval(() => setTempsEcoule(t => t + 1), 1000);
+    const c = setInterval(() => setCitation(getCitationAttente(L)), 8000);
+    return () => { clearInterval(i); clearInterval(c); };
+  }, []);
+ 
+  useEffect(() => {
+    let actif = true;
+    const token = localStorage.getItem("elmaas_token");
+ 
+    const verifier = async () => {
+      if (!actif) return;
+      try {
+        const r = await axios.get(`${API}/matchmaking/verifier`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!actif) return;
+ 
+        if (r.data.status === "match") {
+          onMatchTrouve(r.data);
+          return;
+        }
+        if (r.data.status === "timeout") {
+          setEchec(true);
+          return;
+        }
+        if (r.data.tolerance) setTolerance(r.data.tolerance);
+      } catch (e) {
+        console.error("Poll match:", e);
+      }
+    };
+ 
+    verifier();
+    const poll = setInterval(verifier, 3000);
+    return () => { actif = false; clearInterval(poll); };
+  }, [onMatchTrouve]);
+ 
+  const handleAnnuler = async () => {
+    const token = localStorage.getItem("elmaas_token");
+    try {
+      await axios.post(`${API}/matchmaking/quitter`, {},
+        { headers: { Authorization: `Bearer ${token}` } });
+    } catch {}
+    onAnnuler();
+  };
+ 
+  return (
+    <div className="popup-overlay">
+      <div className="popup-pouvoir" style={{ minWidth: 400, gap: 16 }}>
+        {echec ? (
+          <>
+            <div className="popup-titre"></div>
+            <div className="popup-sous-titre">{t("matchmakingEchec", L)}</div>
+            <button className="popup-btn" onClick={handleAnnuler}>{t("fermer", L)}</button>
+          </>
+        ) : (
+          <>
+            <div className="popup-titre">{t("rechercheJoueur", L)}</div>
+            <div className="spinner" style={{ margin: "0 auto" }} />
+            <div style={{ fontSize: 13, color: "var(--muted)" }}>
+              {t("tempsAttente", L)} {Math.floor(tempsEcoule/60)}:{String(tempsEcoule%60).padStart(2,"0")}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>
+              {t("elargissementRecherche", L)}{tolerance} ELM
+            </div>
+            <div style={{ fontSize: 13, fontStyle: "italic", color: "var(--texte)", textAlign: "center", maxWidth: 340, opacity: 0.8 }}>
+              "{citation}"
+            </div>
+            <button className="popup-btn" onClick={handleAnnuler}>{t("annulerRecherche", L)}</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
-/* titre-jeu défini dans la section identité culturelle */
+//  Écran Photo 
+function EcranPhoto2({ prop1, prop2, timerSec, utilisateur, modeIA, partieIdMatch, onPartieCreee, L }) {
+  const [photosFixees, setPhotosFixees] = useState([]);
+  const [photoSelectionnee, setPhotoSelectionnee] = useState(null);
+  const [nomPhoto, setNomPhoto] = useState("");
+  const [chargement, setChargement] = useState(false);
+  const [erreur, setErreur] = useState(null);
+  const [apercu, setApercu] = useState(null);
 
-.phrase-jeu {
-  font-family: var(--brush);
-  font-size: clamp(13px, 2vw, 18px);
-  color: var(--muted);
-  text-align: center;
-  font-style: italic;
-  margin-top: -8px;
-  max-width: 600px;
-  line-height: 1.4;
+  const peutUploader = !utilisateur ? false
+    : (utilisateur.plan === "elmaas" || utilisateur.plan === "elmaasyon")
+      ? true
+      : !utilisateur.photo_perso_utilisee;
+  const nomValide = modeIA !== "aucune" || nomPhoto.trim().length >= 3;
+
+  useEffect(() => {
+    axios.get(`${API}/photos_fixes`).then(res => setPhotosFixees(res.data.photos));
+  }, []);
+
+  const jouerAvecPhoto = async (urlOuFichier, estFichier = false) => {
+    if (!nomValide) { setErreur(t("min3Car", L)); return; }
+    setErreur(null); setChargement(true);
+    try {
+      const formData = new FormData();
+      formData.append("prop_j1", prop1);
+      formData.append("prop_j2", prop2);
+      formData.append("nom_photo", modeIA !== "aucune" ? "" : nomPhoto.slice(0, 10));
+      formData.append("timer_sec", timerSec);
+      formData.append("langue", LANGUES[L].code);
+      if (partieIdMatch) formData.append("partie_id_match", partieIdMatch);
+      if (estFichier) {
+        formData.append("photo", urlOuFichier);
+        if (utilisateur && utilisateur.plan !== "elmaas" && utilisateur.plan !== "elmaasyon") {
+          const token = getToken();
+          try {
+            await axios.post(`${API}/consommer_upload`, {}, { headers: { Authorization: `Bearer ${token}` } });
+            const upd = { ...utilisateur, photo_perso_utilisee: true };
+            localStorage.setItem("elmaas_user", JSON.stringify(upd));
+            setUtilisateur(upd);
+          } catch (err) {
+            if (err.response?.data?.code === "QUOTA_UPLOAD") {
+              const msg = L===0 ? "Upload limité à 1 photo (plan Gratuit). Passez à ELMAASYON." :
+                          L===1 ? "Upload limited to 1 photo (Free plan). Upgrade to ELMAASYON." :
+                          L===2 ? "التحميل محدود بصورة واحدة. ترقّ إلى ELMAASYON." :
+                                  "Upload limitado a 1 foto (Gratis). Pasa a ELMAASYON.";
+              setErreurPhoto(msg);
+              return;
+            }
+          }
+        }
+      } else {
+        const resp = await fetch(`${API}${urlOuFichier}`);
+        const blob = await resp.blob();
+        const fichier = new File([blob], "photo.jpg", { type: blob.type });
+        formData.append("photo", fichier);
+      }
+      const res = await axios.post(`${API}/nouvelle-partie`, formData);
+      onPartieCreee(res.data.partie_id, res.data.etat, res.data.pixels_photo, res.data.taille, res.data.timer_sec, res.data.scores_manches);
+    } catch (err) {
+      console.error("Erreur création partie:", err);
+      if (err.response?.data?.code === "MOT_SACRE") setErreur(t("motSacreErreur", L));
+      else if (err.response?.data?.code === "QUOTA_UPLOAD") {
+        const msg = L===0 ? "Upload limité à 1 photo (plan Gratuit). Passez à ELMAASYON." :
+                    L===1 ? "Upload limited to 1 photo (Free plan). Upgrade to ELMAASYON." :
+                    L===2 ? "التحميل محدود. ترقّ إلى ELMAASYON." :
+                            "Upload limitado a 1 foto (Gratis). Pasa a ELMAASYON.";
+        setErreur(msg);
+      }
+      else if (err.response?.status === 413 || err.response?.data?.code === "PHOTO_INVALIDE")
+        setErreur(t("photoInvalide", L));
+      else setErreur(err.response?.data?.erreur || t("erreurCreation", L));
+    } finally { setChargement(false); }
+  };
+
+  const handleFichier = (e) => {
+    const fichier = e.target.files[0];
+    if (!fichier) return;
+    if (fichier.size > 5 * 1024 * 1024) { setErreur(t("photoInvalide", L)); return; }
+    setApercu(URL.createObjectURL(fichier));
+    setPhotoSelectionnee({ fichier, estFichier: true });
+  };
+
+  const filtreNomSacre = (val) => {
+    setNomPhoto(val);
+  };
+
+  return (
+    <div className="ecran-taille" style={{ gap: 20 }}>
+      <h1 className="titre-jeu">ELMAAS</h1>
+      <p className="phrase-jeu">{t("choisissezPhoto", L)}</p>
+
+      {modeIA === "aucune" && (
+        <div className="nom-photo-section">
+          <label className="nom-photo-label">
+            {t("nomSecretPhoto", L)}{" "}
+            <span>{t("max10Car", L)}</span>{" "}
+            <span style={{ color: nomValide ? "#88ff88" : "var(--rouge-c)" }}>{t("min3Car", L)}</span>
+          </label>
+          <input className="nom-photo-input" maxLength={10} placeholder={t("exVacances", L)}
+            value={nomPhoto} onChange={e => filtreNomSacre(e.target.value)} />
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600 }}>
+        {photosFixees.map((url, i) => (
+          <div key={i} onClick={() => { setPhotoSelectionnee({ url, estFichier: false }); setApercu(null); }}
+            style={{
+              width: 100, height: 100, borderRadius: 8, overflow: "hidden", cursor: "pointer",
+              border: photoSelectionnee?.url === url ? "3px solid var(--rouge-c)" : "2px solid var(--bord)",
+              transition: "all 0.2s",
+            }}>
+            <img src={`${API}${url}`} alt={`photo ${i+1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+        ))}
+      </div>
+
+      {utilisateur ? (peutUploader ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>
+            {utilisateur.plan === "elmaas" || utilisateur.plan === "elmaasyon"
+              ? t("premiumIllimite", L)
+              : t("unePhotoGratuite", L)}
+          </div>
+          <label className="zone-upload" htmlFor="photo-perso-input" style={{ width: 200, minHeight: 80, cursor: "pointer" }}>
+            {apercu ? <img src={apercu} alt="apercu" style={{ width: "100%", height: 80, objectFit: "cover" }} />
+              : <div className="upload-placeholder" style={{ fontSize: 13 }}>
+                  <div className="upload-icone" style={{ fontSize: 24 }}>+</div>
+                  <p>{t("maPhoto", L)}</p>
+                </div>}
+            <input id="photo-perso-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleFichier} style={{ display: "none" }} />
+          </label>
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
+          {t("photoUtilisee", L)} — <span style={{ color: "var(--rouge-c)" }}>{t("passerPremium", L)}</span>
+        </div>
+      )) : (
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("connectezVous", L)}</div>
+      )}
+
+      {erreur && <p className="erreur">{erreur}</p>}
+      {chargement && <div className="chargement"><div className="spinner" /><p>{t("generation", L)}</p></div>}
+
+      {photoSelectionnee && !chargement && (
+        <button className="btn-valider" disabled={!nomValide}
+          onClick={() => jouerAvecPhoto(
+            photoSelectionnee.estFichier ? photoSelectionnee.fichier : photoSelectionnee.url,
+            photoSelectionnee.estFichier)}>
+          {t("jouerAvecPhoto", L)}
+        </button>
+      )}
+    </div>
+  );
 }
-.sous-phrase-jeu {
-  font-family: var(--brush);
-  font-size: clamp(11px, 1.6vw, 14px);
-  color: var(--muted);
-  opacity: 0.7;
-  text-align: center;
-  margin-top: 2px;
+
+function EcranLobby({ partieId, monRole, statutConnexion, onRejoindreManuellement, L, dejaMatche, onPartiePrete }) {
+  const [codeSaisi, setCodeSaisi] = useState("");
+
+  // Transition automatique quand statutConnexion devient "connecte"
+  useEffect(() => {
+    if (statutConnexion === "connecte" && onPartiePrete) {
+      onPartiePrete();
+    }
+  }, [statutConnexion, onPartiePrete]);
+
+  // Cas 1 : Joueur 2 qui vient du matchmaking → attend la création de la partie par Rouge
+  if (dejaMatche) {
+    return (
+      <div className="ecran-lobby">
+        <h1 className="titre-jeu">ELMAAS</h1>
+        <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
+        <div className="lobby-card">
+          <div className="lobby-titre">Match trouvé !</div>
+          <div className="lobby-sous">Adversaire choisit la photo...</div>
+          <div className="spinner" style={{ margin: "20px auto" }} />
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
+            Code de partie : {partieId}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Cas 2 : Joueur 1 qui a créé une partie et attend un ami par code
+  if (monRole === "joueur1") {
+    return (
+      <div className="ecran-lobby">
+        <h1 className="titre-jeu">ELMAAS</h1>
+        <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
+        <div className="lobby-card">
+          <div className="lobby-titre">{t("partieCreee", L)}</div>
+          <div className="lobby-sous">{t("donnezCodeJ2", L)}</div>
+          <div className="lobby-code">{partieId}</div>
+          <button className="lobby-copier" onClick={() => navigator.clipboard.writeText(partieId)}>
+            {t("copierCode", L)}
+          </button>
+          <div className={`lobby-statut ${statutConnexion}`}>
+            {statutConnexion === "attente" && t("attenteJ2", L)}
+            {statutConnexion === "connecte" && t("j2Connecte", L)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Cas 3 : Joueur 2 qui doit saisir un code (invité par ami)
+  return (
+    <div className="ecran-lobby">
+      <h1 className="titre-jeu">ELMAAS</h1>
+      <p className="phrase-jeu">{getSloganAleatoire(L)}</p>
+      <div className="lobby-card">
+        <div className="lobby-titre">{t("rejoindrePartie", L)}</div>
+        <div className="lobby-sous">{t("entrerCode", L)}</div>
+        <input className="lobby-input" placeholder={t("codePartie", L)}
+          value={codeSaisi} onChange={e => setCodeSaisi(e.target.value)} />
+        <button className="btn-valider"
+          onClick={() => onRejoindreManuellement(codeSaisi.trim())}
+          disabled={!codeSaisi.trim()}>
+          {t("rejoindre", L)}
+        </button>
+        {statutConnexion === "erreur" && (
+          <div className="lobby-statut erreur">{t("partieIntrouvable", L)}</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-.titre-jeu-petit { font-family: var(--titre); font-size: 24px; color: var(--rouge-c); }
-.sous-titre { font-family: var(--brush); font-size: 15px; color: var(--muted); margin-top: 8px; text-align: center; }
-
-.ecran-taille, .ecran-lobby {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 32px;
-  padding: 48px 32px;
+function TimerBloc({ secondes, couleur, actif, L }) {
+  const m = Math.floor(secondes / 60), s = secondes % 60;
+  const danger = secondes <= 10;
+  return (
+    <div className={`timer-bloc ${couleur} ${actif ? "actif" : ""}`}>
+      <span className="timer-label">{couleur === "rouge" ? t("rouge", L) : t("noir", L)}</span>
+      <span className={`timer-val${danger && actif ? " danger" : ""}`}>
+        {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
+      </span>
+    </div>
+  );
 }
 
-.taille-inputs { display: flex; align-items: center; gap: 40px; }
-.taille-joueur { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 16px; color: var(--muted); }
-.taille-joueur input[type=range] { width: 140px; accent-color: var(--rouge-c); }
-.taille-val { font-size: 28px; color: var(--texte); font-family: var(--brush); }
-.taille-result { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.taille-final { font-family: var(--brush); font-size: 64px; color: var(--rouge-c); text-shadow: 0 0 30px var(--rouge)66; }
-.taille-label { font-size: 13px; color: var(--muted); }
+function MiniPiece({ piece, couleur, estSelectionnee, onClick }) {
+  if (!piece) return null;
+  const cells = piece.cellules || [];
+  const maxR = Math.max(0, ...cells.map(([r]) => r));
+  const maxC = Math.max(0, ...cells.map(([, c]) => c));
+  const S = 10;
 
-.btn-valider {
-  background: linear-gradient(135deg, var(--rouge), var(--rouge-c));
-  color: #fff; border: none;
-  padding: 14px 48px;
-  border-radius: var(--btn-radius, 4px);
-  font-family: var(--brush); font-size: 20px;
-  cursor: pointer;
-  box-shadow: var(--shadow-culture), 0 4px 16px #00000044;
-  letter-spacing: 0.04em;
+  //  ELMAAS = pièce d'enlèvement (diamant)
+  const estELMAAS = piece.enlevement === true;
+
+  let coul, coulClair, bordure, bgSel;
+  if (estELMAAS) {
+    coul = "#00BFFF"; coulClair = "#80D8FF";
+    bordure = estSelectionnee ? "#00BFFF" : "#004488";
+    bgSel = "rgba(0,191,255,0.2)";
+  } else {
+    coul = couleur === "rouge" ? "#cc2200" : "#444444";
+    coulClair = couleur === "rouge" ? "#ff4422" : "#888888";
+    bordure = estSelectionnee ? coulClair : "#2a2a4a";
+    bgSel = `${coul}33`;
+  }
+
+  return (
+    <div onClick={onClick} className={`mini-piece ${estSelectionnee ? "sel" : ""}`}
+      style={{ position: "relative", width: (maxC+1)*S+10, height: (maxR+1)*S+10, padding: 5,
+        borderRadius: 6, cursor: "pointer", flexShrink: 0,
+        border: `2px solid ${bordure}`,
+        background: estSelectionnee ? bgSel : "#111122", transition: "all 0.15s",
+        boxShadow: estELMAAS ? "0 0 8px rgba(0,191,255,0.4)" : "none" }}
+      title={estELMAAS ? ` ELMAAS ${piece.forme}` : piece.forme}>
+      {cells.map(([r, c], i) => (
+        <div key={i} style={{ position: "absolute", top: r*S+5, left: c*S+5,
+          width: S-2, height: S-2, borderRadius: 2, background: coul,
+          boxShadow: estELMAAS ? `0 0 6px ${coul}` : `0 0 4px ${coul}88` }} />
+      ))}
+      {estELMAAS && (
+        <div style={{ position: "absolute", top: -3, right: -3, width: 8, height: 8,
+          borderRadius: "50%", background: "#00BFFF", boxShadow: "0 0 4px #00BFFF" }} />
+      )}
+    </div>
+  );
 }
-.btn-valider:hover { filter: brightness(1.12); box-shadow: var(--shadow-culture), 0 6px 24px #00000066; }
-.btn-valider:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* Bouton Paramètres flottant (présent partout) */
-.btn-params-flottant {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 500;
-  width: 42px; height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--accent-culture);
-  background: var(--bg2);
-  color: var(--accent-culture);
-  font-size: 18px;
-  cursor: pointer;
+function PopupPouvoir({ onChoisir, serie, L }) {
+  const estSerie3 = serie >= 3;
+  const options = [
+    { id: "rien", label: t("rienFaire", L), desc: t("rienFaireDesc", L) },
+    { id: "echanger", label: t("echanger", L), desc: t("echangerDesc", L) },
+    ...(estSerie3 ? [{ id: "extraire", label: `${t("extraire", L)} (${t("serie", L)} ${serie})`, desc: t("extraireDesc", L) }] : []),
+  ];
+  return (
+    <div className="popup-overlay">
+      <div className="popup-pouvoir">
+        <div className="popup-titre">{estSerie3 ? `${t("serieDe", L)} ${serie}` : t("puzzleComplete", L)}</div>
+        <div className="popup-sous-titre">{t("choisirRecompense", L)}</div>
+        <div className="popup-options">
+          {options.map(opt => (
+            <button key={opt.id} className={`popup-btn ${opt.id === "extraire" ? "popup-btn-serie" : ""}`}
+              onClick={() => onChoisir(opt.id)}>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontWeight: 600, fontSize: 16 }}>{opt.label}</div>
+                <div style={{ fontSize: 12, opacity: 0.55, marginTop: 2 }}>{opt.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PopupScout({ pieces, couleur, echanges, onFermer, L }) {
+  return (
+    <div className="popup-overlay">
+      <div className="popup-scout">
+        <div className="popup-titre">Scout — {pieces.length} {t("scoutProchaines", L)}</div>
+        {echanges && echanges.length > 0 && (
+          <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
+            {echanges.length} {t("pieces", L)} {t("echangeAleatoire", L)}
+          </div>
+        )}
+        <div className="scout-pieces">
+          {pieces.map((p, i) => (
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <MiniPiece piece={p} couleur={couleur} estSelectionnee={false} onClick={() => {}} />
+              <span style={{ fontSize: 9, color: "var(--muted)" }}>{i + 1}</span>
+            </div>
+          ))}
+        </div>
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
+      </div>
+    </div>
+  );
+}
+
+function PopupReconnaissance({ indice, onTenter, onFermer, tenteeDejaFaite, L }) {
+  const [proposition, setProposition] = useState("");
+  const [resultat, setResultat] = useState(null);
+  const [erreurLocale, setErreurLocale] = useState(null);
+  const propValide = proposition.trim().length >= 3;
+
+  const handleTenter = async () => {
+    if (!propValide) { setErreurLocale(t("min3CarDevinette", L)); return; }
+    setErreurLocale(null);
+    const res = await onTenter(proposition);
+    setResultat(res);
+  };
+  return (
+    <div className="popup-overlay">
+      <div className="popup-pouvoir">
+        <div className="popup-titre">{t("reconnaissance", L)}</div>
+        {!tenteeDejaFaite && !resultat && (
+          <>
+            <div className="popup-sous-titre">
+              {t("longueur", L)} <strong>{indice?.longueur}</strong> {t("lettres", L)} &nbsp; {t("commencePar", L)} <strong>{indice?.premiere_lettre}</strong>
+            </div>
+            <input className="lobby-input" placeholder={t("tonEstimation", L)} maxLength={12}
+              value={proposition} onChange={e => { setProposition(e.target.value); setErreurLocale(null); }}
+              onKeyDown={e => e.key === "Enter" && propValide && handleTenter()} />
+            {erreurLocale && <div style={{ color: "#ff6644", fontSize: 12 }}>{erreurLocale}</div>}
+            <button className="btn-valider" onClick={handleTenter} disabled={!propValide}>{t("valider", L)}</button>
+          </>
+        )}
+        {resultat && (
+          <div style={{ textAlign: "center" }}>
+            {resultat.succes
+              ? <div style={{ color: "#88ff88", fontSize: 20 }}>{t("bravoDoubleTour", L)}</div>
+              : <div style={{ color: "#ff8888" }}>{t("rateNomEtait", L)} <strong>{resultat.nom_reel}</strong></div>}
+          </div>
+        )}
+        {tenteeDejaFaite && !resultat && <div style={{ color: "var(--muted)" }}>{t("tentativeUtilisee", L)}</div>}
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
+      </div>
+    </div>
+  );
+}
+
+function PopupManuel({ onFermer, L }) {
+  return (
+    <div className="popup-overlay" onClick={onFermer}>
+      <div className="popup-pouvoir" style={{ maxWidth: 600, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div className="popup-titre">{t("manuelTitre", L)}</div>
+        <div style={{ fontSize: 14, color: "var(--muted)", fontStyle: "italic", textAlign: "center" }}>{t("manuelIntro", L)}</div>
+        <div className="manuel-content">
+          <div className="manuel-section">
+            <div className="manuel-titre-section"> {t("objectif", L)}</div>
+            <p>{t("objectifDesc", L)}</p>
+          </div>
+          <div className="manuel-section">
+            <div className="manuel-titre-section"> {t("actionsParTour", L)}</div>
+            <p>• {t("actionPoser", L)}</p>
+            <p>• {t("actionRepiocher", L)}</p>
+            <p>• {t("actionScout", L)}</p>
+          </div>
+          <div className="manuel-section">
+            <div className="manuel-titre-section"> {t("series", L)}</div>
+            <p>• {t("serie3Desc", L)}</p>
+            <p>• {t("serie5Desc", L)}</p>
+          </div>
+          <div className="manuel-section" style={{ borderColor: "var(--accent-culture)" }}>
+            <div className="manuel-titre-section"> {t("astuceTitre", L)}</div>
+            <p style={{ fontStyle: "italic" }}>{t("astuceDesc", L)}</p>
+          </div>
+        </div>
+        <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
+      </div>
+    </div>
+  );
+}
+
+//  Bulle message (5s) 
+function BulleMessage({ texte, couleur, position, onFermer }) {
+  useEffect(() => {
+    const t = setTimeout(onFermer, 5000);
+    return () => clearTimeout(t);
+  }, [onFermer]);
+  return (
+    <div className="bulle-message" style={{ [position]: 20, borderColor: couleur === "rouge" ? "#ff4422" : "#aaaaaa" }}>
+      {texte}
+    </div>
+  );
+}
+
+//  App principale 
+export default function App() {
+  const [utilisateur, setUtilisateur] = useState(() => getUser());
+  const [indexLangue, setIndexLangue] = useState(getLangueInitiale);
+  const L = indexLangue;
+  const [showParametres, setShowParametres] = useState(false);
+  const [etape, setEtape] = useState(() => getUser()?.pseudo ? "taille" : (getUser() ? "pseudo" : "auth"));
+  const [props, setProps] = useState({ j1: 16, j2: 16, taille: 16 });
+  const [partieId, setPartieId] = useState(null);
+  const [partieIdMatch, setPartieIdMatch] = useState(null);
+  const [pseudoAdversaireMatch, setPseudoAdversaireMatch] = useState(null);
+  const [etat, setEtat] = useState(null);
+  const [pixelsPhoto, setPixelsPhoto] = useState(null);
+  const [taille, setTaille] = useState(16);
+  const [pieceIdx, setPieceIdx] = useState(null);
+  const [popup, setPopup] = useState(null);
+  const [scoutPieces, setScoutPieces] = useState([]);
+  const [modeIA, setModeIA] = useState("aucune");
+  const [niveauIA, setNiveauIA] = useState(2);
+  const [iaEnCours, setIaEnCours] = useState(false);
+  const socketRef = useRef(null);
+  const [monRole, setMonRole] = useState(null);
+  const monRoleRef = useRef(null);
+  useEffect(() => { monRoleRef.current = monRole; }, [monRole]);
+  const [statutConnexion, setStatutConnexion] = useState("attente");
+  const [modeMultijoueur, setModeMultijoueur] = useState(false);
+  const [bonusDoubleActif, setBonusDoubleActif] = useState(false);
+  const [reconnaissanceTentee, setReconnaissanceTentee] = useState(false);
+  const [indiceReconnaissance, setIndiceReconnaissance] = useState(null);
+  const [timerChoisi, setTimerChoisi] = useState(30);
+  const [timerRouge, setTimerRouge] = useState(30);
+  const [timerNoir, setTimerNoir] = useState(30);
+  const [timerIA, setTimerIA] = useState(0);
+  const timerIARef = useRef(null);
+  const [scoresManches, setScoresManches] = useState({ rouge: 0, noir: 0 });
+  const [mancheTermineeInfo, setMancheTermineeInfo] = useState(null);
+  const [pauseActive, setPauseActive] = useState(false);
+  const [pauseIAActive, setPauseIAActive] = useState(false);
+  const [demandePauseRecue, setDemandePauseRecue] = useState(null);
+  const timerRef = useRef(null);
+  const [extractionsEnCours, setExtractionsEnCours] = useState([]);
+  const [pieceADonner, setPieceADonner] = useState(null);
+  const [attenteChoixPouvoir, setAttenteChoixPouvoir] = useState(false);
+  const [scoutEchanges, setScoutEchanges] = useState([]);
+  const [matchmakingActif, setMatchmakingActif] = useState(false);
+  // SUPPRESSION DU MODE RAPIDE — toujours profonde
+  const modeAnalyse = "profonde";
+  const [modeCouleur, setModeCouleur] = useState(1); // 1=rouge/noir, 2=cyan/jaune
+  const [messageChat, setMessageChat] = useState("");
+  const [bullesActives, setBullesActives] = useState([]);
+  const lastMsgTime = useRef(0);
   
-  box-shadow: 0 4px 12px var(--accent-culture)22;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-html[dir="rtl"] .btn-params-flottant { right: auto; left: 16px; }
-.btn-params-flottant:hover { transform: scale(1.1); box-shadow: 0 4px 20px var(--accent-culture)66; }
+  const pseudoAdverse = modeIA !== "aucune"
+    ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS")
+    : (pseudoAdversaireMatch || etat?.pseudo_adversaire || "ADVERSAIRE");
 
-.zone-upload {
-  width: 100%; min-height: 200px;
-  border: var(--border-culture, 1px solid var(--bord));
-  border-radius: var(--card-radius, 6px);
-  background: var(--bg3); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-}
-.zone-upload:hover { border-color: var(--accent-culture); box-shadow: var(--shadow-culture); }
-.upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--muted); font-family: var(--brush); font-size: 16px; }
-.upload-icone { font-size: 44px; color: var(--rouge-c); opacity: 0.5; animation: rot 8s linear infinite; }
-@keyframes rot { to { transform: rotate(360deg); } }
-.chargement { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--muted); font-size: 16px; }
-.spinner { width: 28px; height: 28px; border: 2px solid var(--bord); border-top-color: var(--rouge-c); border-radius: 50%; animation: spin 0.7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.erreur { color: #ff6644; font-size: 15px; text-align: center; }
+  const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });
+  const [eloInfo, setEloInfo] = useState(null); // { avant, apres, delta }
+  const finPartieEnvoyee = useRef(new Set()); // anti-double par partie_id
 
-/* ══════════════════════════════════════════════════════════
-   HEADER — Style Chess.com (timers bien positionnés)
-   ══════════════════════════════════════════════════════════ */
+  useEffect(() => {
+    if (!mancheTermineeInfo) return;
+    const g = mancheTermineeInfo.gagnant;
+    if (g && g !== "egalite" && pseudoAdverse) {
+      const maCouleurScore = modeIA !== "aucune"
+        ? (modeIA === "j1" ? "noir" : "rouge")
+        : (monRole === "joueur2" ? "noir" : "rouge");
+      const jaiGagne = g === maCouleurScore;
+      const nouveauScore = {
+        moi: scoresCumules.moi + (jaiGagne ? 1 : 0),
+        lui: scoresCumules.lui + (jaiGagne ? 0 : 1)
+      };
+      setScoresCumulesState(nouveauScore);
+      setScoresCumules(pseudoAdverse, nouveauScore);
+    }
 
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--bord);
-  background: var(--bg2);
-  position: sticky; top: 0; z-index: 100;
-  gap: 12px;
-  min-height: 54px;
-}
+    // ── Mise à jour ELM ──────────────────────────────────────
+    const token = getToken();
+    if (!token || !utilisateur || !partieId) return;
+    if (finPartieEnvoyee.current.has(partieId)) return;
+    finPartieEnvoyee.current.add(partieId);
 
-/* Bloc gauche : titre + scores */
-.header-gauche {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-  min-width: 0;
-}
+    // Couleur réelle du joueur humain
+    const maCouleur = modeIA !== "aucune"
+      ? (modeIA === "j1" ? "noir" : "rouge")   // IA j1=rouge → humain=noir
+      : (monRole === "joueur2" ? "noir" : "rouge");
+    const egalite     = g === "egalite";
+    const jaiGagne    = !egalite && g === maCouleur;
+    const gagnantCode = egalite ? 0 : jaiGagne ? 1 : 2;
+    const scores      = mancheTermineeInfo.scores || {};
 
-/* Bloc centre : timers bien en évidence (comme Chess.com) */
-.header-centre {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
+    axios.post(`${API}/fin_partie`, {
+      partie_id:        partieId,
+      adversaire_pseudo: pseudoAdverse,
+      gagnant:          gagnantCode,
+      score_j1:         maCouleur === "rouge" ? (scores.rouge ?? 0) : (scores.noir ?? 0),
+      score_j2:         maCouleur === "rouge" ? (scores.noir  ?? 0) : (scores.rouge ?? 0),
+    }, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        if (res.data.succes && !res.data.deja_traite) {
+          const delta = res.data.delta;
+          const eloApres = res.data.elo_apres;
+          setEloInfo({ avant: res.data.elo_avant, apres: eloApres, delta });
+          const updatedUser = { ...utilisateur, elo: eloApres };
+          localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
+          setUtilisateur(updatedUser);
+        }
+      })
+      .catch(err => console.warn("[fin_partie]", err?.response?.data || err.message));
+  }, [mancheTermineeInfo]);
+  
+  const [showAnalyse, setShowAnalyse] = useState(false);
+  const [analyseJoueur, setAnalyseJoueur] = useState(null);
+  const [analyseAdv, setAnalyseAdv] = useState(null);
+  const [analyseChargement, setAnalyseChargement] = useState(false);
+  const [dernierCoupClassif, setDernierCoupClassif] = useState(null);
 
-/* Bloc droit : infos + boutons */
-.header-droite {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  justify-content: flex-end;
-  min-width: 0;
-}
+  const lancerAnalyse = async () => {
+    if (!partieId) return;
+    setAnalyseChargement(true);
+    try {
+      const couleurMoi = modeIA !== "aucune"
+        ? (modeIA === "j1" ? "noir" : "rouge")
+        : (monRole === "joueur2" ? "noir" : "rouge");
+      const couleurAdv = couleurMoi === "rouge" ? "noir" : "rouge";
+      const token = getToken();
+      const res = await axios.post(
+        `${API}/analyse/${partieId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.succes) {
+        const tousCoups = res.data.analyse?.coups || [];
+        const coupsMoi = tousCoups.filter(c => c.couleur === couleurMoi);
+        const coupsAdv = tousCoups.filter(c => c.couleur === couleurAdv);
+        const bon = ["ELMAAS", "ELMAASYON", "MASSY", "NOTMESSY"];
+        const precMoi = coupsMoi.length
+          ? Math.round(coupsMoi.filter(c => bon.includes(c.classification)).length / coupsMoi.length * 100)
+          : 0;
+        const precAdv = coupsAdv.length
+          ? Math.round(coupsAdv.filter(c => bon.includes(c.classification)).length / coupsAdv.length * 100)
+          : 0;
+        setAnalyseJoueur({ coups: coupsMoi, precision_pct: precMoi });
+        setAnalyseAdv({ coups: coupsAdv, precision_pct: precAdv });
+        setMancheTermineeInfo(null);
+        setPopup(null);
+        setShowAnalyse(true);
+      } else {
+        alert(res.data.erreur || "Erreur lors de l'analyse");
+      }
+    } catch (e) {
+      alert("Erreur : " + (e.response?.data?.erreur || e.message));
+    } finally {
+      setAnalyseChargement(false);
+    }
+  };
 
-.scores { display: flex; align-items: center; gap: 12px; }
-.score-item { display: flex; flex-direction: column; align-items: center; gap: 1px; }
-.score-nb { font-family: var(--brush); font-size: 28px; font-weight: 700; line-height: 1; }
-.score-item.rouge .score-nb { color: var(--rouge-c); }
-.score-item.noir .score-nb  { color: #aaaaaa; }
-.score-lbl { font-size: 10px; color: var(--muted); }
-.score-sep { font-size: 14px; color: var(--muted); }
+  const changerLangue = (idx) => {
+    setIndexLangue(idx);
+    localStorage.setItem("elmaas_langue", String(idx));
+    appliquerTheme(idx);
+  };
 
-.tour-info { font-size: 13px; color: var(--muted); white-space: nowrap; }
-.couleur-actif.rouge { color: var(--rouge-c); font-weight: 600; }
-.couleur-actif.noir  { color: #aaaaaa; font-weight: 600; }
-.badge-serie { background: var(--rouge)33; border: 1px solid var(--rouge-c)44; color: var(--rouge-c); font-size: 12px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+  useEffect(() => { appliquerTheme(indexLangue); }, [indexLangue]);
+  
 
-.btn-reset { padding: 6px 12px; border: 1px solid var(--bord); background: var(--bg3); color: var(--muted); border-radius: 6px; cursor: pointer; font-family: var(--brush); font-size: 13px; transition: all 0.2s; }
-.btn-reset:hover { border-color: var(--rouge-c); color: var(--rouge-c); }
+  // Retour Google OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleToken = params.get("google_token");
+    const besoinPseudo = params.get("besoin_pseudo");
+    const authError = params.get("auth_error");
 
-.zone-adverse { background: var(--bg2); border-bottom: 1px solid var(--bord); padding: 8px 16px; display: flex; align-items: center; gap: 12px; }
-.adverse-label { font-size: 13px; color: var(--muted); white-space: nowrap; }
-.adverse-pieces { display: flex; gap: 6px; flex-wrap: wrap; }
-.piece-cachee { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--bord); opacity: 0.5; }
-.piece-cachee.rouge { border-color: var(--rouge); background: var(--rouge)22; }
-.piece-cachee.noir  { border-color: var(--noir-c); background: var(--noir)22; }
+    if (authError) {
+      const detail = params.get("detail");
+      console.error("OAuth ERREUR:", authError);
+      console.error("DETAIL:", detail ? decodeURIComponent(detail) : "(pas de détail)");
+      alert("OAuth erreur : " + (detail ? decodeURIComponent(detail) : authError));
+      window.history.replaceState({}, "", "/");
+      return;
+    }
 
-.zone-jeu { display: flex; flex: 1; overflow: hidden; min-height: 0; }
-.plateau-central { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; overflow: auto;
-  background: radial-gradient(ellipse at center, #0d0d2244, transparent 70%); }
+    // ── Retour paiement Stripe ──────────────────────────────
+    const paymentStatus = params.get("payment");
+    if (paymentStatus === "success") {
+      window.history.replaceState({}, "", "/");
+      const token = getToken();
+      if (token) {
+        // Attendre 2s que le webhook Stripe soit traité, puis sync
+        setTimeout(() => {
+          fetch(`${API}/stripe/sync`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json())
+            .then(data => {
+              if (data && !data.erreur) {
+                const updatedUser = { ...getUser(), ...data };
+                localStorage.setItem("elmaas_user", JSON.stringify(updatedUser));
+                setUtilisateur(updatedUser);
+              }
+            }).catch(() => {});
+        }, 2000);
+      }
+    }
+    if (googleToken) {
+      localStorage.setItem("elmaas_token", googleToken);
+      fetch(`${API}/auth/moi`, { headers: { Authorization: `Bearer ${googleToken}` } })
+        .then(r => r.json())
+        .then(user => {
+          if (user && !user.erreur) {
+            localStorage.setItem("elmaas_user", JSON.stringify(user));
+            setUtilisateur(user);
+            if (besoinPseudo === "1" || !user.pseudo) setEtape("pseudo");
+            else setEtape("taille");
+          }
+          window.history.replaceState({}, "", "/");
+        })
+        .catch(() => window.history.replaceState({}, "", "/"));
+    }
+  }, []);
 
-.panneau-main, .panneau-actions {
-  width: 180px; min-width: 180px;
-  background: var(--bg2); padding: 14px 12px;
-  display: flex; flex-direction: column; gap: 8px;
-  border-right: 1px solid var(--bord); overflow-y: auto;
-}
-.panneau-actions { border-right: none; border-left: 1px solid var(--bord); }
-.panneau-titre { font-size: 13px; color: var(--muted); padding-bottom: 6px; border-bottom: 1px solid var(--bord); font-family: var(--brush); }
-.main-pieces-list { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; }
-.mini-piece.sel { transform: scale(1.08); }
-.serie-info { font-size: 14px; color: var(--muted); margin-top: 4px; font-family: var(--brush); }
+  // Scores cumulés chargés à chaque changement d'adversaire
+  useEffect(() => {
+    if (pseudoAdverse && etape === "jeu") {
+      setScoresCumulesState(getScoresCumules(pseudoAdverse));
+    }
+  }, [pseudoAdverse, etape]);
 
-.btn-action { padding: 10px 12px; border: 1px solid var(--bord); background: var(--bg3); color: var(--texte);
-  border-radius: 8px; font-family: var(--brush); font-size: 15px; cursor: pointer; transition: all 0.2s; text-align: left; }
-.btn-action:hover:not(:disabled) { border-color: var(--rouge-c); color: var(--rouge-c); }
-.btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-action.scout { border-color: var(--noir-c)88; color: #aaaaaa; }
-.btn-action.scout:hover:not(:disabled) { border-color: var(--noir-c); }
-.hint-action { font-size: 13px; color: var(--rouge-c); line-height: 1.4; padding: 6px;
-  border: 1px dashed var(--rouge)44; border-radius: 6px; background: var(--rouge)11; font-family: var(--brush); }
+  // Dérivés
+  const joueurActif = etat ? (etat.tour_actuel === 0 ? etat.joueur1 : etat.joueur2) : null;
+  const joueurAdverse = etat ? (etat.tour_actuel === 0 ? etat.joueur2 : etat.joueur1) : null;
 
-.popup-overlay { position: fixed; inset: 0; background: #00000088; display: flex; align-items: center; justify-content: center; z-index: 999; backdrop-filter: blur(4px); }
-.popup-pouvoir, .popup-scout { background: var(--bg2); border: var(--border-culture, 1px solid var(--rouge-c)44); border-radius: var(--card-radius, 6px);
-  padding: 32px; min-width: 320px; max-width: 500px; box-shadow: 0 0 60px var(--rouge)22;
-  display: flex; flex-direction: column; gap: 20px; align-items: center; }
-.popup-titre { font-family: var(--titre); font-size: 26px; color: var(--rouge-c); text-align: center; }
-.popup-sous-titre { font-size: 14px; color: var(--muted); font-family: var(--brush); }
-.popup-options { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-.popup-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--bord);
-  background: var(--bg3); color: var(--texte); border-radius: 10px; cursor: pointer;
-  font-family: var(--brush); font-size: 16px; transition: all 0.15s; width: 100%; }
-.popup-btn:hover { border-color: var(--rouge-c); color: var(--rouge-c); background: var(--rouge)11; }
-.popup-btn-serie { border-color: var(--rouge)44; color: var(--rouge-c); }
-.scout-pieces { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  // Panneaux joueurs — jamais de swap pendant la partie
+  // Mode IA       : toujours le joueur humain à gauche
+  // Mode 2 joueurs: toujours basé sur monRole
+  // Mode local    : suit le tour actuel
+  const couleurHumain = modeIA === "j2" ? "rouge" : modeIA === "j1" ? "noir" : null;
+  let joueurAffiche, joueurAdverseAffiche;
+  if (modeIA !== "aucune" && etat) {
+    joueurAffiche        = couleurHumain === "rouge" ? etat.joueur1 : etat.joueur2;
+    joueurAdverseAffiche = couleurHumain === "rouge" ? etat.joueur2 : etat.joueur1;
+  } else if (modeMultijoueur && monRole && etat) {
+    joueurAffiche        = monRole === "joueur1" ? etat.joueur1 : etat.joueur2;
+    joueurAdverseAffiche = monRole === "joueur1" ? etat.joueur2 : etat.joueur1;
+  } else {
+    joueurAffiche        = joueurActif;
+    joueurAdverseAffiche = joueurAdverse;
+  }
+  const estTourIA = etat && modeIA !== "aucune" &&
+    ((modeIA === "j1" && etat.tour_actuel === 0) || (modeIA === "j2" && etat.tour_actuel === 1));
+  const estMonTour = modeIA !== "aucune"
+    ? !estTourIA
+    : (!modeMultijoueur || !monRole ||
+      (monRole === "joueur1" && etat?.tour_actuel === 0) ||
+      (monRole === "joueur2" && etat?.tour_actuel === 1));
+  const enModeCible = ["attente_cible", "attente_extraire", "attente_recoloriage"].includes(popup?.type);
+  const popupRef = useRef(null);
+  useEffect(() => { popupRef.current = popup; }, [popup]);
+  const trCouleur = (c) => c === "rouge" ? t("rouge", L) : c === "noir" ? t("noir", L) : c;
 
-.board-v3 { border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 2px var(--bord), 0 0 40px #00000066; image-rendering: pixelated; }
-.board-v3.mode-pose { box-shadow: 0 0 0 2px var(--rouge-c), 0 0 30px var(--rouge)33; cursor: crosshair; }
-.cell-v3 { image-rendering: pixelated; }
-.cell-v3.f-ok { filter: brightness(1.6); outline: 2px solid #ffffff66; outline-offset: -2px; z-index: 5; }
-.cell-v3.f-non { filter: brightness(0.4) sepia(1); outline: 2px solid #ff000066; outline-offset: -2px; }
-.cell-v3.brise { animation: brise 1.5s ease-in-out infinite; }
-@keyframes brise { 0%,100%{filter:brightness(1)} 50%{filter:brightness(0.3) sepia(1)} }
-.cell-v3.anim-complete { animation: flash-complete 0.5s ease-out; }
-@keyframes flash-complete { 0%{filter:brightness(4)} 100%{filter:brightness(1)} }
-.piece-v3 { position: absolute; inset: 4px; border-radius: 50%; animation: pop 0.25s cubic-bezier(0.34,1.56,0.64,1); }
-@keyframes pop { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }
-.piece-v3.rouge { background: radial-gradient(circle at 35% 35%, #ff6644, #cc2200); box-shadow: 0 0 8px #cc220088; }
-.piece-v3.noir { background: radial-gradient(circle at 35% 35%, #666666, #111111); box-shadow: 0 0 8px #44444488; }
+  // Timer joueur
+  useEffect(() => {
+    clearInterval(timerRef.current);
+    clearInterval(timerIARef.current);
+    if (etape !== "jeu" || !etat || etat.manche_terminee) return;
+    if (pauseIAActive) return;
+    if (modeMultijoueur && statutConnexion !== "connecte") return;
 
-.ia-section { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 24px;
-  border: 1px solid var(--bord); border-radius: 12px; background: var(--bg3); width: 100%; max-width: 480px; }
-.ia-titre { font-size: 14px; color: var(--muted); font-family: var(--brush); }
-.ia-options { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.ia-btn { padding: 8px 14px; border: 1px solid var(--bord); background: var(--bg); color: var(--muted);
-  border-radius: var(--btn-radius, 4px); cursor: pointer; font-family: var(--brush); font-size: 15px; }
-.ia-btn.actif { border-color: var(--rouge-c); color: var(--rouge-c); background: var(--rouge)11; }
-.ia-btn:hover { border-color: var(--rouge); color: var(--texte); }
-.ia-niveau { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); font-family: var(--brush); }
-.ia-btn-niveau { padding: 6px 12px; border: 1px solid var(--bord); background: var(--bg); color: var(--muted);
-  border-radius: 6px; cursor: pointer; font-family: var(--brush); font-size: 14px; transition: all 0.15s; }
-.ia-btn-niveau.actif { border-color: var(--rouge-c); color: var(--rouge-c); }
-.badge-ia { background: #22224488; border: 1px solid #4444aa44; color: #8888ff; font-size: 12px; padding: 2px 6px;
-  border-radius: 4px; margin-left: 4px; animation: pulse-ia 1s ease-in-out infinite; font-family: var(--brush); }
-@keyframes pulse-ia { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    if (estTourIA || iaEnCours) {
+      setTimerIA(0);
+      timerIARef.current = setInterval(() => {
+        setTimerIA(prev => prev + 1);
+      }, 1000);
+      return () => clearInterval(timerIARef.current);
+    }
 
-.lobby-card { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px 48px;
-  border: 1px solid var(--bord); border-radius: 16px; background: var(--bg3); min-width: 360px; }
-.lobby-titre { font-family: var(--titre); font-size: 24px; color: var(--rouge-c); }
-.lobby-sous { font-size: 15px; color: var(--muted); font-family: var(--brush); }
-.lobby-code { font-family: monospace; font-size: 13px; color: var(--texte); background: var(--bg);
-  border: 1px solid var(--bord); border-radius: 8px; padding: 12px 20px; word-break: break-all; text-align: center; max-width: 300px; }
-.lobby-copier { padding: 8px 20px; border: 1px solid var(--bord); background: var(--bg); color: var(--muted);
-  border-radius: 6px; cursor: pointer; font-family: var(--brush); font-size: 15px; transition: all 0.2s; }
-.lobby-copier:hover { border-color: var(--rouge-c); color: var(--rouge-c); }
-.lobby-statut { font-size: 14px; padding: 8px 16px; border-radius: 6px; font-family: var(--brush); }
-.lobby-statut.attente  { color: var(--muted); }
-.lobby-statut.connecte { color: #88ff88; background: #22441122; border: 1px solid #88ff8822; }
-.lobby-statut.erreur   { color: #ff8888; background: #44111122; border: 1px solid #ff888822; }
-.lobby-input { width: 100%; padding: 12px 16px; background: var(--bg); border: 1px solid var(--bord);
-  border-radius: 8px; color: var(--texte); font-family: monospace; font-size: 14px; outline: none; transition: border-color 0.2s; }
-.lobby-input:focus { border-color: var(--rouge-c); }
+    const tsDebut = etat.timestamp_debut_tour ? etat.timestamp_debut_tour * 1000 : Date.now();
+    if (etat.tour_actuel === 0) setTimerRouge(timerChoisi);
+    else setTimerNoir(timerChoisi);
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--bord); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--rouge-c); }
+    timerRef.current = setInterval(() => {
+      const ecoule = Math.floor((Date.now() - tsDebut) / 1000);
+      const restant = Math.max(0, timerChoisi - ecoule);
+      if (etat.tour_actuel === 0) {
+        setTimerRouge(restant);
+        if (restant <= 0) {
+          clearInterval(timerRef.current);
+          setMancheTermineeInfo({
+            gagnant: "noir", scores: etat?.scores || {},
+            messageTemps: t("rougeNonJoue", L)
+          });
+        }
+      } else {
+        setTimerNoir(restant);
+        if (restant <= 0) {
+          clearInterval(timerRef.current);
+          setMancheTermineeInfo({
+            gagnant: "rouge", scores: etat?.scores || {},
+            messageTemps: t("noirNonJoue", L)
+          });
+        }
+      }
+    }, 200);
+    return () => { clearInterval(timerRef.current); clearInterval(timerIARef.current); };
+  }, [etape, etat?.tour_actuel, etat?.manche_terminee, etat?.timestamp_debut_tour, modeMultijoueur, statutConnexion, timerChoisi, estTourIA, iaEnCours, L, pauseIAActive]);
 
-.btn-manuel { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent-culture);
-  background: var(--rouge)22; color: var(--rouge-c); font-family: var(--brush); font-size: 15px;
-  font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.btn-manuel:hover { background: var(--rouge)44; transform: scale(1.1); }
+  // WebSocket
+  useEffect(() => {
+    const socket = io(API, { transports: ["polling", "websocket"] });
+    socketRef.current = socket;
+    socket.on("rejoint", (data) => { setEtat(data.etat); });
+    socket.on("partie_prete", (data) => {
+      setStatutConnexion("connecte");
+      setEtat(data.etat);
+      // Récupérer le pseudo de l'adversaire (monRoleRef est à jour, pas monRole)
+      const roleActuel = monRoleRef.current;
+      if (data.pseudo_j1 || data.pseudo_j2) {
+        const advPseudo = roleActuel === "joueur2" ? data.pseudo_j1 : data.pseudo_j2;
+        if (advPseudo) setPseudoAdversaireMatch(advPseudo);
+      }
+      // Charger les pixels immédiatement si pas encore reçus (évite la race condition)
+      if (data.partie_id_pixels) {
+        axios.get(`${API}/pixels/${data.partie_id_pixels}`)
+          .then(res => {
+            if (res.data?.pixels_photo) {
+              setPixelsPhoto(res.data.pixels_photo);
+              setTaille(res.data.taille || 16);
+              if (res.data.etat) setEtat(res.data.etat);
+            }
+          }).catch(() => {});
+      }
+      setTimeout(() => setEtape("jeu"), 800);
+    });
+    socket.on("etat_mis_a_jour", (data) => {
+      setEtat(data.etat);
+      if (data.scores_manches) setScoresManches(data.scores_manches);
+      if (data.manche_terminee && data.gagnant) {
+        const scores = calculer_scores_locaux(data.etat);
+        setMancheTermineeInfo({ gagnant: data.gagnant, scores });
+      }
+    });
+    socket.on("pause_demandee", (data) => { setDemandePauseRecue(data.couleur); });
+    socket.on("pause_active", () => { setPauseActive(true); setDemandePauseRecue(null); });
+    socket.on("pause_terminee", (data) => { setPauseActive(false); if (data?.etat) setEtat(data.etat); });
+    socket.on("pause_refusee", () => { setDemandePauseRecue(null); });
+    socket.on("message_recu", (data) => {
+      const id = Date.now() + Math.random();
+      setBullesActives(b => [...b, {
+        id, texte: data.texte,
+        couleur: data.couleur,
+        position: data.couleur === (monRole === "joueur1" ? "rouge" : "noir") ? "bottom" : "top"
+      }]);
+    });
+    return () => socket.disconnect();
+  }, []);
 
-.manuel-content { display: flex; flex-direction: column; gap: 14px; text-align: left; width: 100%; }
-html[dir="rtl"] .manuel-content { text-align: right; }
-.manuel-section { background: var(--bg3); border: 1px solid var(--bord); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
-.manuel-titre-section { font-size: 16px; color: var(--rouge-c); font-family: var(--titre); margin-bottom: 4px; }
-.manuel-section p { font-size: 14px; color: var(--texte); line-height: 1.6; opacity: 0.9; font-family: var(--brush); }
+  const calculer_scores_locaux = (etatLocal) => {
+    if (!etatLocal) return { rouge: 0, noir: 0 };
+    const puzzles = etatLocal.plateau?.puzzles || {};
+    let rouge = 0, noir = 0;
+    Object.values(puzzles).forEach(p => {
+      if (p.brise) return;
+      const nb = (p.cellules || []).length;
+      if (p.complete_par === "rouge") rouge += nb;
+      if (p.complete_par === "noir") noir += nb;
+    });
+    return { rouge, noir };
+  };
 
-.nom-photo-section { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
-.nom-photo-label { font-size: 14px; color: var(--muted); font-family: var(--brush); }
-.nom-photo-label span { color: var(--rouge-c); }
-.nom-photo-input { width: 100%; padding: 10px 16px; background: var(--bg); border: 1px solid var(--bord);
-  border-radius: 8px; color: var(--texte); font-family: var(--brush); font-size: 16px;
-  outline: none; text-align: center; transition: border-color 0.2s; }
-.nom-photo-input:focus { border-color: var(--rouge-c); }
+  const handleTailleValidee = (j1, j2, tailleFin, mode, niveau, timer) => {
+    setProps({ j1, j2, taille: tailleFin });
+    setModeIA(mode || "aucune");
+    setNiveauIA(niveau || 2);
+    setTimerChoisi(timer || 30);
+    setTimerRouge(timer || 30); setTimerNoir(timer || 30);
+    setEtape("photo");
+  };
 
-.bandeau-cible { position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
-  z-index: 998; background: var(--bg2); border: 1px solid var(--rouge-c); border-radius: 8px;
-  padding: 10px 20px; font-family: var(--brush); font-size: 15px; color: var(--rouge-c);
-  box-shadow: 0 0 20px var(--rouge)33; display: flex; align-items: center; gap: 12px; }
-.bandeau-cible button { padding: 4px 10px; border: 1px solid var(--rouge-c); background: transparent;
-  color: var(--rouge-c); border-radius: 4px; cursor: pointer; font-family: var(--brush); font-size: 14px; }
-.bandeau-cible button:hover { background: var(--rouge)22; }
+  const handlePlayOnline = async (timer) => {
+    setTimerChoisi(timer);
+    setMatchmakingActif(true);
 
-/* ══════════════════════════════════════════════════════════
-   TIMERS — Style Chess.com, plus visibles, mieux positionnés
-   ══════════════════════════════════════════════════════════ */
+    const token = getToken();
+    if (!token) {
+      alert("Connexion requise pour jouer en ligne");
+      setMatchmakingActif(false);
+      return;
+    }
 
-.timers {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding: 4px 8px;
-  background: var(--bg3);
-  border-radius: 8px;
-  border: 1px solid var(--bord);
-}
+    try {
+      await axios.post(`${API}/matchmaking/rejoindre`,
+        { timer_sec: timer },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log("[matchmaking] Rejoint la file avec timer:", timer);
+    } catch (e) {
+      console.error("Erreur rejoindre file:", e);
+      setMatchmakingActif(false);
+      alert("Erreur de connexion au matchmaking : " + (e.response?.data?.erreur || e.message));
+    }
+  };
 
-.timer-bloc {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 2px solid transparent;
-  background: var(--bg2);
-  transition: all 0.3s;
-  min-width: 70px;
-}
+  const handlePartieCreee = useCallback((id, etatInit, pixels, tt, timerSec, scoresManchesInit) => {
+    setPartieId(id); 
+    setEtat(etatInit); 
+    setPixelsPhoto(pixels); 
+    setTaille(tt || 16);
+    if (timerSec) { setTimerChoisi(timerSec); setTimerRouge(timerSec); setTimerNoir(timerSec); }
+    if (scoresManchesInit) setScoresManches(scoresManchesInit);
+    
+    if (modeIA !== "aucune") {
+      setMonRole("joueur1"); 
+      setModeMultijoueur(false); 
+      setEtape("jeu");
+    } else {
+      setMonRole("joueur1"); 
+      setModeMultijoueur(true);
+      
+      //  CRITIQUE: rejoindre la room WebSocket immédiatement
+      socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur1", pseudo: utilisateur?.pseudo || "" });
+      
+      if (partieIdMatch) {
+        setEtape("jeu");
+      } else {
+        setEtape("lobby");
+      }
+    }
+  }, [modeIA, partieIdMatch]);
 
-.timer-bloc.rouge.actif {
-  border-color: var(--rouge-c);
-  background: linear-gradient(180deg, #cc220022, #cc220011);
-  box-shadow: 0 0 12px var(--rouge-c)55, inset 0 1px 0 var(--rouge-c)22;
-}
-.timer-bloc.noir.actif {
-  border-color: #aaaaaa;
-  background: linear-gradient(180deg, #88888822, #88888811);
-  box-shadow: 0 0 12px #aaaaaa55, inset 0 1px 0 #aaaaaa22;
-}
+  const handleRejoindreManuellement = useCallback(async (id) => {
+    if (!id) return;
+    setPartieId(id); 
+    setMonRole("joueur2"); 
+    setModeMultijoueur(true); 
+    setEtape("lobby");
+    
+    //  CRITIQUE: rejoindre la room WebSocket immédiatement
+    socketRef.current.emit("rejoindre_partie", { partie_id: id, joueur: "joueur2", pseudo: utilisateur?.pseudo || "" });
+    
+    try {
+      const res = await axios.get(`${API}/pixels/${id}`);
+      if (res.data && res.data.pixels_photo) {
+        setPixelsPhoto(res.data.pixels_photo); 
+        setTaille(res.data.taille);
+        if (res.data.etat) setEtat(res.data.etat);
+        if (res.data.indice) setIndiceReconnaissance(res.data.indice);
+        if (res.data.timer_sec) { 
+          setTimerChoisi(res.data.timer_sec); 
+          setTimerRouge(res.data.timer_sec); 
+          setTimerNoir(res.data.timer_sec); 
+        }
+      }
+    } catch (err) { 
+      console.error("Pixels introuvables:", err); 
+    }
+  }, []);
 
-.timer-label {
-  font-size: 9px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  font-family: 'Rajdhani', sans-serif;
-  font-weight: 500;
-}
-.timer-bloc.actif .timer-label { color: var(--texte); }
+  const gererErreur404 = useCallback((err) => {
+    if (err.response?.status === 404) {
+      setPopup({ type: "temps_ecoule", titre: t("partiePerdue", L),
+        message: t("serveurRedemarre", L), gagnant: null, couleurGagnant: null });
+      return true;
+    }
+    return false;
+  }, [L]);
 
-.timer-val {
-  font-family: 'Rajdhani', monospace;
-  font-size: 20px;
-  color: var(--texte);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.05em;
-}
-.timer-val.danger {
-  color: var(--rouge-c);
-  animation: pulse-danger 0.5s ease-in-out infinite;
-}
-@keyframes pulse-danger {
-  0%,100% { opacity: 1; transform: scale(1); }
-  50%     { opacity: 0.6; transform: scale(1.05); }
-}
+  const declencherIA = useCallback(async (etatCourant, partieIdCourant, mode, niveau) => {
+    if (!partieIdCourant || !etatCourant || mode === "aucune") return;
+    const tourIA = mode === "j1" ? 0 : 1;
+    if (etatCourant.tour_actuel !== tourIA || etatCourant.manche_terminee) return;
+    setIaEnCours(true);
+    const iaDelayMs = niveau >= 4 ? 15000 : 800;
+    await new Promise(r => setTimeout(r, iaDelayMs));
+    try {
+      const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
+      setEtat(res.data.etat);
+      // DÉTECTION FIN DE MANCHE EN MODE IA
+      if (res.data.manche_terminee || res.data.victoire_immediate) {
+        const scores = calculer_scores_locaux(res.data.etat);
+        setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
+      }
+    } catch (err) { console.error("Erreur IA:", err); gererErreur404(err); }
+    finally { setIaEnCours(false); }
+  }, [gererErreur404]);
 
-.board-v3.mode-cible { box-shadow: 0 0 0 2px #8888ff, 0 0 30px #4444aa33; cursor: crosshair; }
-.cell-v3.mode-cible-hover { outline: 2px solid #8888ff88; outline-offset: -2px; }
+  useEffect(() => {
+    if (etape === "jeu" && etat && partieId && modeIA !== "aucune" && !iaEnCours && !attenteChoixPouvoir && !pauseIAActive) {
+      const tourIA = modeIA === "j1" ? 0 : 1;
+      if (etat.tour_actuel === tourIA && !etat.manche_terminee) declencherIA(etat, partieId, modeIA, niveauIA);
+    }
+  }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir, pauseIAActive]);
 
-/* Popup fin */
-.popup-fin { gap: 16px; }
-.popup-gagnant {
-  font-family: var(--titre);
-  font-size: 28px;
-  font-weight: 700;
-  padding: 14px 28px;
-  border-radius: 10px;
-  text-align: center;
-  width: 100%;
-  animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.popup-gagnant.rouge { color: var(--rouge-c); background: #cc220022; border: 1px solid var(--rouge-c); box-shadow: 0 0 30px #cc220044; }
-.popup-gagnant.noir { color: #cccccc; background: #44444422; border: 1px solid #888888; box-shadow: 0 0 30px #44444466; }
-.popup-options-fin { display: flex; gap: 10px; width: 100%; }
-.popup-options-fin .popup-btn { flex: 1; justify-content: center; text-align: center; }
-.popup-btn-revanche { border-color: var(--rouge-c) !important; color: var(--rouge-c) !important; background: #cc220022 !important; }
-.popup-btn-revanche:hover { background: #cc220044 !important; }
+  const envoyerPouvoir = useCallback(async (body) => {
+    try {
+      const res = await axios.post(`${API}/jouer/${partieId}`, { action: "pouvoir", ...body });
+      setEtat(res.data.etat); 
+      setAttenteChoixPouvoir(false); 
+      setPopup(null);
+      if ((res.data.recoloriages_possibles ?? 0) > 0) {
+        setPopup({ type: "attente_recoloriage", message: t("cliquerPieceAdverse", L) });
+        return;
+      }
+      await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+    } catch (err) { console.error("Erreur pouvoir:", err); gererErreur404(err); }
+  }, [partieId, modeIA, niveauIA, declencherIA, L, gererErreur404]);
 
-/* ══════════════════════════════════════════════════════════
-   PLANS PREMIUM (Paramètres)
-   ══════════════════════════════════════════════════════════ */
+  const handlePoserPiece = useCallback(async (idx, origine) => {
+    if (!partieId || estTourIA || !estMonTour) return;
+    try {
+      const res = await axios.post(`${API}/jouer/${partieId}`, {
+        action: "poser", piece_index: idx, origine, pouvoir: "rien" });
+      setEtat(res.data.etat); 
+      setPieceIdx(null);
+      if (res.data.double_tour_consomme) setBonusDoubleActif(false);
+      if (res.data.scores_manches) setScoresManches(res.data.scores_manches);
+      if (res.data.manche_terminee || res.data.victoire_immediate) {
+        const scores = calculer_scores_locaux(res.data.etat);
+        setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
+        return;
+      }
+      const puzzlesCompletes = res.data.puzzles_completes || [];
+      const attenteServeur = res.data.attente_pouvoir === true;
+      if (puzzlesCompletes.length > 0 || attenteServeur) {
+        const tourJoueur = res.data.etat?.tour_actuel ?? 0;
+        const joueurQuiJoue = tourJoueur === 0 ? res.data.etat?.joueur1 : res.data.etat?.joueur2;
+        const serie = joueurQuiJoue?.serie_actuelle ?? 0;
+        setAttenteChoixPouvoir(true); 
+        setPopup({ type: "pouvoir", serie });
+      } else {
+        await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+      }
+    } catch (err) { console.error("Erreur pose:", err); gererErreur404(err); }
+  }, [partieId, estTourIA, estMonTour, modeIA, niveauIA, declencherIA, gererErreur404]);
 
-.plans-section { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-.plan-card {
-  border: var(--border-culture, 1px solid var(--bord));
-  border-radius: var(--card-radius, 6px);
-  padding: 14px;
-  background: var(--bg3);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.plan-card.premium { border-color: var(--accent-culture); background: linear-gradient(135deg, var(--bg3), var(--bg2)); }
-.plan-card.actif   { border-color: #88ff88; background: #22441111; }
-.plan-nom { font-family: var(--titre); font-size: 18px; color: var(--accent-culture); }
-.plan-desc { font-size: 12px; color: var(--muted); font-family: var(--brush); line-height: 1.5; }
-.plan-prix { font-family: var(--titre); font-size: 20px; color: var(--texte); margin-top: 4px; }
-.plan-prix small { font-size: 12px; color: var(--muted); font-weight: 400; }
-.plan-welcome {
-  background: linear-gradient(90deg, var(--accent-culture)22, transparent);
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  color: var(--accent-culture);
-  text-align: center;
-  font-family: var(--brush);
-  letter-spacing: 0.1em;
-  margin-bottom: 6px;
-}
+  const handlePouvoir = useCallback((choix) => {
+    setPopup(null);
+    if (choix === "rien") envoyerPouvoir({ pouvoir: "rien" });
+    else if (choix === "echanger") { setPieceADonner(null); setAttenteChoixPouvoir(true); setPopup({ type: "attente_cible", pouvoir: "echanger", message: t("cliquerAdversaire", L) }); }
+    else if (choix === "extraire") { setExtractionsEnCours([]); setAttenteChoixPouvoir(true); setPopup({ type: "attente_extraire", message: t("cliquer1ou2", L) }); }
+  }, [envoyerPouvoir, L]);
 
-/* ══════════════════════════════════════════════════════════
-   PSEUDO JOUEURS (desktop)
-   ══════════════════════════════════════════════════════════ */
-.pseudo-joueur {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 8px;
-  background: var(--bg3);
-  border: 1px solid var(--bord);
-}
-.pseudo-nom {
-  font-family: var(--brush);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-  color: var(--texte);
-}
-.pseudo-score {
-  font-family: var(--brush);
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1;
-}
-.pseudo-joueur.rouge .pseudo-score { color: var(--rouge-c); }
-.pseudo-joueur.noir  .pseudo-score { color: #aaaaaa; }
-.score-cumule {
-  font-size: 11px;
-  color: var(--muted);
-  font-family: var(--brush);
-  white-space: nowrap;
-}
+  const handleCiblePouvoir = useCallback(async (position) => {
+    const p = popupRef.current; if (!p) return;
+    if (p.type === "attente_extraire") {
+      const posKey = `${position[0]},${position[1]}`;
+      setExtractionsEnCours(prev => {
+        if (prev.find(x => `${x[0]},${x[1]}` === posKey)) return prev;
+        if (prev.length >= 2) return prev;
+        return [...prev, position];
+      });
+      return;
+    }
+    if (p.type === "attente_recoloriage") {
+      setPopup(null);
+      try {
+        const res = await axios.post(`${API}/jouer/${partieId}`, {
+          action: "pouvoir", pouvoir: "recoloriage", cible_pouvoir: position });
+        setEtat(res.data.etat);
+        await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+      } catch (err) { console.error(err); gererErreur404(err); }
+      return;
+    }
+    if (p.type === "attente_cible") {
+      const pouvoir = p.pouvoir; 
+      setPopup(null);
+      await envoyerPouvoir({ pouvoir, cible_pouvoir: position });
+    }
+  }, [partieId, modeIA, niveauIA, declencherIA, envoyerPouvoir, gererErreur404]);
 
-/* ══════════════════════════════════════════════════════════
-   RESPONSIVE MOBILE — Style Chess.com
-   Header compact / timers très visibles / plateau centré
-   ══════════════════════════════════════════════════════════ */
+  const handleConfirmerExtraction = useCallback(async () => {
+    setPopup(null);
+    if (extractionsEnCours.length === 0) await envoyerPouvoir({ pouvoir: "rien" });
+    else await envoyerPouvoir({ pouvoir: "extraire", extraire: extractionsEnCours });
+    setExtractionsEnCours([]);
+  }, [extractionsEnCours, envoyerPouvoir]);
 
+  const handleRepiocher = async () => {
+    if (!estMonTour) return;
+    try {
+      const res = await axios.post(`${API}/jouer/${partieId}`, { action: "repiocher" });
+      setEtat(res.data.etat);
+      await declencherIA(res.data.etat, partieId, modeIA, niveauIA);
+    } catch (err) { console.error(err); gererErreur404(err); }
+  };
 
+  const handleScout = async () => {
+    if (!estMonTour) return;
+    try {
+      const res = await axios.post(`${API}/jouer/${partieId}`, { action: "scout" });
+      if (res.data.succes === false) return;
+      setEtat(res.data.etat);
+      setScoutPieces(res.data.pieces_vues || []);
+      setScoutEchanges(res.data.echanges || []);
+      setPopup({ type: "scout" });
+    } catch (err) { console.error(err); gererErreur404(err); }
+  };
 
-/* ══════════════════════════════════════════════════════════
-   RESPONSIVE MOBILE — Réécriture complète v2
-   ══════════════════════════════════════════════════════════ */
+  const handleReset = () => {
+    clearInterval(timerRef.current);
+    setEtat(null); setPartieId(null);
+    setPartieIdMatch(null); setPseudoAdversaireMatch(null);
+    setMonRole(null); setModeMultijoueur(false); setStatutConnexion("attente");
+    setBonusDoubleActif(false); setReconnaissanceTentee(false); setIndiceReconnaissance(null);
+    setTimerRouge(timerChoisi); setTimerNoir(timerChoisi);
+    setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null);
+    setMancheTermineeInfo(null); setPauseActive(false); setPauseIAActive(false); setDemandePauseRecue(null);
+    setIaEnCours(false);
+    setEloInfo(null);
+    setEtape(utilisateur?.pseudo ? "taille" : (utilisateur ? "pseudo" : "auth"));
+  };
 
-/* ══════════════════════════════════════════════════════════
-   UTILITAIRES RESPONSIVE
-   ══════════════════════════════════════════════════════════ */
-.mobile-only { display: none !important; }
+  const handlePaiement = async (plan) => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API}/stripe/checkout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ plan })
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch(e) { console.error(e); }
+  };
 
-@media (max-width: 768px) {
-  .mobile-only { display: flex !important; }
-  .desktop-only { display: none !important; }
+  const onDeconnecter = () => {
+    localStorage.removeItem("elmaas_token"); localStorage.removeItem("elmaas_user");
+    setUtilisateur(null); setShowParametres(false); handleReset();
+  };
 
-  /* ════════════════════════════════════
-     APP JEU — Colonne unique, plein écran
-     ════════════════════════════════════ */
-  .app.jeu {
-    padding: 0;
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  const envoyerMessage = () => {
+    if (!messageChat.trim()) return;
+    if (messageChat.length > 30) return;
+    const maintenant = Date.now();
+    if (maintenant - lastMsgTime.current < 3000) return;
+    lastMsgTime.current = maintenant;
+    const couleurMoi = monRole === "joueur2" ? "noir" : "rouge";
+    socketRef.current?.emit("message_envoye", {
+      partie_id: partieId, texte: messageChat.slice(0, 30), couleur: couleurMoi
+    });
+    const id = Date.now() + Math.random();
+    setBullesActives(b => [...b, { id, texte: messageChat.slice(0, 30),
+      couleur: couleurMoi, position: "bottom" }]);
+    setMessageChat("");
+  };
+
+  const boutonParamsFlottant = etape !== "jeu" && (
+    <BtnParamsFlottant L={L} onClick={() => setShowParametres(true)} />
+  );
+  const popupParams = showParametres && (
+    <PopupParametres utilisateur={utilisateur} L={L} indexLangue={indexLangue}
+      changerLangue={changerLangue} onFermer={() => setShowParametres(false)}
+      onDeconnecter={onDeconnecter} onPaiement={handlePaiement} />
+  );
+
+  if (etape === "auth") return (
+    <div className="app">
+      {boutonParamsFlottant}{popupParams}
+      <EcranAuth onConnecte={(user) => { setUtilisateur(user); setEtape(user?.pseudo ? "taille" : (user ? "pseudo" : "taille")); }} L={L} />
+    </div>
+  );
+
+  if (etape === "pseudo") return (
+    <div className="app">
+      {boutonParamsFlottant}{popupParams}
+      <EcranPseudo L={L} onPseudoDefini={(user) => { setUtilisateur(user); setEtape("taille"); }} />
+    </div>
+  );
+
+  if (etape === "taille") return (
+    <div className="app">
+      {boutonParamsFlottant}{popupParams}
+      {matchmakingActif && (
+        <PopupMatchmaking L={L} timerSec={timerChoisi} utilisateur={utilisateur}
+          onAnnuler={() => setMatchmakingActif(false)}
+          onMatchTrouve={(data) => {
+            setMatchmakingActif(false);
+            setPartieIdMatch(data.partie_id);
+            setPseudoAdversaireMatch(data.adversaire_pseudo);
+            setModeMultijoueur(true);
+            
+            if (data.ma_couleur === "rouge") {
+              setMonRole("joueur1");
+              setEtape("photo");
+            } else {
+              //  JOUEUR 2 : rejoindre IMMÉDIATEMENT la room WebSocket
+              setMonRole("joueur2");
+              setPartieId(data.partie_id);
+              setEtape("lobby");
+              
+              // CRITIQUE : rejoindre tout de suite
+              socketRef.current.emit("rejoindre_partie", {
+                partie_id: data.partie_id,
+                joueur: "joueur2",
+                pseudo: utilisateur?.pseudo || ""
+              });
+              
+              // Récupérer les pixels en arrière-plan — poll rapide
+              let tentatives = 0;
+              const pollerPartie = async () => {
+                tentatives++;
+                try {
+                  const res = await axios.get(`${API}/pixels/${data.partie_id}`);
+                  if (res.data?.pixels_photo) {
+                    setPixelsPhoto(res.data.pixels_photo);
+                    setTaille(res.data.taille || 16);
+                    if (res.data.etat) setEtat(res.data.etat);
+                    if (res.data.indice) setIndiceReconnaissance(res.data.indice);
+                    if (res.data.timer_sec) {
+                      setTimerChoisi(res.data.timer_sec);
+                      setTimerRouge(res.data.timer_sec);
+                      setTimerNoir(res.data.timer_sec);
+                    }
+                    return; // succès
+                  }
+                } catch (e) {}
+                if (tentatives < 20) setTimeout(pollerPartie, 800); // poll rapide 0.8s
+              };
+              pollerPartie();
+            }
+          }}
+        />
+      )}
+      <EcranTaille onValider={handleTailleValidee} onPlayOnline={handlePlayOnline} L={L} utilisateur={utilisateur} />
+    </div>
+  );
+
+  if (etape === "photo") return (
+    <div className="app">
+      {boutonParamsFlottant}{popupParams}
+      {modeIA === "aucune" && (
+        <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
+          <button className="btn-action" style={{ fontSize: 15, padding: "10px 20px" }}
+            onClick={() => { setMonRole("joueur2"); setEtape("lobby"); }}>
+            {t("jeSuisJoueur2", L)}
+          </button>
+        </div>
+      )}
+      <EcranPhoto2 prop1={props.j1} prop2={props.j2} timerSec={timerChoisi}
+        utilisateur={utilisateur} modeIA={modeIA} partieIdMatch={partieIdMatch}
+        onPartieCreee={handlePartieCreee} L={L} />
+    </div>
+  );
+
+  if (etape === "lobby") return (
+    <div className="app">
+      {boutonParamsFlottant}{popupParams}
+      <EcranLobby 
+        partieId={partieId} 
+        monRole={monRole} 
+        statutConnexion={statutConnexion}
+        onRejoindreManuellement={handleRejoindreManuellement} 
+        L={L}
+        dejaMatche={modeMultijoueur && monRole === "joueur2" && !!partieId && !etat}
+        onPartiePrete={() => setEtape("jeu")}
+      />
+    </div>
+  );
+
+  // 
+  // ÉCRAN ANALYSE — TOUJOURS PROFONDE
+  // 
+  if (showAnalyse) {
+    return (
+      <div className="app">
+        <EcranAnalyse
+          partieId={partieId}
+          analyseJoueur={analyseJoueur}
+          analyseAdv={analyseAdv}
+          couleurJoueur={modeIA !== "aucune" ? (modeIA === "j1" ? "noir" : "rouge") : (monRole === "joueur2" ? "noir" : "rouge")}
+          pixelsPhoto={pixelsPhoto}
+          taille={taille}
+          L={L}
+          onFermer={() => { setShowAnalyse(false); setMancheTermineeInfo(null); }}
+          modeCouleur={modeCouleur}
+        />
+      </div>
+    );
   }
 
-  /* ════════════════════════════════════
-     HEADER — Ultra compact, une ligne
-     ════════════════════════════════════ */
-  .app-header {
-    flex-wrap: nowrap;
-    padding: 3px 8px;
-    gap: 4px;
-    min-height: 44px;
-    flex-shrink: 0;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--bord);
-  }
-  .header-gauche {
-    flex: 1 1 0;
-    min-width: 0;
-    gap: 6px;
-    justify-content: flex-start;
-    align-items: center;
-  }
-  .header-centre {
-    flex: 0 0 auto;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    padding: 0;
-    background: transparent;
-    border: none;
-  }
-  .header-droite {
-    flex: 1 1 0;
-    min-width: 0;
-    gap: 4px;
-    justify-content: flex-end;
-    align-items: center;
-  }
+  // 
+  // JEU PRINCIPAL
+  // 
+  return (
+    <div className="app jeu">
+      {popupParams}
 
-  .app-header .titre-jeu-petit { display: none; }
+      {bullesActives.map(b => (
+        <BulleMessage key={b.id} texte={b.texte} couleur={b.couleur} position={b.position}
+          onFermer={() => setBullesActives(bb => bb.filter(x => x.id !== b.id))} />
+      ))}
 
-  .pseudo-joueur {
-    padding: 2px 6px;
-    border-radius: 6px;
-    min-width: 0;
-  }
-  .pseudo-nom {
-    font-size: 10px;
-    max-width: 64px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .pseudo-score { font-size: 18px; }
+      {mancheTermineeInfo && (
+        <div className="popup-overlay">
+          <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
+            {(() => {
+              const g = mancheTermineeInfo.gagnant;
+              const maCouleur = modeIA !== "aucune"
+                ? (modeIA === "j1" ? "noir" : "rouge")
+                : (monRole === "joueur2" ? "noir" : "rouge");
+              const jaiGagne = g === maCouleur;
+              const egalite = g === "egalite";
+              return (
+                <>
+                  <div className="popup-titre" style={{
+                    color: egalite ? "var(--muted)" : jaiGagne ? "#88ff88" : "var(--rouge-c)",
+                    fontSize: 32,
+                  }}>
+                    {egalite ? t("egalite", L) : jaiGagne ? t("victoire", L) : t("defaite", L)}
+                  </div>
+                  {mancheTermineeInfo.messageTemps && (
+                    <div style={{ fontSize: 12, color: "#ffaa44", fontFamily: "var(--brush)", textAlign: "center" }}>
+                      {t("tempsEcoule", L)} — {mancheTermineeInfo.messageTemps}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                    {egalite ? "" : jaiGagne ? t("bienJoue", L) : `${trCouleur(g)} ${t("remporteManche", L)}`}
+                  </div>
+                  <div style={{
+                    fontSize: 12, fontStyle: "italic", color: "var(--muted)",
+                    textAlign: "center", maxWidth: 320, lineHeight: 1.5, padding: "4px 0"
+                  }}>
+                    {egalite ? "" : jaiGagne ? getSloganVictoire(L) : getSloganDefaite(L)}
+                  </div>
+                </>
+              );
+            })()}
+            <div style={{ display: "flex", gap: 24, justifyContent: "center", fontSize: 32, fontFamily: "var(--brush)" }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ color: "var(--rouge-c)", fontWeight: 700 }}>{mancheTermineeInfo.scores?.rouge ?? 0}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("rouge", L)}</div>
+              </div>
+              <span style={{ color: "var(--muted)", fontSize: 20 }}>vs</span>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ color: "#aaaaaa", fontWeight: 700 }}>{mancheTermineeInfo.scores?.noir ?? 0}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("noir", L)}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
+              Score cumulé vs {pseudoAdverse} : {scoresCumules.moi}-{scoresCumules.lui}
+            </div>
 
-  .timers {
-    gap: 3px;
-    padding: 2px 6px;
-    background: var(--bg3);
-    border-radius: 8px;
-    border: 1px solid var(--bord);
-  }
-  .timer-bloc {
-    padding: 2px 8px;
-    min-width: 54px;
-    border-radius: 6px;
-    border-width: 2px;
-  }
-  .timer-val   { font-size: 17px; }
-  .timer-label { font-size: 7px; letter-spacing: 0.1em; }
+            {/* Delta ELM */}
+            {eloInfo && (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                padding: "8px 16px", borderRadius: 8,
+                background: eloInfo.delta >= 0 ? "rgba(68,204,136,0.08)" : "rgba(204,34,0,0.08)",
+                border: `1px solid ${eloInfo.delta >= 0 ? "#44cc8844" : "#cc220044"}`,
+              }}>
+                <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--brush)" }}>ELM</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "var(--texte)", fontFamily: "var(--titre)" }}>
+                  {eloInfo.apres}
+                </span>
+                <span style={{
+                  fontSize: 13, fontWeight: 700, fontFamily: "var(--titre)",
+                  color: eloInfo.delta >= 0 ? "#44cc88" : "#ff6644",
+                }}>
+                  {eloInfo.delta >= 0 ? "+" : ""}{eloInfo.delta}
+                </span>
+              </div>
+            )}
+            <div className="popup-options" style={{ flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 14, color: "var(--muted)", textAlign: "center", marginBottom: 4 }}>
+                {L === 0 ? "Analyser la partie" : L === 1 ? "Analyze game" : L === 2 ? "تحليل المباراة" : "Analizar partida"}
+              </div>
+              {/* SUPPRESSION BOUTONS RAPIDE/PROFONDE — UN SEUL BOUTON ANALYSE */}
+              <button className="popup-btn" style={{ borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
+                onClick={() => { lancerAnalyse(); }} disabled={analyseChargement}>
+                {analyseChargement ? (L === 0 ? "Analyse en cours..." : L === 1 ? "Analyzing..." : L === 2 ? "...جارٍ التحليل" : "Analizando...") : (L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo")}
+              </button>
+              <button className="popup-btn" onClick={handleReset}>{t("nouvellePartie", L)}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-  .score-cumule { display: none; }
+      {pauseIAActive && modeIA !== "aucune" && (
+        <div className="popup-overlay">
+          <div className="popup-pouvoir" style={{ gap: 16 }}>
+            <div className="popup-titre">{t("jeuEnPause", L)}</div>
+            <button className="popup-btn" onClick={() => setPauseIAActive(false)}>{t("reprendre", L)}</button>
+          </div>
+        </div>
+      )}
 
-  /* ════════════════════════════════════
-     HEADER MOBILE — On allège radicalement
-     tour-info + badges → retirés du header
-     ils vivent maintenant dans mobile-infos-bar
-     ════════════════════════════════════ */
-  .tour-info      { display: none !important; }
-  .badge-ia       { display: none !important; }
-  .badge-serie    { display: none !important; }
-  .badge-classif  { display: none !important; }
-  .btn-couleur-toggle { display: none !important; }
+      {demandePauseRecue && !pauseActive && (
+        <div className="popup-overlay">
+          <div className="popup-pouvoir" style={{ gap: 16 }}>
+            {demandePauseRecue === (monRole === "joueur2" ? "noir" : "rouge") ? (
+              <>
+                <div className="popup-titre">{t("pauseDemandee", L)}</div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>{t("attenteReponseAdverse", L)}</div>
+                <button className="popup-btn" onClick={() => { setDemandePauseRecue(null); axios.post(`${API}/pause/refuser/${partieId}`); }}>
+                  {t("annuler", L)}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="popup-titre">{t("pauseDemandee", L)}</div>
+                <div style={{ color: "var(--muted)", fontSize: 14 }}>{t("adversaireDemandePause", L)}</div>
+                <div className="popup-options" style={{ flexDirection: "row", gap: 10 }}>
+                  <button className="popup-btn" style={{ flex: 1 }} onClick={() => axios.post(`${API}/pause/accepter/${partieId}`)}>{t("accepter", L)}</button>
+                  <button className="popup-btn" style={{ flex: 1 }} onClick={() => axios.post(`${API}/pause/refuser/${partieId}`)}>{t("refuser", L)}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
-  /* Boutons header ultra-compacts */
-  .btn-manuel { width: 28px; height: 28px; font-size: 12px; }
-  .btn-reset {
-    font-size: 0;
-    padding: 0;
-    width: 28px;
-    height: 28px;
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-  }
-  .btn-reset::before { content: "\21BA"; font-size: 15px; color: var(--muted); }
+      {pauseActive && (
+        <div className="popup-overlay">
+          <div className="popup-pouvoir" style={{ gap: 16 }}>
+            <div className="popup-titre">{t("jeuEnPause", L)}</div>
+            <button className="popup-btn" onClick={() => axios.post(`${API}/pause/reprendre/${partieId}`)}>{t("reprendre", L)}</button>
+          </div>
+        </div>
+      )}
 
-  /* ════════════════════════════════════
-     ZONE JEU — Colonne, pas de scroll global
-     ════════════════════════════════════ */
-  .zone-jeu {
-    flex: 1;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-    gap: 0;
-    display: flex;
-  }
+      {popup?.type === "pouvoir" && <PopupPouvoir serie={popup.serie} onChoisir={handlePouvoir} L={L} />}
+      {popup?.type === "scout" && <PopupScout pieces={scoutPieces} couleur={joueurAffiche?.couleur} echanges={scoutEchanges} onFermer={() => setPopup(null)} L={L} />}
+      {popup?.type === "manuel" && <PopupManuel onFermer={() => setPopup(null)} L={L} />}
+      {popup?.type === "reconnaissance" && (
+        <PopupReconnaissance indice={indiceReconnaissance} tenteeDejaFaite={reconnaissanceTentee}
+          onTenter={async (proposition) => {
+            const res = await axios.post(`${API}/reconnaitre/${partieId}`, { proposition });
+            setReconnaissanceTentee(true);
+            if (res.data.succes) setBonusDoubleActif(true);
+            return res.data;
+          }}
+          onFermer={() => setPopup(null)} L={L} />
+      )}
 
-  /* Zone adverse desktop cachée */
-  .zone-adverse.desktop-only { display: none !important; }
+      {popup?.type === "attente_cible" && (
+        <div className="bandeau-cible">
+          <span>{popup.message}</span>
+          <button onClick={() => { setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>{t("annuler", L)}</button>
+        </div>
+      )}
+      {popup?.type === "attente_extraire" && (
+        <div className="bandeau-cible">
+          <span>{popup.message}</span>
+          <span style={{ color: "#ffaa44", fontWeight: 700 }}>
+            {extractionsEnCours.length}/2 {extractionsEnCours.length > 1 ? t("selectionnees", L) : t("selectionnee", L)}
+          </span>
+          <button style={{ background: "#22441188", color: "#88ff88", borderColor: "#88ff8844" }} onClick={handleConfirmerExtraction}>{t("confirmer", L)}</button>
+          <button onClick={() => { setExtractionsEnCours([]); setAttenteChoixPouvoir(false); setPopup(null); envoyerPouvoir({ pouvoir: "rien" }); }}>{t("annuler", L)}</button>
+        </div>
+      )}
+      {popup?.type === "attente_recoloriage" && (
+        <div className="bandeau-cible">
+          <span>{popup.message}</span>
+          <button onClick={async () => { setPopup(null); setAttenteChoixPouvoir(false); await declencherIA(etat, partieId, modeIA, niveauIA); }}>{t("passer", L)}</button>
+        </div>
+      )}
 
-  /* ════════════════════════════════════
-     PANNEAU MAIN — Pièces joueur (HAUT)
-     ════════════════════════════════════ */
-  .panneau-main {
-    width: 100%;
-    min-width: unset;
-    max-height: 68px;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    padding: 4px 8px;
-    gap: 8px;
-    border: none;
-    border-bottom: 1px solid var(--bord);
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex-shrink: 0;
-    order: 1;
-    -webkit-overflow-scrolling: touch;
-    align-items: center;
-    background: var(--bg2);
-  }
-  .panneau-main .panneau-titre {
-    font-size: 9px;
-    white-space: nowrap;
-    flex-shrink: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-    opacity: 0.7;
-    align-self: center;
-  }
-  .main-pieces-list {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 6px;
-    align-items: center;
-    -webkit-overflow-scrolling: touch;
-  }
-  .mini-piece { min-width: 40px; min-height: 40px; }
-  .mini-piece.sel { transform: scale(1.12); }
+      {popup?.type === "temps_ecoule" && (
+        <div className="popup-overlay" onClick={() => { setPopup(null); handleReset(); }}>
+          <div className="popup-pouvoir popup-fin" onClick={e => e.stopPropagation()}>
+            <div className="popup-titre">{popup.titre}</div>
+            <div className="popup-sous-titre">{popup.message}</div>
+            {popup.gagnant && (
+              <div className={`popup-gagnant ${popup.couleurGagnant}`}>{popup.gagnant} {t("gagne", L)}</div>
+            )}
+            <div className="popup-options" style={{ flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 14, color: "var(--muted)", textAlign: "center", marginBottom: 4 }}>
+                {L === 0 ? "Analyser la partie" : L === 1 ? "Analyze game" : L === 2 ? "تحليل المباراة" : "Analizar partida"}
+              </div>
+              {/* SUPPRESSION BOUTONS RAPIDE/PROFONDE — UN SEUL BOUTON */}
+              <button className="popup-btn" style={{ borderColor: "var(--accent-culture)", color: "var(--accent-culture)" }}
+                onClick={() => { lancerAnalyse(); }} disabled={analyseChargement}>
+                {analyseChargement ? (L === 0 ? "Analyse en cours..." : L === 1 ? "Analyzing..." : L === 2 ? "...جارٍ التحليل" : "Analizando...") : (L === 0 ? "Analyse complète" : L === 1 ? "Full analysis" : L === 2 ? "تحليل كامل" : "Análisis completo")}
+              </button>
+              <button className="popup-btn" onClick={() => { setPopup(null); handleReset(); }}>{t("fermer", L)}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-  /* ════════════════════════════════════
-     INFOS MOBILE — Sous les pièces
-     ════════════════════════════════════ */
-  /* ════════════════════════════════════
-     INFOS MOBILE — Barre d'état du tour
-     ════════════════════════════════════ */
-  .mobile-infos-bar {
-    order: 2;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 3px 10px;
-    background: var(--bg3);
-    border-bottom: 1px solid var(--bord);
-    font-size: 10px;
-    color: var(--muted);
-    font-family: var(--brush);
-    min-height: 22px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .mobile-infos-bar span { white-space: nowrap; }
-  .mobile-infos-tour {
-    font-size: 10px;
-    color: var(--texte);
-    font-weight: 600;
-    opacity: 0.7;
-  }
-  .mobile-infos-sep {
-    color: var(--bord);
-    opacity: 0.6;
-  }
+      <header className="app-header">
+        <div className="header-gauche">
+          <h1 className="titre-jeu-petit">ELMAAS</h1>
+          <div className="pseudo-joueur rouge">
+            <span className="pseudo-nom">{modeIA === "j1" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : (utilisateur?.pseudo || "Joueur 1")}</span>
+            <span className="pseudo-score">{etat?.scores?.rouge ?? 0}</span>
+          </div>
+        </div>
 
-  /* Badge tour dans la barre d'infos */
-  .mobile-tour-badge {
-    font-size: 9px;
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-family: var(--brush);
-    font-weight: 700;
-    white-space: nowrap;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .mobile-tour-badge.mon-tour {
-    background: #22441188;
-    color: #88ff88;
-    border: 1px solid #44884444;
-  }
-  .mobile-tour-badge.adverse-tour {
-    background: #44111188;
-    color: #ff8888;
-    border: 1px solid #88444444;
-  }
-  .mobile-tour-badge.bonus-tour {
-    background: #44220088;
-    color: #ffaa44;
-    border: 1px solid #88660044;
-  }
+        <div className="header-centre">
+          {estTourIA || iaEnCours ? (
+            <div className="timers">
+              <div className="timer-bloc" style={{ borderColor: "#ffd700", background: "linear-gradient(180deg, #ffd70022, #ffd70011)" }}>
+                <span className="timer-label" style={{ color: "#ffd700" }}>
+                  {L === 0 ? "IA RÉFLÉCHIT" : L === 1 ? "AI THINKING" : L === 2 ? "الذكاء الاصطناعي يفكر" : "IA PENSANDO"}
+                </span>
+                <span className="timer-val" style={{ color: "#ffd700" }}>
+                  {String(Math.floor(timerIA / 60)).padStart(2, "0")}:{String(timerIA % 60).padStart(2, "0")}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="timers">
+              {modeIA !== "j1" && <TimerBloc secondes={timerRouge} couleur="rouge" actif={etat?.tour_actuel === 0 && !popup && !pauseIAActive} L={L} />}
+              {modeIA !== "j2" && <TimerBloc secondes={timerNoir} couleur="noir" actif={etat?.tour_actuel === 1 && !popup && !pauseIAActive} L={L} />}
+            </div>
+          )}
+          {pseudoAdverse && (scoresCumules.moi > 0 || scoresCumules.lui > 0) && (
+            <div className="score-cumule">
+              {t("scoreContre", L)} {pseudoAdverse}: {scoresCumules.moi}-{scoresCumules.lui}
+            </div>
+          )}
+        </div>
 
-  /* ════════════════════════════════════
-     PLATEAU CENTRAL — Maximum d'espace
-     ════════════════════════════════════ */
-  .plateau-central {
-    flex: 1;
-    padding: 4px;
-    order: 3;
-    min-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    background: radial-gradient(ellipse at center, #0d0d2244, transparent 70%);
-  }
+        <div className="header-droite">
+          <div className="pseudo-joueur noir">
+            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}</span>
+            <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
+          </div>
+          {/* Parametres uniquement pendant le jeu */}
+          <div className="tour-info">
+            {t("tour", L)} {etat?.numero_tour}
+            {modeMultijoueur && (
+              <span className="badge-ia" style={{ background: estMonTour ? "#22441188" : "#44111188", color: estMonTour ? "#88ff88" : "#ff8888" }}>
+                {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
+              </span>
+            )}
+            {bonusDoubleActif && <span className="badge-ia" style={{ background: "#44220088", color: "#ffaa44" }}>{t("doubleTourActif", L)}</span>}
+            {estTourIA && <span className="badge-ia">IA{iaEnCours ? " ..." : ""}</span>}
+            {joueurAffiche?.serie_actuelle >= 3 && <span className="badge-serie">{t("serie", L)} {joueurAffiche.serie_actuelle}</span>}
+          </div>
+          {dernierCoupClassif && (
+            <span className="badge-classif" style={{
+              background: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur + "22",
+              borderColor: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur,
+              color: CLASSIFICATION_COUP[dernierCoupClassif]?.couleur
+            }}>
+              {dernierCoupClassif}
+            </span>
+          )}
+          <button className="btn-manuel" onClick={() => setShowParametres(true)} title={t("parametres", L)}>&#x2699;</button>
+          {/* Toggle couleur — uniquement mode local */}
+          {!modeMultijoueur && (
+            <button 
+              className="btn-manuel btn-couleur-toggle"
+              onClick={() => setModeCouleur(prev => prev === 1 ? 2 : 1)}
+              title={modeCouleur === 1 ? "Mode Cyan/Jaune" : "Mode Rouge/Noir"}
+            >
+              {modeCouleur === 1 ? "C/J" : "R/N"}
+            </button>
+          )}
+          <button className="btn-manuel" onClick={() => setPopup({ type: "manuel" })} title={t("manuelTitre", L)}>?</button>
+          <button className="btn-reset" onClick={handleReset}>{t("nouvellePartie", L)}</button>
+        </div>
+      </header>
 
-  /* ════════════════════════════════════
-     PANNEAU ACTIONS — Sous le plateau
-     ════════════════════════════════════ */
-  .panneau-actions {
-    width: 100%;
-    min-width: unset;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    padding: 4px 8px;
-    gap: 6px;
-    border: none;
-    border-top: 1px solid var(--bord);
-    flex-shrink: 0;
-    order: 5;
-    align-items: center;
-    justify-content: center;
-    overflow-x: auto;
-    background: var(--bg2);
-  }
-  .panneau-actions .panneau-titre { display: none; }
-  .btn-action {
-    padding: 8px 10px;
-    font-size: 12px;
-    min-height: 38px;
-    flex: 1 1 auto;
-    min-width: 64px;
-    max-width: 100px;
-    text-align: center;
-    justify-content: center;
-  }
-  .hint-action { font-size: 10px; padding: 4px 6px; }
+      {/* Zone adverse desktop — cachée en mobile */}
+      <div className="zone-adverse desktop-only">
+        <div className="adverse-label">
+          {t("adversaire", L)} ({trCouleur(joueurAdverseAffiche?.couleur)}) — {(joueurAdverseAffiche?.nb_pieces_reserve || 0) + (joueurAdverseAffiche?.main_active?.length || 0)} {t("pieces", L)}
+        </div>
+        <div className="adverse-pieces">
+          {(joueurAdverseAffiche?.main_active || []).map((_, i) => (
+            <div key={i} className={"piece-cachee " + joueurAdverseAffiche?.couleur} />
+          ))}
+        </div>
+      </div>
 
-  /* Chat compact */
-  .chat-zone {
-    width: auto;
-    flex: 1;
-    min-width: 120px;
-    display: flex;
-    gap: 4px;
-    border: none;
-    padding: 0;
-  }
-  .chat-zone input { font-size: 14px; padding: 6px; flex: 1; }
-  .chat-zone button { min-height: 32px; min-width: 32px; padding: 4px 8px; }
+      <div className="zone-jeu">
+        {/* 1. PANNEAU MAIN — Pièces joueur en haut */}
+        <div className="panneau-main">
+          <div className="panneau-titre">{t("mesPieces", L)} ({trCouleur(joueurAffiche?.couleur)})</div>
+          <div className="main-pieces-list">
+            {(joueurAffiche?.main_active || []).map((piece, i) => {
+              const clickProteger = popup?.type === "attente_cible" && popup?.pouvoir === "proteger";
+              const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
+              const estSelectPourDonner = clickEchanger && pieceADonner === i;
+              return (
+                <div key={i} style={{ position: "relative" }}>
+                  <MiniPiece piece={piece} couleur={joueurAffiche?.couleur}
+                    estSelectionnee={pieceIdx === i || estSelectPourDonner}
+                    onClick={() => {
+                      if (clickProteger) { setPopup(null); envoyerPouvoir({ pouvoir: "proteger_main", piece_index: i }); }
+                      else if (clickEchanger) { setPieceADonner(pieceADonner === i ? null : i); }
+                      else if (!enModeCible && !attenteChoixPouvoir && estMonTour) { setPieceIdx(pieceIdx === i ? null : i); }
+                    }} />
+                </div>
+              );
+            })}
+          </div>
+          {(joueurAffiche?.main_active || []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{t("mainVide", L)}</div>}
 
-  /* ════════════════════════════════════
-     ADVERSAIRE MOBILE — Barre sous le plateau
-     Propre, lisible, identitaire
-     ════════════════════════════════════ */
-  .mobile-adverse-bar {
-    order: 4;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    padding: 5px 10px;
-    background: linear-gradient(180deg, var(--bg3) 0%, var(--bg2) 100%);
-    border-top: 1px solid var(--bord);
-    border-bottom: 1px solid var(--bord);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    min-height: 46px;
-  }
-  .mobile-adverse-header {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0px;
-    flex-shrink: 0;
-    min-width: 52px;
-  }
-  .mobile-adverse-name {
-    font-size: 10px;
-    color: var(--muted);
-    font-family: var(--brush);
-    font-weight: 600;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .mobile-adverse-score {
-    font-size: 20px;
-    color: var(--texte);
-    font-family: var(--titre);
-    font-weight: 700;
-    line-height: 1;
-  }
-  .mobile-adverse-pieces {
-    display: flex;
-    gap: 4px;
-    flex-wrap: nowrap;
-    flex: 1;
-    align-items: center;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .mobile-adverse-count {
-    font-size: 10px;
-    color: var(--muted);
-    font-family: var(--brush);
-    flex-shrink: 0;
-    white-space: nowrap;
-    padding: 2px 6px;
-    border: 1px solid var(--bord);
-    border-radius: 4px;
-    background: var(--bg);
-  }
-  /* Pièces cachées légèrement plus visibles sur mobile */
-  .mobile-adverse-pieces .piece-cachee {
-    width: 18px;
-    height: 18px;
-    opacity: 0.65;
-    flex-shrink: 0;
-  }
+          {/* Desktop only : réserve, série, pièces adverses */}
+          <div className="desktop-only">
+            <div className="panneau-titre" style={{ marginTop: 10 }}>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)" }}>{t("piecesPosees", L)} {joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0} / {joueurAffiche?.seuil_regen_actuel ?? 5}</div>
+            <div className="serie-info">{t("serieLabel", L)} {joueurAffiche?.serie_actuelle}</div>
 
-  /* ════════════════════════════════════
-     POPUPS
-     ════════════════════════════════════ */
-  .popup-pouvoir, .popup-scout {
-    min-width: unset;
-    width: 92vw;
-    max-width: 420px;
-    padding: 16px 12px;
-    gap: 12px;
-    max-height: 88vh;
-    overflow-y: auto;
-  }
-  .popup-titre { font-size: 20px; }
-  .popup-btn   { font-size: 14px; padding: 12px 14px; min-height: 44px; }
+            {(() => {
+              const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
+              const mainAdverse = joueurAdverseAffiche?.main_active || [];
+              return (
+                <>
+                  <div className="panneau-titre" style={{ marginTop: 14 }}>
+                    {t("adversaire", L)} ({trCouleur(joueurAdverseAffiche?.couleur)})
+                  </div>
+                  <div className="main-pieces-list">
+                    {mainAdverse.map((piece, i) => (
+                      <div key={i} style={{ position: "relative", opacity: clickEchanger ? 1 : 0.4 }}>
+                        <MiniPiece piece={piece} couleur={joueurAdverseAffiche?.couleur}
+                          onClick={() => {
+                            if (clickEchanger) {
+                              if (pieceADonner === null) return;
+                              setPopup(null); setPieceADonner(null);
+                              envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i, piece_index_donner: pieceADonner });
+                            }
+                          }} />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
 
-  /* ════════════════════════════════════
-     BANDEAU CIBLE
-     ════════════════════════════════════ */
-  .bandeau-cible {
-    width: 92vw;
-    flex-wrap: wrap;
-    font-size: 12px;
-    padding: 8px 10px;
-    gap: 6px;
-    top: auto;
-    bottom: 90px;
-    left: 3vw;
-    transform: none;
-  }
+        {/* 2. INFOS MOBILE — sous les pièces */}
+        <div className="mobile-infos-bar mobile-only">
+          <span className="mobile-infos-tour">{t("tour", L)} {etat?.numero_tour}</span>
+          {modeMultijoueur && (
+            <span className={`mobile-tour-badge ${estMonTour ? "mon-tour" : "adverse-tour"}`}>
+              {estMonTour ? t("tonTour", L) : t("adversaireJoue", L)}
+            </span>
+          )}
+          {!modeMultijoueur && estTourIA && (
+            <span className="mobile-tour-badge adverse-tour">IA</span>
+          )}
+          {bonusDoubleActif && (
+            <span className="mobile-tour-badge bonus-tour">{t("doubleTourActif", L)}</span>
+          )}
+          <span className="mobile-infos-sep">|</span>
+          <span>{t("reserve", L)} {joueurAffiche?.nb_pieces_reserve}</span>
+          <span>{joueurAffiche?.nb_pieces_posees_depuis_regen ?? 0}/{joueurAffiche?.seuil_regen_actuel ?? 5}</span>
+        </div>
 
-  /* ════════════════════════════════════
-     ECRANS TAILLE / LOBBY / PHOTO — Zoomé
-     ════════════════════════════════════ */
-  .ecran-taille {
-    padding: 16px 12px;
-    gap: 12px;
-    width: 100%;
-    justify-content: flex-start;
-    min-height: 100dvh;
-  }
-  .taille-inputs {
-    gap: 12px;
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  .taille-final  { font-size: 42px; }
-  .taille-label  { font-size: 12px; }
-  .lobby-card {
-    padding: 24px 16px;
-    min-width: unset;
-    width: calc(100% - 24px);
-    max-width: 420px;
-  }
-  .zone-upload { width: 100%; min-height: 120px; }
+        {/* 3. PLATEAU — maximum d'espace */}
+        <div className="plateau-central">
+          <Board etat={etat} taille={taille} couleurJoueur={joueurAffiche?.couleur}
+            pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurAffiche?.main_active[pieceIdx] : null}
+            pieceIdx={pieceIdx} pixelsPhoto={pixelsPhoto}
+            onPoserPiece={!enModeCible && !attenteChoixPouvoir ? handlePoserPiece : null}
+            modeCible={enModeCible} extractionsEnCours={extractionsEnCours}
+            onCibleSelectionnee={enModeCible ? handleCiblePouvoir : null}
+            modeCouleur={modeCouleur} />
+        </div>
 
-  /* ════════════════════════════════════
-     ANALYSE — Zoomée, pas de vide
-     ════════════════════════════════════ */
-  .ecran-analyse {
-    padding: 6px;
-    gap: 6px;
-    max-width: 100%;
-    margin: 0;
-  }
-  .analyse-header {
-    padding: 10px 12px;
-    border-radius: 8px;
-  }
-  .analyse-titre { font-size: 18px; }
-  .analyse-corps {
-    flex-direction: column;
-    gap: 8px;
-  }
-  .analyse-plateau {
-    min-width: unset;
-    width: 100%;
-    padding: 0;
-    align-items: center;
-  }
-  .analyse-panneau {
-    width: 100%;
-    min-width: unset;
-    gap: 8px;
-    padding: 8px;
-  }
-  .analyse-mains {
-    gap: 6px;
-    padding: 6px;
-  }
-  .analyse-badge-classe { font-size: 14px; padding: 6px 10px; }
+        {/* 4b. ADVERSAIRE MOBILE — sous le plateau */}
+        <div className="mobile-adverse-bar mobile-only">
+          <div className="mobile-adverse-header">
+            <span className="mobile-adverse-name">
+              {modeIA === "j2" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}
+            </span>
+            <span className="mobile-adverse-score">
+              {etat?.scores?.[joueurAdverseAffiche?.couleur] ?? 0}
+            </span>
+          </div>
+          <div className="mobile-adverse-pieces">
+            {(joueurAdverseAffiche?.main_active || []).map((piece, i) => {
+              const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
+              return (
+                <div key={i} className="mobile-adverse-piece-wrap"
+                  style={{ opacity: clickEchanger ? 1 : 0.45, cursor: clickEchanger ? "pointer" : "default" }}>
+                  <MiniPiece
+                    piece={piece}
+                    couleur={joueurAdverseAffiche?.couleur}
+                    onClick={() => {
+                      if (clickEchanger) {
+                        if (pieceADonner === null) return;
+                        setPopup(null); setPieceADonner(null);
+                        envoyerPouvoir({ pouvoir: "echanger_main", piece_index_adverse: i, piece_index_donner: pieceADonner });
+                      }
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <span className="mobile-adverse-count">
+            {(joueurAdverseAffiche?.nb_pieces_reserve || 0) + (joueurAdverseAffiche?.main_active?.length || 0)} {t("pieces", L)}
+          </span>
+        </div>
 
-  /* ════════════════════════════════════
-     BULLES + PARAMS
-     ════════════════════════════════════ */
-  .bulle-message { width: 90vw; text-align: center; font-size: 13px; padding: 8px 14px; }
-  .btn-params-flottant { top: 8px; right: 8px; width: 38px; height: 38px; font-size: 16px; }
-  html[dir="rtl"] .btn-params-flottant { right: auto; left: 8px; }
+        {/* 4. ACTIONS — sous le plateau */}
+        <div className="panneau-actions">
+          <div className="panneau-titre desktop-only">{t("actions", L)}</div>
+          <button className="btn-action" onClick={handleRepiocher} disabled={!estMonTour || enModeCible || attenteChoixPouvoir || estTourIA}>
+            {t("repiocher", L)}
+          </button>
+          <button className="btn-action scout" onClick={handleScout} disabled={!estMonTour || enModeCible || attenteChoixPouvoir || estTourIA}>
+            {t("scout", L)}
+          </button>
+
+          {modeMultijoueur && modeIA === "aucune" && monRole === "joueur2" && indiceReconnaissance && (
+            <button className="btn-action"
+              style={{ borderColor: reconnaissanceTentee ? "#444" : "#cc880044", color: reconnaissanceTentee ? "var(--muted)" : "#ffaa44" }}
+              onClick={() => setPopup({ type: "reconnaissance" })} disabled={reconnaissanceTentee}>
+              {reconnaissanceTentee ? t("dejaTente", L) : t("reconnaitre", L)}
+            </button>
+          )}
+
+          {modeIA !== "aucune" && (
+            <button className="btn-action" onClick={() => setPauseIAActive(true)}>{t("pause", L)}</button>
+          )}
+          {modeIA === "aucune" && (
+            <button className="btn-action" onClick={() => {
+              const couleur = monRole === "joueur2" ? "noir" : "rouge";
+              axios.post(`${API}/pause/demander/${partieId}`, { couleur });
+              setDemandePauseRecue(couleur);
+            }}>{t("pause", L)}</button>
+          )}
+
+          {modeMultijoueur && (
+            <div className="chat-zone">
+              <input type="text" maxLength={30} placeholder={t("envoyerMessage", L)}
+                value={messageChat} onChange={e => setMessageChat(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && envoyerMessage()} />
+              <button onClick={envoyerMessage} disabled={!messageChat.trim()}>➤</button>
+            </div>
+          )}
+
+          {!estMonTour && modeMultijoueur && (
+            <div className="hint-action" style={{ borderColor: "#ff444444", color: "#ff8888" }}>
+              {t("attendsTonTour", L)}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
 }
