@@ -29,6 +29,8 @@ class Utilisateur(db.Model):
     stripe_customer_id = db.Column(db.String(100), default="")
     nb_photos_mois = db.Column(db.Integer, default=0)
     mois_quota = db.Column(db.String(7), default="")
+    # Session unique — invalide les anciennes sessions à chaque nouveau login
+    session_id = db.Column(db.String(36), nullable=True)
 
     def peut_uploader_photo_perso(self):
         if self.premium:

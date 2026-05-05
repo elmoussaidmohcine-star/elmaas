@@ -6,6 +6,7 @@
 import bcrypt
 import jwt
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from models import db, Utilisateur, PartieHistorique, calculer_elo
@@ -13,25 +14,35 @@ from models import db, Utilisateur, PartieHistorique, calculer_elo
 auth_bp = Blueprint("auth", __name__)
 SECRET_KEY = os.environ.get("SECRET_KEY", "elmaas_secret_dev")
 
-def generer_token(user_id):
-    payload = {"user_id": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)}
+def generer_token(user_id, session_id):
+    payload = {
+        "user_id": user_id,
+        "sid": session_id,
+        "exp": datetime.now(timezone.utc) + timedelta(days=30)
+    }
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
 def verifier_token(token):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return payload["user_id"]
+        return payload.get("user_id"), payload.get("sid")
     except Exception:
-        return None
+        return None, None
 
 def get_user_from_request():
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token:
         return None
-    user_id = verifier_token(token)
+    user_id, sid = verifier_token(token)
     if not user_id:
         return None
-    return Utilisateur.query.get(user_id)
+    user = Utilisateur.query.get(user_id)
+    if not user:
+        return None
+    # Vérification session unique — si sid présent dans token, doit correspondre à la DB
+    if sid and user.session_id and user.session_id != sid:
+        return None  # Session révoquée (login depuis un autre appareil)
+    return user
 
 @auth_bp.route("/auth/inscription", methods=["POST"])
 def inscription():
@@ -48,10 +59,11 @@ def inscription():
     if Utilisateur.query.filter_by(pseudo=pseudo).first():
         return jsonify({"erreur": "Pseudo deja pris"}), 400
     hash_mdp = bcrypt.hashpw(mdp.encode(), bcrypt.gensalt()).decode()
-    user = Utilisateur(email=email, pseudo=pseudo, mot_de_passe=hash_mdp)
+    sid = str(uuid.uuid4())
+    user = Utilisateur(email=email, pseudo=pseudo, mot_de_passe=hash_mdp, session_id=sid)
     db.session.add(user)
     db.session.commit()
-    return jsonify({"succes": True, "token": generer_token(user.id), "utilisateur": user.to_dict()})
+    return jsonify({"succes": True, "token": generer_token(user.id, sid), "utilisateur": user.to_dict()})
 
 @auth_bp.route("/auth/connexion", methods=["POST"])
 def connexion():
@@ -61,7 +73,10 @@ def connexion():
     user = Utilisateur.query.filter_by(email=email).first()
     if not user or not bcrypt.checkpw(mdp.encode(), user.mot_de_passe.encode()):
         return jsonify({"erreur": "Email ou mot de passe incorrect"}), 401
-    return jsonify({"succes": True, "token": generer_token(user.id), "utilisateur": user.to_dict()})
+    sid = str(uuid.uuid4())
+    user.session_id = sid
+    db.session.commit()
+    return jsonify({"succes": True, "token": generer_token(user.id, sid), "utilisateur": user.to_dict()})
 
 @auth_bp.route("/auth/moi", methods=["GET"])
 def moi():

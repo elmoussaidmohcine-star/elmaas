@@ -4,6 +4,7 @@ import time
 from flask import Blueprint, redirect, request, jsonify
 from authlib.integrations.requests_client import OAuth2Session
 from models import db, Utilisateur
+import uuid as _uuid
 from auth import generer_token, get_user_from_request
 
 google_bp = Blueprint("google_oauth", __name__)
@@ -126,7 +127,10 @@ def google_callback():
             user.google_id = google_id
             db.session.commit()
 
-        token_jwt = generer_token(user.id)
+        sid = str(_uuid.uuid4())
+        user.session_id = sid
+        db.session.commit()
+        token_jwt = generer_token(user.id, sid)
 
         if not user.pseudo:
             return redirect(f"{FRONTEND_URL}?google_token={token_jwt}&besoin_pseudo=1")

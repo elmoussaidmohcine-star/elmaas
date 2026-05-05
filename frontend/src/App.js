@@ -945,6 +945,29 @@ export default function App() {
   const [monRole, setMonRole] = useState(null);
   const monRoleRef = useRef(null);
   useEffect(() => { monRoleRef.current = monRole; }, [monRole]);
+
+  // Refresh plan depuis le serveur au démarrage (corrige le stale localStorage sur mobile)
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch(`${API}/auth/moi`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        if (r.status === 401) {
+          // Session révoquée (login depuis un autre appareil)
+          localStorage.removeItem("elmaas_token");
+          localStorage.removeItem("elmaas_user");
+          setUtilisateur(null);
+          return null;
+        }
+        return r.json();
+      })
+      .then(data => {
+        if (!data || data.erreur) return;
+        localStorage.setItem("elmaas_user", JSON.stringify(data));
+        setUtilisateur(data);
+      })
+      .catch(() => {});
+  }, []);
   const [statutConnexion, setStatutConnexion] = useState("attente");
   const [modeMultijoueur, setModeMultijoueur] = useState(false);
   const [bonusDoubleActif, setBonusDoubleActif] = useState(false);
