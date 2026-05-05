@@ -569,355 +569,662 @@ def ia_niveau_3(etat, joueur):
 
 
 # ══════════════════════════════════════════════════════════════
-# NIVEAU 4 — ELMAAS GRANDMASTER (ELO 2500+)
-# Minimax profondeur 2 + évaluation positionnelle avancée
+# NIVEAU 4 — ELMAAS  (le jeu porte son nom, le robot aussi)
+#
+# Architecture de décision :
+#   Phase 0 — Victoire immédiate série 5 ?
+#   Phase 1 — Je complète un puzzle ce tour ? (normal + mixte via ELMAAS)
+#   Phase 2 — L adversaire complète un puzzle AU PROCHAIN TOUR ? → bloquer
+#   Phase 3 — ELMAAS tactique : destructions à haute valeur
+#   Phase 4 — Minimax léger (profondeur 2, top-N candidats) + éval positionnelle
+#
+# Règles ELMAAS intégrées :
+#   - Case ELMAAS = case vide (on ne peut pas y remettre un ELMAAS)
+#   - ELMAAS sur puzzle complété adverse → les points restent SAUF si l adversaire
+#     repose sa couleur dessus ensuite  → ne pas gaspiller un ELMAAS sur du complété
+#   - Sur-puzzle : compléter un sous-puzzle peut voler le parent à l adversaire
+#   - Fin de partie quand aucune pièce ne peut intersecter un puzzle actif
 # ══════════════════════════════════════════════════════════════
 
-def _lister_coups_possibles(etat, joueur):
-    """Génère tous les coups légaux (pièce_index, origine)."""
-    coups = []
-    taille = get_taille()
-    for idx, piece in enumerate(joueur.main_active):
-        for r in range(taille):
-            for c in range(taille):
-                valide, _ = placement_valide(piece, (r, c), etat.plateau.pieces, taille)
-                if valide:
-                    coups.append((idx, (r, c)))
-    return coups
+
+# ── Import calculer_scores depuis game_engine ─────────────────
+def _get_scores(etat):
+    try:
+        from game_engine import calculer_scores
+        return calculer_scores(etat)
+    except Exception:
+        s = {"rouge": 0, "noir": 0}
+        for p in etat.plateau.puzzles.values():
+            if p.complete_par and not p.brise:
+                s[p.complete_par] = s.get(p.complete_par, 0) + len(p.cellules)
+        return s
 
 
-def _evaluer_main(joueur, etat):
-    """Évalue la qualité des pièces en main (0-10)."""
-    if not joueur.main_active:
-        return 0
-    score = 0
-    taille = get_taille()
-    for piece in joueur.main_active:
-        possibles = placements_possibles(piece, etat.plateau.pieces, taille)
-        if len(possibles) > 0:
-            score += min(len(possibles), 5)  # Plus de placements = plus utile
-        else:
-            score -= 2  # Pièce inplaçable = mauvaise
-    return score / max(len(joueur.main_active), 1)
+# ── Utilitaires puzzle ────────────────────────────────────────
 
+def _infos_puzzle(puzzle, pieces, couleur, couleur_adv):
+    """Analyse fine d un puzzle : nb cases par couleur, vides, diamants."""
+    nb_moi = nb_adv = nb_vide = nb_diam = 0
+    for r, c in puzzle.cellules:
+        v = pieces.get(f"{r},{c}")
+        if   v is None:          nb_vide += 1
+        elif v == couleur:       nb_moi  += 1
+        elif v == couleur_adv:   nb_adv  += 1
+        elif v == "diamant":     nb_diam += 1
+    return nb_moi, nb_adv, nb_vide, nb_diam
+
+
+def _gagnant_naturel(puzzle):
+    if puzzle.type_couleur == "mono_rouge": return "rouge"
+    if puzzle.type_couleur == "mono_noir":  return "noir"
+    return None  # mixte
+
+
+def _valeur_puzzle(puzzle):
+    """Nombre de cases = valeur en points."""
+    return len(puzzle.cellules)
+
+
+def _valeur_avec_parent(puzzle, puzzles_dict, couleur):
+    """
+    Si ce puzzle a un parent, compléter ce sous-puzzle peut voler le parent.
+    Valeur = cellules propres + cellules parent si adverse le possède.
+    """
+    val = _valeur_puzzle(puzzle)
+    if puzzle.parent_id is not None:
+        parent = puzzles_dict.get(puzzle.parent_id)
+        if parent and parent.complete_par is not None and parent.complete_par != couleur:
+            val += _valeur_puzzle(parent)  # bonus : on vole le parent
+    return val
+
+
+# ── Simulation ELMAAS (pose diamant) ─────────────────────────
+
+def _simuler_elmaas(pieces, piece_elmaas, origine, taille):
+    """Retourne un nouveau dict pièces après pose d un diamant."""
+    nouvelles = dict(pieces)
+    for r, c in cellules_absolues(piece_elmaas, origine):
+        if 0 <= r < taille and 0 <= c < taille:
+            nouvelles[f"{r},{c}"] = "diamant"
+    return nouvelles
+
+
+# ── Vérification complétion puzzle (fidèle aux règles moteur) ──
+
+def _puzzle_serait_complete(puzzle, pieces_sim, couleur):
+    """
+    Après simulation, ce puzzle serait-il complété pour `couleur` ?
+    Règles exactes du moteur :
+      mono : toutes cases remplies, pas de diamant, une seule couleur joueur présente
+             → le joueur de CETTE couleur le gagne (pas forcément `couleur`)
+      mixte: toutes cases remplies, rouge ET noir présents (hors diamant)
+             → le joueur qui vient de jouer le gagne (= couleur passé en arg)
+    Retourne (bool gagné pour couleur, nb_cellules_gagnées)
+    """
+    cellules = puzzle.cellules
+    if not all(pieces_sim.get(f"{r},{c}") is not None for r, c in cellules):
+        return False, 0
+    couleurs = {pieces_sim.get(f"{r},{c}") for r, c in cellules} - {None}
+    a_diam = "diamant" in couleurs
+    cj = couleurs - {"diamant"}
+
+    if puzzle.type_couleur == "mixte":
+        if "rouge" in cj and "noir" in cj:
+            return True, len(cellules)   # gagne le joueur actif = couleur
+        return False, 0
+
+    # mono
+    if a_diam:
+        return False, 0
+    gagnant_nat = _gagnant_naturel(puzzle)
+    if cj == {gagnant_nat}:
+        return gagnant_nat == couleur, len(cellules)
+    if len(cj) == 1:
+        # Une seule couleur adverse : l adverse gagne ce mono
+        return False, 0
+    return False, 0
+
+
+def _gain_si_pose(piece, origine, pieces, puzzles, couleur, couleur_adv, taille):
+    """
+    Calcule le gain total en cellules si on pose cette pièce à cette origine.
+    Tient compte de la hiérarchie parent/enfant (sur-puzzles).
+    Retourne (gain_cellules, nb_puzzles_gagnes, vol_parent_possible)
+    """
+    est_elmaas = piece.get("enlevement", False)
+    if est_elmaas:
+        pieces_sim = _simuler_elmaas(pieces, piece, origine, taille)
+    else:
+        pieces_sim = simuler_pose(pieces, piece, origine, couleur, taille)
+
+    total_gain = 0
+    nb_puzzles = 0
+    parent_vole = False
+
+    for puzzle in puzzles.values():
+        if puzzle.complete_par or puzzle.brise:
+            continue
+        gagne, cellules_gagnees = _puzzle_serait_complete(puzzle, pieces_sim, couleur)
+        if gagne:
+            total_gain += cellules_gagnees
+            nb_puzzles += 1
+            # Sur-puzzle : vol du parent ?
+            if puzzle.parent_id is not None:
+                parent = puzzles.get(puzzle.parent_id)
+                if parent and parent.complete_par == couleur_adv and not parent.brise:
+                    total_gain += _valeur_puzzle(parent)
+                    parent_vole = True
+
+    return total_gain, nb_puzzles, parent_vole
+
+
+# ── Score ELMAAS tactique ────────────────────────────────────
+
+def _score_elmaas_tactique(piece, origine, pieces, puzzles, couleur, couleur_adv, taille):
+    """
+    Score stratégique d une pose de pièce ELMAAS (diamant).
+    Logique : une case ELMAAS = case vide mais implaçable pour ELMAAS futur.
+    
+    Valeur positive :
+      - Effacer case adverse dans puzzle mono adverse quasi-complet → blocage pur
+      - Effacer case adverse dans puzzle mono adverse → dégradation
+      - Compléter un mixte (rouge+noir toujours présents après) → gain
+    
+    Valeur négative :
+      - Effacer MES cases dans MES puzzles mono → catastrophique
+      - Effacer cases dans puzzle adverse déjà complété → inutile (points restent)
+    """
+    if not piece.get("enlevement"):
+        return -9999
+
+    absolues = [(r, c) for r, c in cellules_absolues(piece, origine)
+                 if 0 <= r < taille and 0 <= c < taille]
+    pieces_sim = _simuler_elmaas(pieces, piece, origine, taille)
+
+    score = 0.0
+
+    # Complétion mixte via ELMAAS ?
+    gain, nb_p, _ = _gain_si_pose(piece, origine, pieces, puzzles, couleur, couleur_adv, taille)
+    if gain > 0:
+        score += gain * 120  # complétion mixte = jackpot
+
+    for puzzle in puzzles.values():
+        cellules = puzzle.cellules
+        cases_touchees = [(r, c) for r, c in absolues if (r, c) in cellules]
+        if not cases_touchees:
+            continue
+
+        nb_moi_t = sum(1 for r, c in cases_touchees if pieces.get(f"{r},{c}") == couleur)
+        nb_adv_t = sum(1 for r, c in cases_touchees if pieces.get(f"{r},{c}") == couleur_adv)
+        nb_moi, nb_adv, nb_vide, nb_diam = _infos_puzzle(puzzle, pieces, couleur, couleur_adv)
+        gagnant = _gagnant_naturel(puzzle)
+        val = _valeur_puzzle(puzzle)
+
+        # ── Puzzle adverse déjà complété ──
+        if puzzle.complete_par == couleur_adv and not puzzle.brise:
+            # ELMAAS ne retire PAS les points de l adversaire directement
+            # → inutile sauf si on peut poser notre couleur dessus juste après
+            # On donne un petit score seulement si le puzzle est gros (investissement futur)
+            score += nb_adv_t * 2   # très faible — l adversaire garde ses points
+            continue
+
+        if puzzle.brise:
+            continue
+
+        # ── Puzzle mono adverse : bloquer ──
+        if gagnant == couleur_adv and puzzle.complete_par is None:
+            if nb_moi == 0:
+                # Puzzle pur adverse, on peut le bloquer
+                urgence = 3.0 if nb_vide <= 1 else (2.0 if nb_vide <= 2 else 1.0)
+                score += nb_adv_t * val * urgence
+            else:
+                # J ai déjà des pièces dedans → moins urgent
+                score += nb_adv_t * 5
+
+        # ── Puzzle mono pour moi : NE PAS effacer mes cases ──
+        elif gagnant == couleur and puzzle.complete_par is None:
+            if nb_adv == 0:
+                # Puzzle pur à moi → catastrophique d effacer mes cases
+                score -= nb_moi_t * val * 3
+            else:
+                score -= nb_moi_t * 10
+
+        # ── Mixte en cours ──
+        elif puzzle.type_couleur == "mixte" and puzzle.complete_par is None:
+            # Effacer adversaire dans un mixte = pas utile (les deux couleurs doivent être là)
+            score -= nb_adv_t * 3
+            score -= nb_moi_t * 5  # encore moins utile
+
+    return score
+
+
+# ── Évaluation positionnelle ──────────────────────────────────
 
 def evaluer_position_elo2500(etat, couleur_perspective):
     """
-    Évaluation fine pour ELO 2500+.
-    Prend en compte : puzzles, imminence, territoire, séries, matériel.
+    Évaluation positionnelle complète.
+    Prend en compte :
+    - Cellules acquises via puzzles (score réel)
+    - Puzzles quasi-complets pour moi (menace de gain)
+    - Puzzles quasi-complets pour l adversaire (danger)
+    - Hiérarchie sur-puzzles
+    - Matériel et série
     """
-    scores = calculer_scores(etat)
-    moi = scores.get(couleur_perspective, 0)
-    adv = scores.get("noir" if couleur_perspective == "rouge" else "rouge", 0)
-    diff_cellules = moi - adv
-    couleur_adverse = "noir" if couleur_perspective == "rouge" else "rouge"
+    pieces = etat.plateau.pieces
+    puzzles = etat.plateau.puzzles
+    couleur_adv = "noir" if couleur_perspective == "rouge" else "rouge"
 
-    score = 0.0
-    nb_puzzles_moi = 0
-    nb_puzzles_adv = 0
+    try:
+        scores = _get_scores(etat)
+        diff_score = scores.get(couleur_perspective, 0) - scores.get(couleur_adv, 0)
+    except Exception:
+        diff_score = 0.0
 
-    for puzzle in etat.plateau.puzzles.values():
+    val = diff_score * 15.0  # chaque cellule gagnée = 15 pts d éval
+
+    for puzzle in puzzles.values():
         if puzzle.brise:
             continue
         nb_total = len(puzzle.cellules)
         if nb_total == 0:
             continue
+        gagnant = _gagnant_naturel(puzzle)
+        nb_moi, nb_adv, nb_vide, nb_diam = _infos_puzzle(puzzle, pieces, couleur_perspective, couleur_adv)
+        pct = 1.0 - nb_vide / nb_total
 
-        # Déjà complété
-        if puzzle.complete_par == couleur_perspective:
-            score += nb_total * 12.0
-            nb_puzzles_moi += 1
-            continue
-        if puzzle.complete_par == couleur_adverse:
-            score -= nb_total * 12.0
-            nb_puzzles_adv += 1
+        # Puzzles déjà complétés → déjà dans diff_score
+        if puzzle.complete_par:
             continue
 
-        # Analyse cellule par cellule
-        nb_moi = 0
-        nb_adv = 0
-        nb_vide = 0
-        nb_diamant = 0
-        for r, c in puzzle.cellules:
-            v = etat.plateau.pieces.get(f"{r},{c}")
-            if v is None:
-                nb_vide += 1
-            elif v == couleur_perspective:
-                nb_moi += 1
-            elif v == couleur_adverse:
-                nb_adv += 1
-            elif v == "diamant":
-                nb_diamant += 1
+        # Valeur avec bonus parent
+        val_puzzle = _valeur_avec_parent(puzzle, puzzles, couleur_perspective)
 
-        pct_rempli = 1.0 - (nb_vide / nb_total)
-        a_diamant = nb_diamant > 0
-
-        if puzzle.type_couleur in ("mono_rouge", "mono_noir"):
-            gagnant = "rouge" if puzzle.type_couleur == "mono_rouge" else "noir"
-            if gagnant == couleur_perspective:
-                # Puzzle naturellement à moi
-                if nb_adv == 0 and not a_diamant:
-                    if nb_vide <= 1:
-                        score += nb_total * 10.0   # Victoire imminente
-                    elif nb_vide <= 3:
-                        score += nb_total * 5.0    # Très proche
-                    else:
-                        score += nb_moi * 3.0 + pct_rempli * nb_total * 1.5
-                else:
-                    # Contaminé par adverse ou diamant
-                    score += nb_moi * 1.5 - nb_adv * 4.0 - nb_diamant * 2.0
-            else:
-                # Puzzle naturellement adverse
-                if nb_moi == 0 and not a_diamant:
-                    if nb_vide <= 1:
-                        score -= nb_total * 10.0   # URGENT : adverse gagne bientôt
-                    elif nb_vide <= 3:
-                        score -= nb_total * 6.0
-                    else:
-                        score -= nb_adv * 3.0 + pct_rempli * nb_total * 1.5
-                else:
-                    # Je bloque activement
-                    score += nb_moi * 4.0 - nb_adv * 1.5
-        else:
-            # Mixte : celui qui a l'avance et complète en premier gagne
+        if puzzle.type_couleur == "mixte":
             avance = nb_moi - nb_adv
-            if nb_vide <= 1 and (nb_moi > 0 or nb_adv > 0):
-                score += avance * 8.0 + pct_rempli * 4.0
+            if nb_vide <= 1:
+                val += avance * val_puzzle * 0.8
             elif nb_vide <= 3:
-                score += avance * 4.0 + pct_rempli * 2.0
+                val += avance * val_puzzle * 0.4
             else:
-                score += avance * 1.5 + pct_rempli * 0.8
+                val += avance * 2.0
 
-    # Bonus série (très important pour les pouvoirs)
-    j = etat.joueur1 if etat.joueur1.couleur == couleur_perspective else etat.joueur2
-    adv_j = etat.joueur2 if j == etat.joueur1 else etat.joueur1
-    score += j.serie_actuelle * 8.0
-    score -= adv_j.serie_actuelle * 5.0
-
-    # Matériel (pièces restantes)
-    score += len(j.main_active) * 1.5
-    score += len(j.reserve) * 1.0
-    score -= len(adv_j.main_active) * 1.0
-    score -= len(adv_j.reserve) * 0.8
-
-    # Danger : plus de pièces et aucun puzzle complété = mort
-    if not j.reserve and not j.main_active:
-        if nb_puzzles_moi == 0:
-            score -= 80.0  # Défaite quasi-certaine
         else:
-            score -= 20.0  # Régénération coûteuse
+            # Mono
+            if gagnant == couleur_perspective:
+                if nb_adv == 0 and nb_diam == 0:
+                    if nb_vide <= 1:   val += val_puzzle * 8.0
+                    elif nb_vide <= 2: val += val_puzzle * 4.0
+                    else:              val += nb_moi * 2.0 + pct * val_puzzle
+                else:
+                    # Contaminé → valeur réduite
+                    val += nb_moi * 1.0 - nb_adv * 3.0 - nb_diam * 1.5
+            else:
+                # Puzzle adverse
+                if nb_moi == 0 and nb_diam == 0:
+                    if nb_vide <= 1:   val -= val_puzzle * 8.0   # DANGER IMMÉDIAT
+                    elif nb_vide <= 2: val -= val_puzzle * 4.5
+                    else:              val -= nb_adv * 2.0 + pct * val_puzzle
+                else:
+                    # Je bloque déjà
+                    val += nb_moi * 4.0 - nb_adv * 0.5
 
-    # Qualité de la main
-    score += _evaluer_main(j, etat) * 2.0
+    # Série active
+    j = etat.joueur1 if etat.joueur1.couleur == couleur_perspective else etat.joueur2
+    j_adv = etat.joueur2 if j == etat.joueur1 else etat.joueur1
+    val += j.serie_actuelle * 10.0
+    val -= j_adv.serie_actuelle * 7.0
 
-    return diff_cellules + score
+    # Matériel
+    val += (len(j.main_active) + len(j.reserve)) * 0.8
+    val -= (len(j_adv.main_active) + len(j_adv.reserve)) * 0.5
 
-
-def _heuristique_rapide(etat, idx, origine, couleur, couleur_adv):
-    """Score rapide pour filtrer les coups (pas cher)."""
-    piece = etat.joueur_actif().main_active[idx]
-    nouvelles = simuler_pose(etat.plateau.pieces, piece, origine, couleur, get_taille())
-    puzzles_finis = compter_puzzles_completes(nouvelles, etat.plateau.puzzles, couleur)
-    sc = score_cellules_dans_puzzles(piece, origine, etat.plateau.puzzles, couleur, get_taille())
-    bloc = score_blocage_adversaire(piece, origine, etat.plateau.puzzles, couleur_adv, get_taille())
-    enlev = score_enlevement(piece, origine, etat.plateau.pieces, etat.plateau.puzzles, couleur, get_taille())
-    return puzzles_finis * 200 + sc * 3 + bloc * 2 + enlev * 6
-
-
-def _meilleurs_coups(etat, joueur, n_max=40):
-    """Retourne les n_max meilleurs coups selon heuristique rapide."""
-    coups = _lister_coups_possibles(etat, joueur)
-    if not coups:
-        return []
-    couleur = joueur.couleur
-    couleur_adv = "noir" if couleur == "rouge" else "rouge"
-    scores = []
-    for idx, orig in coups:
-        s = _heuristique_rapide(etat, idx, orig, couleur, couleur_adv)
-        scores.append((s, idx, orig))
-    scores.sort(key=lambda x: x[0], reverse=True)
-    return [(idx, orig) for _, idx, orig in scores[:n_max]]
+    return val
 
 
-def _simuler_coup(etat, idx, origine):
-    """Simule un coup poser et retourne l'etat modifie (deepcopy).
+# ── Génération et tri des candidats ──────────────────────────
 
-    Maintenant sur grace aux __deepcopy__ personnalises dans Joueur, EtatJeu,
-    Puzzle et Plateau, le deepcopy fonctionne sans RecursionError.
+def _heuristique_rapide(piece, origine, pieces, puzzles, couleur, couleur_adv, taille):
+    """Score rapide pour classer les coups avant le minimax."""
+    est_elmaas = piece.get("enlevement", False)
+    if est_elmaas:
+        return _score_elmaas_tactique(piece, origine, pieces, puzzles, couleur, couleur_adv, taille)
+    gain, nb_p, vol = _gain_si_pose(piece, origine, pieces, puzzles, couleur, couleur_adv, taille)
+    sc_cell = score_cellules_dans_puzzles(piece, origine, puzzles, couleur, taille)
+    sc_bloc = score_blocage_adversaire(piece, origine, puzzles, couleur_adv, taille)
+    return gain * 200 + vol * 300 + sc_cell * 3 + sc_bloc * 2
+
+
+def _candidats_tries(joueur, pieces, puzzles, couleur, couleur_adv, taille, n_max=35):
+    """Retourne les n_max meilleurs coups triés par heuristique rapide."""
+    candidats = []
+    for idx, piece in enumerate(joueur.main_active):
+        for r in range(taille):
+            for c in range(taille):
+                valide, _ = placement_valide(piece, (r, c), pieces, taille)
+                if valide:
+                    s = _heuristique_rapide(piece, (r, c), pieces, puzzles,
+                                            couleur, couleur_adv, taille)
+                    candidats.append((s, idx, (r, c)))
+    candidats.sort(reverse=True)
+    return candidats[:n_max]
+
+
+# ── Simulation coup complet (sans deepcopy) ──────────────────
+
+def _simuler_coup_leger(pieces, piece, origine, couleur, taille):
+    """Simulation légère sans deepcopy : retourne nouveau dict pieces uniquement."""
+    if piece.get("enlevement"):
+        return _simuler_elmaas(pieces, piece, origine, taille)
+    return simuler_pose(pieces, piece, origine, couleur, taille)
+
+
+# ── Adversaire peut-il compléter au prochain coup ? ──────────
+
+def _adversaire_peut_completer(joueur_adv, pieces, puzzles, couleur_adv, couleur, taille):
     """
-    import copy
-    e = copy.deepcopy(etat)
-    try:
-        from game_engine import jouer_tour
-        res = jouer_tour(e, "poser", piece_index=idx, origine=list(origine), pouvoir="rien")
-        # Si attente pouvoir, on consomme automatiquement "rien" pour simplifier
-        if res.get("attente_pouvoir") and not res.get("victoire_immediate"):
-            from game_engine import appliquer_pouvoir
-            appliquer_pouvoir(e, "rien")
-            if not e.manche_terminee:
-                e.passer_tour()
-        return e, res
-    except Exception:
-        return None, None
+    Retourne la liste des (idx, origine, gain) pour lesquels l adversaire
+    complèterait un puzzle au prochain coup.
+    Limité à un scan rapide (top menaces).
+    """
+    menaces = []
+    for idx, piece in enumerate(joueur_adv.main_active):
+        if piece.get("enlevement"):
+            continue  # ELMAAS ne complète pas de mono
+        for r in range(taille):
+            for c in range(taille):
+                valide, _ = placement_valide(piece, (r, c), pieces, taille)
+                if not valide:
+                    continue
+                gain, nb_p, _ = _gain_si_pose(piece, (r, c), pieces, puzzles,
+                                               couleur_adv, couleur, taille)
+                if gain > 0:
+                    menaces.append((gain, idx, (r, c)))
+    menaces.sort(reverse=True)
+    return menaces
 
 
-def _coup_adverse_greedy(etat, niveau_adv=2):
-    """Simule le meilleur coup adverse (greedy)."""
-    adv = etat.joueur_actif()
-    if niveau_adv == 2:
-        return ia_niveau_2(etat, adv)
-    return ia_niveau_1(etat, adv)
-
+# ── IA NIVEAU 4 — ELMAAS ─────────────────────────────────────
 
 def ia_niveau_4(etat, joueur):
     """
-    ELMAAS Grandmaster — Minimax profondeur 2 avec evaluation ELO 2500.
-    VERSION CORRIGEE: deepcopy avec __deepcopy__ personnalise dans les dataclasses.
+    ELMAAS — Le robot qui porte le nom du jeu.
+
+    Phase 0 : Victoire immédiate (série 5 → fin de manche) ?
+    Phase 1 : Je complète un/des puzzles maintenant ?
+              → choisir le coup à gain max (cellules + vol de parent)
+    Phase 2 : L adversaire complète un puzzle au prochain coup ?
+              → bloquer coûte que coûte (pièce normale ou ELMAAS)
+    Phase 3 : ELMAAS tactique → si j ai une pièce diamant et une cible à haute valeur
+    Phase 4 : Minimax léger (profondeur 2, top-35 candidats) + éval positionnelle
     """
     import time
-    deadline = time.time() + 4.0  # 4s max pour eviter timeout
-    couleur = joueur.couleur
-    couleur_adv = "noir" if couleur == "rouge" else "rouge"
+    debut = time.time()
+    DEADLINE = 3.5  # secondes max
 
-    # 1. Coups gagnants immédiats (série 5)
-    coups = _lister_coups_possibles(etat, joueur)
-    for idx, orig in coups:
-        if time.time() > deadline:
-            break
-        e_test, res = _simuler_coup(etat, idx, orig)
-        if res and res.get("victoire_immediate"):
-            if config.DEBUG:
-                print(f"[IA-4] VICTOIRE IMMÉDIATE détectée : {orig}")
-            return idx, orig
-
-    # 2. Générer top 30 coups
-    meilleurs = _meilleurs_coups(etat, joueur, n_max=30)
-    if not meilleurs:
+    main = joueur.main_active
+    if not main:
         return None
 
-    # 3. Minimax profondeur 2
-    meilleur_score = float("-inf")
-    meilleur_coup = meilleurs[0]
+    pieces    = etat.plateau.pieces
+    puzzles   = etat.plateau.puzzles
+    couleur   = joueur.couleur
+    couleur_adv = "noir" if couleur == "rouge" else "rouge"
+    taille    = get_taille()
+    joueur_adv = etat.joueur_adverse()
 
-    for idx, orig in meilleurs:
-        if time.time() > deadline:
+    # ────────────────────────────────────────────────────────
+    # PHASE 0 — Victoire immédiate
+    # Si série actuelle == 4, le prochain puzzle complété = fin de manche
+    # Priorité absolue.
+    # ────────────────────────────────────────────────────────
+    if joueur.serie_actuelle >= 4:
+        for idx, piece in enumerate(main):
+            if piece.get("enlevement"):
+                continue
+            for r in range(taille):
+                for c in range(taille):
+                    valide, _ = placement_valide(piece, (r, c), pieces, taille)
+                    if not valide:
+                        continue
+                    gain, nb_p, _ = _gain_si_pose(piece, (r, c), pieces, puzzles,
+                                                   couleur, couleur_adv, taille)
+                    if gain > 0:
+                        return idx, (r, c)
+
+    # ────────────────────────────────────────────────────────
+    # PHASE 1 — Complétion immédiate
+    # Trouver le coup qui complète le plus de cellules (+ vol de parent)
+    # ────────────────────────────────────────────────────────
+    meilleures_completions = []  # (gain_total, vol_parent, idx, origine)
+
+    for idx, piece in enumerate(main):
+        for r in range(taille):
+            for c in range(taille):
+                valide, _ = placement_valide(piece, (r, c), pieces, taille)
+                if not valide:
+                    continue
+                gain, nb_p, vol = _gain_si_pose(piece, (r, c), pieces, puzzles,
+                                                 couleur, couleur_adv, taille)
+                if gain > 0:
+                    # Tie-break : préférer aussi ce qui bloque l adversaire
+                    sc_pos = score_cellules_dans_puzzles(piece, (r, c), puzzles, couleur, taille)
+                    meilleures_completions.append((gain + vol * 20 + sc_pos * 0.1,
+                                                   gain, vol, idx, (r, c)))
+
+    if meilleures_completions:
+        meilleures_completions.sort(reverse=True)
+        _, gain_reel, vol, idx_ret, org_ret = meilleures_completions[0]
+        if config.DEBUG:
+            print(f"[ELMAAS] PHASE1 complétion {gain_reel} cells vol={vol} "
+                  f"pièce={main[idx_ret]['forme']} @{org_ret}")
+        return idx_ret, org_ret
+
+    # ────────────────────────────────────────────────────────
+    # PHASE 2 — Blocage d urgence
+    # L adversaire peut compléter un puzzle au prochain coup ?
+    # ────────────────────────────────────────────────────────
+    if time.time() < DEADLINE:
+        menaces = _adversaire_peut_completer(joueur_adv, pieces, puzzles,
+                                              couleur_adv, couleur, taille)
+        if menaces:
+            best_menace_gain = menaces[0][0]
+            # Chercher le coup qui intercepte ces cases
+            cellules_menacees = set()
+            for gm, idxm, orgm in menaces[:3]:  # top 3 menaces
+                piece_adv = joueur_adv.main_active[idxm]
+                for r, c in cellules_absolues(piece_adv, orgm):
+                    if 0 <= r < taille and 0 <= c < taille:
+                        cellules_menacees.add((r, c))
+
+            meilleur_blocage = None
+            meilleur_s_bloc = -9999
+            for idx, piece in enumerate(main):
+                for r in range(taille):
+                    for c in range(taille):
+                        valide, _ = placement_valide(piece, (r, c), pieces, taille)
+                        if not valide:
+                            continue
+                        absolues = set(cellules_absolues(piece, (r, c)))
+                        # Intersection avec les cases menacées ?
+                        if absolues & cellules_menacees:
+                            sc = (len(absolues & cellules_menacees) * best_menace_gain
+                                  + score_cellules_dans_puzzles(piece, (r, c), puzzles, couleur, taille))
+                            if sc > meilleur_s_bloc:
+                                meilleur_s_bloc = sc
+                                meilleur_blocage = (idx, (r, c))
+
+            if meilleur_blocage:
+                if config.DEBUG:
+                    print(f"[ELMAAS] PHASE2 blocage urgence @{meilleur_blocage[1]}")
+                return meilleur_blocage
+
+    # ────────────────────────────────────────────────────────
+    # PHASE 3 — ELMAAS tactique
+    # Si j ai des pièces diamant ET une cible à très haute valeur
+    # ────────────────────────────────────────────────────────
+    if time.time() < DEADLINE:
+        elmaas_coups = []  # (score, idx, origine)
+        for idx, piece in enumerate(main):
+            if not piece.get("enlevement"):
+                continue
+            for r in range(taille):
+                for c in range(taille):
+                    valide, _ = placement_valide(piece, (r, c), pieces, taille)
+                    if not valide:
+                        continue
+                    sc = _score_elmaas_tactique(piece, (r, c), pieces, puzzles,
+                                                couleur, couleur_adv, taille)
+                    elmaas_coups.append((sc, idx, (r, c)))
+
+        if elmaas_coups:
+            elmaas_coups.sort(reverse=True)
+            best_elmaas_sc, best_elmaas_idx, best_elmaas_org = elmaas_coups[0]
+            # N utiliser ELMAAS que si le gain est vraiment significatif
+            # (on ne gaspille pas une pièce ELMAAS pour un gain marginal)
+            # Seuil : valeur équivalente à ~4 cases bloquées dans un puzzle urgent
+            if best_elmaas_sc >= 60:
+                # Vérifier qu un coup normal ne ferait pas mieux
+                meilleur_normal = None
+                meilleur_normal_sc = -9999
+                for idx2, piece2 in enumerate(main):
+                    if piece2.get("enlevement"):
+                        continue
+                    for r in range(taille):
+                        for c in range(taille):
+                            valide, _ = placement_valide(piece2, (r, c), pieces, taille)
+                            if not valide:
+                                continue
+                            sc2 = _heuristique_rapide(piece2, (r, c), pieces, puzzles,
+                                                       couleur, couleur_adv, taille)
+                            if sc2 > meilleur_normal_sc:
+                                meilleur_normal_sc = sc2
+                                meilleur_normal = (idx2, (r, c))
+
+                # ELMAAS gagne si son score dépasse nettement le meilleur coup normal
+                if best_elmaas_sc > meilleur_normal_sc * 0.85:
+                    if config.DEBUG:
+                        print(f"[ELMAAS] PHASE3 ELMAAS tactique sc={best_elmaas_sc:.0f} "
+                              f"vs normal={meilleur_normal_sc:.0f} @{best_elmaas_org}")
+                    return best_elmaas_idx, best_elmaas_org
+
+    # ────────────────────────────────────────────────────────
+    # PHASE 4 — Minimax léger
+    # Top-35 candidats → simuler meilleure réponse adverse → éval positionnelle
+    # ────────────────────────────────────────────────────────
+    candidats = _candidats_tries(joueur, pieces, puzzles, couleur, couleur_adv, taille, n_max=35)
+    if not candidats:
+        return None
+
+    meilleur_score = float("-inf")
+    meilleur = (candidats[0][1], candidats[0][2])
+
+    for sc_greedy, idx, origine in candidats:
+        if time.time() > DEADLINE:
             break
 
-        e1, res1 = _simuler_coup(etat, idx, orig)
-        if e1 is None or res1 is None:
-            continue
+        piece = main[idx]
+        pieces_apres = _simuler_coup_leger(pieces, piece, origine, couleur, taille)
 
-        # Si victoire immédiate, score maximal
-        if res1 and res1.get("victoire_immediate"):
-            return idx, orig
+        # Évaluer position après mon coup (via puzzles simulés)
+        # On utilise l éval positionnelle sur le plateau simulé
+        # (on ne deepcopy pas l état complet pour des raisons de performance)
+        val_moi = evaluer_position_apres(pieces_apres, puzzles, couleur, couleur_adv)
 
-        # Simuler réponse adverse (top 5 coups adverses)
-        adv_coups = _meilleurs_coups(e1, e1.joueur_actif(), n_max=8)
-        pire_score = float("inf")
+        # Simuler les top-5 réponses adverses
+        candidats_adv = []
+        for idx_a, piece_a in enumerate(joueur_adv.main_active[:4]):
+            for r in range(taille):
+                for c in range(taille):
+                    valide, _ = placement_valide(piece_a, (r, c), pieces_apres, taille)
+                    if not valide:
+                        continue
+                    s_a = _heuristique_rapide(piece_a, (r, c), pieces_apres, puzzles,
+                                              couleur_adv, couleur, taille)
+                    candidats_adv.append((s_a, idx_a, (r, c)))
+        candidats_adv.sort(reverse=True)
 
-        if not adv_coups:
-            # Adverse ne peut pas jouer → évaluation directe
-            pire_score = evaluer_position_elo2500(e1, couleur)
-        else:
-            for adv_idx, adv_orig in adv_coups:
-                if time.time() > deadline:
-                    break
-                e2, res2 = _simuler_coup(e1, adv_idx, adv_orig)
-                if e2 is None or res2 is None:
-                    continue
-                val = evaluer_position_elo2500(e2, couleur)
-                if val < pire_score:
-                    pire_score = val
-                if pire_score < meilleur_score:
-                    break  # Élagage : déjà pire que notre meilleur
+        pire = val_moi
+        for _, idx_a, org_a in candidats_adv[:5]:
+            if time.time() > DEADLINE:
+                break
+            piece_a = joueur_adv.main_active[idx_a]
+            pieces_apres2 = _simuler_coup_leger(pieces_apres, piece_a, org_a, couleur_adv, taille)
+            val_apres = evaluer_position_apres(pieces_apres2, puzzles, couleur, couleur_adv)
+            if val_apres < pire:
+                pire = val_apres
 
-        # Score final = minimax (on maximise le pire cas adverse)
-        if pire_score > meilleur_score:
-            meilleur_score = pire_score
-            meilleur_coup = (idx, orig)
+        score_final = sc_greedy * 0.2 + pire * 0.8
+        if score_final > meilleur_score:
+            meilleur_score = score_final
+            meilleur = (idx, origine)
 
     if config.DEBUG:
-        print(f"[IA-4] Choix : {joueur.main_active[meilleur_coup[0]]['forme']} @ {meilleur_coup[1]} (score={meilleur_score:.1f})")
-    return meilleur_coup
+        print(f"[ELMAAS] PHASE4 minimax → {main[meilleur[0]]['forme']} @{meilleur[1]} "
+              f"({meilleur_score:.1f})")
+    return meilleur
 
 
-def choisir_pouvoir_niveau_4(etat, joueur, puzzles_completes):
+def evaluer_position_apres(pieces_sim, puzzles, couleur, couleur_adv):
     """
-    Choisit le meilleur pouvoir après complétion de puzzle.
-    Retourne : ('rien', None) | ('echanger', position) | ('extraire', [pos1, pos2])
+    Évaluation positionnelle sur un plateau simulé (dict pieces uniquement).
+    Version rapide sans deepcopy de l état.
     """
-    import random
-    couleur = joueur.couleur
-    adv = etat.joueur_adverse()
-    couleur_adv = adv.couleur
+    val = 0.0
+    for puzzle in puzzles.values():
+        if puzzle.brise:
+            continue
+        nb_total = len(puzzle.cellules)
+        if nb_total == 0:
+            continue
+        gagnant = _gagnant_naturel(puzzle)
 
-    # Si série >= 4 : on est proche de victoire immédiate, ne pas gaspiller
-    if joueur.serie_actuelle >= 4:
-        return "rien", None
+        nb_moi = nb_adv = nb_vide = nb_diam = 0
+        for r, c in puzzle.cellules:
+            v = pieces_sim.get(f"{r},{c}")
+            if   v is None:          nb_vide += 1
+            elif v == couleur:       nb_moi  += 1
+            elif v == couleur_adv:   nb_adv  += 1
+            elif v == "diamant":     nb_diam += 1
 
-    # Si série >= 3 : extraire est disponible
-    if joueur.serie_actuelle >= 3:
-        # Chercher les meilleures cases adverses à extraire
-        cibles = []
-        for cle, val in etat.plateau.pieces.items():
-            if val == couleur_adv:
-                parts = cle.split(",")
-                r, c = int(parts[0]), int(parts[1])
-                pos = (r, c)
-                # Évaluer l'importance de cette case
-                importance = 0
-                for puzzle in etat.plateau.puzzles.values():
-                    if puzzle.complete_par or puzzle.brise:
-                        continue
-                    if pos in puzzle.cellules:
-                        nb_vide = sum(1 for rr, cc in puzzle.cellules
-                                      if etat.plateau.pieces.get(f"{rr},{cc}") is None)
-                        if nb_vide <= 2:
-                            importance += len(puzzle.cellules) * 3  # Bloque puzzle quasi-complet
-                        else:
-                            importance += len(puzzle.cellules)
-                cibles.append((importance, pos))
-        cibles.sort(reverse=True)
-        if cibles:
-            nb = min(2, len(cibles))
-            extraire = [cibles[i][1] for i in range(nb)]
-            return "extraire", extraire
+        pct = 1.0 - nb_vide / nb_total
 
-    # Sinon : échanger une case adverse importante
-    best_cible = None
-    best_score = -1
-    for cle, val in etat.plateau.pieces.items():
-        if val == couleur_adv:
-            parts = cle.split(",")
-            r, c = int(parts[0]), int(parts[1])
-            pos = (r, c)
-            score = 0
-            for puzzle in etat.plateau.puzzles.values():
-                if puzzle.complete_par or puzzle.brise:
-                    continue
-                if pos in puzzle.cellules:
-                    nb_vide = sum(1 for rr, cc in puzzle.cellules
-                                  if etat.plateau.pieces.get(f"{rr},{cc}") is None)
-                    if nb_vide <= 2:
-                        score += len(puzzle.cellules) * 2
-                    else:
-                        score += len(puzzle.cellules) * 0.5
-            if score > best_score:
-                best_score = score
-                best_cible = pos
-    if best_cible and best_score >= 3:
-        return "echanger", best_cible
+        # Déjà complété (dans la sim on ne change pas complete_par, on déduit)
+        if puzzle.complete_par == couleur:
+            val += nb_total * 12.0
+            continue
+        if puzzle.complete_par == couleur_adv:
+            val -= nb_total * 12.0
+            continue
 
-    return "rien", None
+        if puzzle.type_couleur == "mixte":
+            avance = nb_moi - nb_adv
+            if nb_vide <= 1:   val += avance * nb_total * 0.7
+            elif nb_vide <= 3: val += avance * nb_total * 0.35
+            else:              val += avance * 2.0
+        else:
+            if gagnant == couleur:
+                if nb_adv == 0 and nb_diam == 0:
+                    if nb_vide <= 1:   val += nb_total * 9.0
+                    elif nb_vide <= 2: val += nb_total * 4.5
+                    else:              val += nb_moi * 2.5 + pct * nb_total
+                else:
+                    val += nb_moi * 1.0 - nb_adv * 3.5 - nb_diam * 1.5
+            else:
+                if nb_moi == 0 and nb_diam == 0:
+                    if nb_vide <= 1:   val -= nb_total * 9.0
+                    elif nb_vide <= 2: val -= nb_total * 5.0
+                    else:              val -= nb_adv * 2.5 + pct * nb_total
+                else:
+                    val += nb_moi * 4.0 - nb_adv * 0.5
+    return val
 
 
 # ── Interface principale ──────────────────────────────────────
 
 def jouer_ia(etat, joueur, niveau: int):
     """
-    Point d'entrée de l'IA.
-    niveau : 1 (facile), 2 (moyen), 3 (expert)
-    Retourne (piece_index, origine) ou None si aucun coup possible.
+    Point d entrée de l IA.
+    niveau : 1 (facile/Amal), 2 (moyen), 3 (expert/ELMAASYON), 4 (ELMAAS)
     """
     if niveau == 1:
         return ia_niveau_1(etat, joueur)
@@ -927,5 +1234,4 @@ def jouer_ia(etat, joueur, niveau: int):
         return ia_niveau_3(etat, joueur)
     elif niveau >= 4:
         return ia_niveau_4(etat, joueur)
-    else:
-        return ia_niveau_1(etat, joueur)
+    return ia_niveau_1(etat, joueur)
