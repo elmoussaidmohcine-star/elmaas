@@ -973,9 +973,8 @@ export default function App() {
   const [bullesActives, setBullesActives] = useState([]);
   const lastMsgTime = useRef(0);
   
-  const nomIA = niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS";
   const pseudoAdverse = modeIA !== "aucune"
-    ? nomIA
+    ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS")
     : (pseudoAdversaireMatch || etat?.pseudo_adversaire || "ADVERSAIRE");
 
   const [scoresCumules, setScoresCumulesState] = useState({ moi: 0, lui: 0 });
@@ -1386,40 +1385,31 @@ export default function App() {
     return false;
   }, [L]);
 
-  const iaLockRef = useRef(false);  // verrou dur anti-double-appel
-
   const declencherIA = useCallback(async (etatCourant, partieIdCourant, mode, niveau) => {
     if (!partieIdCourant || !etatCourant || mode === "aucune") return;
     const tourIA = mode === "j1" ? 0 : 1;
     if (etatCourant.tour_actuel !== tourIA || etatCourant.manche_terminee) return;
-    // Verrou dur : empêche tout double-appel même avec closure stale
-    if (iaLockRef.current) return;
-    iaLockRef.current = true;
     setIaEnCours(true);
-    await new Promise(r => setTimeout(r, 600));  // délai visuel minimal
+    const iaDelayMs = niveau >= 4 ? 15000 : 800;
+    await new Promise(r => setTimeout(r, iaDelayMs));
     try {
       const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
       setEtat(res.data.etat);
+      // DÉTECTION FIN DE MANCHE EN MODE IA
       if (res.data.manche_terminee || res.data.victoire_immediate) {
         const scores = calculer_scores_locaux(res.data.etat);
         setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
       }
     } catch (err) { console.error("Erreur IA:", err); gererErreur404(err); }
-    finally {
-      setIaEnCours(false);
-      iaLockRef.current = false;
-    }
+    finally { setIaEnCours(false); }
   }, [gererErreur404]);
 
   useEffect(() => {
-    if (iaLockRef.current) return;  // verrou dur — évite la closure stale sur iaEnCours
     if (etape === "jeu" && etat && partieId && modeIA !== "aucune" && !iaEnCours && !attenteChoixPouvoir && !pauseIAActive) {
       const tourIA = modeIA === "j1" ? 0 : 1;
-      if (etat.tour_actuel === tourIA && !etat.manche_terminee) {
-        declencherIA(etat, partieId, modeIA, niveauIA);
-      }
+      if (etat.tour_actuel === tourIA && !etat.manche_terminee) declencherIA(etat, partieId, modeIA, niveauIA);
     }
-  }, [etat?.tour_actuel, etat?.manche_terminee, etape, partieId, iaEnCours, attenteChoixPouvoir, pauseIAActive, modeIA, niveauIA, declencherIA]);
+  }, [etat?.tour_actuel, etape, partieId, attenteChoixPouvoir, pauseIAActive]);
 
   const envoyerPouvoir = useCallback(async (body) => {
     try {
@@ -1564,7 +1554,7 @@ export default function App() {
     const maintenant = Date.now();
     if (maintenant - lastMsgTime.current < 3000) return;
     lastMsgTime.current = maintenant;
-    const couleurMoi = modeIA !== "aucune" ? (modeIA === "j1" ? "noir" : "rouge") : (monRole === "joueur2" ? "noir" : "rouge");
+    const couleurMoi = monRole === "joueur2" ? "noir" : "rouge";
     socketRef.current?.emit("message_envoye", {
       partie_id: partieId, texte: messageChat.slice(0, 30), couleur: couleurMoi
     });
@@ -1625,7 +1615,7 @@ export default function App() {
                 pseudo: utilisateur?.pseudo || ""
               });
               
-              // Récupérer les pixels en arrière-plan — poll rapide
+              // Récupérer pixels + état — poll jusqu'à avoir les deux → transition vers jeu
               let tentatives = 0;
               const pollerPartie = async () => {
                 tentatives++;
@@ -1634,17 +1624,23 @@ export default function App() {
                   if (res.data?.pixels_photo) {
                     setPixelsPhoto(res.data.pixels_photo);
                     setTaille(res.data.taille || 16);
-                    if (res.data.etat) setEtat(res.data.etat);
                     if (res.data.indice) setIndiceReconnaissance(res.data.indice);
                     if (res.data.timer_sec) {
                       setTimerChoisi(res.data.timer_sec);
                       setTimerRouge(res.data.timer_sec);
                       setTimerNoir(res.data.timer_sec);
                     }
-                    return; // succès
+                    if (res.data.etat) {
+                      // On a tout : pixels + état → on passe directement en jeu
+                      setEtat(res.data.etat);
+                      setStatutConnexion("connecte");
+                      setEtape("jeu");
+                      return; // succès complet
+                    }
+                    // On a les pixels mais pas encore l'état → continuer à poller
                   }
                 } catch (e) {}
-                if (tentatives < 20) setTimeout(pollerPartie, 800); // poll rapide 0.8s
+                if (tentatives < 40) setTimeout(pollerPartie, 600); // poll toutes les 600ms, max 24s
               };
               pollerPartie();
             }
@@ -1725,7 +1721,7 @@ export default function App() {
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
             {(() => {
               const g = mancheTermineeInfo.gagnant;
-              const maCouleur = modeIA !== "aucune" ? (modeIA === "j1" ? "noir" : "rouge") : (monRole === "joueur2" ? "noir" : "rouge");
+              const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
               const jaiGagne = g === maCouleur;
               const egalite = g === "egalite";
               return (
@@ -1942,7 +1938,7 @@ export default function App() {
 
         <div className="header-droite">
           <div className="pseudo-joueur noir">
-            <span className="pseudo-nom">{modeIA === "j2" ? nomIA : modeIA === "j1" ? (utilisateur?.pseudo || "Joueur") : pseudoAdverse}</span>
+            <span className="pseudo-nom">{modeIA === "j2" ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS") : pseudoAdverse}</span>
             <span className="pseudo-score">{etat?.scores?.noir ?? 0}</span>
           </div>
           {/* Parametres uniquement pendant le jeu */}
