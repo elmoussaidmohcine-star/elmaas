@@ -87,6 +87,7 @@ class EtatJeu:
     historique_actions: list = field(default_factory=list)
     piece_initiale_pos: Optional[tuple] = None
     timestamp_debut_tour: float = field(default_factory=time.time)
+    compteur_completion: int = 0  # Incrémenté à chaque puzzle complété — sert à l ordre_completion
 
     def __deepcopy__(self, memo):
         """Deepcopy personnalise pour eviter RecursionError."""
@@ -103,6 +104,7 @@ class EtatJeu:
             historique_actions=copy.deepcopy(self.historique_actions, memo),
             piece_initiale_pos=self.piece_initiale_pos,
             timestamp_debut_tour=self.timestamp_debut_tour,
+            compteur_completion=self.compteur_completion,
         )
         memo[id(self)] = new_obj
         return new_obj
@@ -597,7 +599,9 @@ def verifier_completion_puzzles(etat: EtatJeu, position_posee: tuple) -> list[Pu
         if gagnant is None:
             continue
 
+        etat.compteur_completion += 1
         puzzle.complete_par = gagnant
+        puzzle.ordre_completion = etat.compteur_completion
         completes.append(puzzle)
 
         if DEBUG:
@@ -759,11 +763,32 @@ def terminer_manche(etat: EtatJeu):
 
 
 def calculer_score_cellules(etat: EtatJeu, couleur: str) -> int:
-    total = 0
-    for p in etat.plateau.puzzles.values():
-        if not p.brise and p.complete_par == couleur:
-            total += len(p.cellules)
-    return total
+    """
+    Calcule le score d un joueur en cellules.
+    Règle : le DERNIER puzzle complété prend l intersection.
+    Chaque case du plateau compte au plus 1 point pour au plus 1 joueur.
+    
+    Algorithme :
+    1. Construire la liste des puzzles complétés triés par ordre_completion croissant
+    2. Pour chaque case, l attributer au puzzle complété EN DERNIER qui la contient
+    3. Sommer les cases attribuées au joueur `couleur`
+    """
+    # Tous les puzzles complétés et non brisés, triés par ordre de complétion
+    completes = sorted(
+        [p for p in etat.plateau.puzzles.values()
+         if p.complete_par is not None and not p.brise],
+        key=lambda p: p.ordre_completion
+    )
+
+    # Pour chaque case, le dernier puzzle complété qui la contient gagne la case
+    # On itère du plus ancien au plus récent — le plus récent écrase
+    proprietaire_case = {}  # (r, c) → couleur_proprietaire
+    for puzzle in completes:
+        for cell in puzzle.cellules:
+            proprietaire_case[cell] = puzzle.complete_par
+
+    # Compter les cases appartenant à `couleur`
+    return sum(1 for c in proprietaire_case.values() if c == couleur)
 
 
 def calculer_scores(etat: EtatJeu) -> dict:

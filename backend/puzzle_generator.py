@@ -34,6 +34,7 @@ class Puzzle:
     brise: bool = False        # True si le puzzle est brisé
     complete_par: Optional[str] = None  # "rouge" ou "noir"
     protege: bool = False
+    ordre_completion: int = 0  # Ordre de complétion (0 = pas encore complété)
 
     def taille(self) -> int:
         return len(self.cellules)
@@ -60,6 +61,7 @@ class Puzzle:
             brise=self.brise,
             complete_par=self.complete_par,
             protege=self.protege,
+            ordre_completion=self.ordre_completion,
         )
         memo[id(self)] = new_obj
         return new_obj
