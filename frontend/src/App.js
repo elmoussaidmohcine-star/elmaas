@@ -2635,4 +2635,4 @@ export default function App() {
       </div>
     </div>
   );
-}/* 4. ACTIONS — sous le  plateau */
+}/*plateau */
