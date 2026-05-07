@@ -97,7 +97,10 @@ with app.app_context():
         db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN mot_de_passe DROP NOT NULL"))
         db.session.execute(db.text("ALTER TABLE utilisateurs ALTER COLUMN pseudo DROP NOT NULL"))
         db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS session_id VARCHAR(36)"))
-        
+        # Colonnes quotas persistants (résistent aux redémarrages)
+        db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS analyses_du_jour INTEGER DEFAULT 0"))
+        db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS date_analyses DATE"))
+        db.session.execute(db.text("ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS derniere_upload_date TIMESTAMP"))
         db.session.commit()
         print("[migration] Colonnes Google ajoutées")
     except Exception as e:
@@ -131,7 +134,7 @@ scores_manches: dict[str, dict] = {}
 timer_par_partie: dict[str, int] = {}
 historique_coups: dict[str, list] = {}    # partie_id -> liste de coups
 etats_initiaux: dict[str, dict] = {}      # partie_id -> etat sérialisé initial
-analyses_quotidiennes: dict[int, dict] = {}  # user_id -> {"date": date, "count": int
+# Note: quotas analyses désormais persistés en DB (analyses_du_jour + date_analyses)
 
 
 def sauvegarder_partie(partie_id: str):
@@ -346,7 +349,23 @@ def nouvelle_partie():
             elif plan == "elmaasyon":
                 pass  # illimité côté upload
             else:
-                # Gratuit : 1 seul upload
+                # Gratuit : reset 24h avant de vérifier
+                maintenant_up = datetime.now(timezone.utc)
+                try:
+                    row = db.session.execute(
+                        db.text("SELECT derniere_upload_date FROM utilisateurs WHERE id=:uid"),
+                        {"uid": user.id}
+                    ).fetchone()
+                    dern = row[0] if row and row[0] else None
+                    if dern is not None:
+                        if hasattr(dern, "tzinfo") and dern.tzinfo is None:
+                            dern = dern.replace(tzinfo=timezone.utc)
+                        if (maintenant_up - dern) >= timedelta(hours=24):
+                            user.photo_perso_utilisee = False
+                            db.session.flush()
+                except Exception:
+                    pass
+                # Vérifier quota
                 if user.photo_perso_utilisee:
                     return jsonify({
                         "erreur": "Quota upload atteint. Passez au plan ELMAASYON pour des uploads illimités.",
@@ -405,6 +424,13 @@ def nouvelle_partie():
             plan = getattr(user, "plan", None) or "gratuit"
             if plan not in ("elmaasyon", "elmaas") and not user.photo_perso_utilisee:
                 user.photo_perso_utilisee = True
+                try:
+                    db.session.execute(
+                        db.text("UPDATE utilisateurs SET derniere_upload_date=:now WHERE id=:uid"),
+                        {"now": datetime.now(timezone.utc).replace(tzinfo=None), "uid": user.id}
+                    )
+                except Exception:
+                    pass
                 db.session.commit()
         parties[partie_id] = etat
         etats_initiaux[partie_id] = copier_etat_manuel(etat)
@@ -459,29 +485,30 @@ def quota_analyse():
     user = get_user_from_request()
     if not user:
         return jsonify({"limite": 0, "utilise": 0, "plan": "non_connecte"})
- 
+
     aujourd_hui = datetime.now(timezone.utc).date()
-    quota_user = analyses_quotidiennes.get(user.id, {"date": aujourd_hui, "count": 0})
-    if quota_user["date"] != aujourd_hui:
-        quota_user = {"date": aujourd_hui, "count": 0}
- 
     plan = getattr(user, "plan", None) or "gratuit"
     if plan == "elmaas":
         limite = -1  # illimité
     elif plan == "elmaasyon":
         limite = 3
     else:
-        limite = 1  # gratuit
+        limite = 1
 
-    count = quota_user.get("count", 0)
+    try:
+        row = db.session.execute(
+            db.text("SELECT analyses_du_jour, date_analyses FROM utilisateurs WHERE id=:uid"),
+            {"uid": user.id}
+        ).fetchone()
+        count = row[0] if row and row[0] is not None else 0
+        db_date = row[1] if row and row[1] is not None else None
+        if db_date != aujourd_hui:
+            count = 0
+    except Exception:
+        count = 0
+
     restant = -1 if limite == -1 else max(0, limite - count)
-
-    return jsonify({
-        "limite": limite,
-        "utilise": count,
-        "plan": plan,
-        "restant": restant
-    })
+    return jsonify({"limite": limite, "utilise": count, "plan": plan, "restant": restant})
 
 
 @app.route("/analyse/<partie_id>", methods=["POST"])
@@ -521,18 +548,13 @@ def lancer_analyse(partie_id: str):
     if not historique:
         return jsonify({"erreur": "Historique de partie introuvable"}), 404
 
-    # Vérif authentification + quotas
+    # Vérif authentification + quotas (stockés en DB, résistent aux redémarrages)
     from auth import get_user_from_request
     user = get_user_from_request()
     if not user:
         return jsonify({"erreur": "Connexion requise pour analyser une partie"}), 401
 
     aujourd_hui = datetime.now(timezone.utc).date()
-    quota_user = analyses_quotidiennes.get(user.id)
-    if not quota_user or quota_user["date"] != aujourd_hui:
-        analyses_quotidiennes[user.id] = {"date": aujourd_hui, "count": 0}
-        quota_user = analyses_quotidiennes[user.id]
-
     plan = getattr(user, "plan", None) or "gratuit"
     if plan == "elmaas":
         limite = float("inf")
@@ -540,6 +562,38 @@ def lancer_analyse(partie_id: str):
         limite = 3
     else:
         limite = 1  # gratuit : 1 analyse/jour
+
+    # Lire le quota depuis la base (persistant)
+    try:
+        row = db.session.execute(
+            db.text("SELECT analyses_du_jour, date_analyses FROM utilisateurs WHERE id=:uid"),
+            {"uid": user.id}
+        ).fetchone()
+        db_count = row[0] if row and row[0] is not None else 0
+        db_date  = row[1] if row and row[1] is not None else None
+    except Exception:
+        db_count, db_date = 0, None
+
+    # Reset si nouveau jour
+    if db_date != aujourd_hui:
+        db_count = 0
+        try:
+            db.session.execute(
+                db.text("UPDATE utilisateurs SET analyses_du_jour=0, date_analyses=:d WHERE id=:uid"),
+                {"d": aujourd_hui, "uid": user.id}
+            )
+            db.session.flush()
+        except Exception:
+            pass
+
+    if limite != float("inf") and db_count >= limite:
+        return jsonify({
+            "erreur": f"Quota d'analyses atteint ({limite}/jour pour le plan {plan})",
+            "code": "QUOTA_ANALYSE",
+            "plan": plan,
+            "limite": int(limite),
+            "utilise": db_count,
+        }), 429
 
     # FORCER PROFONDE — ignorer le mode demandé par le client
     profondeur = 2
@@ -640,12 +694,21 @@ def lancer_analyse(partie_id: str):
             timeout_global=timeout_analyse
         )
 
-        quota_user["count"] += 1
+        # Incrémenter le compteur en base (persistant entre redémarrages)
+        try:
+            db.session.execute(
+                db.text("UPDATE utilisateurs SET analyses_du_jour=:c, date_analyses=:d WHERE id=:uid"),
+                {"c": db_count + 1, "d": aujourd_hui, "uid": user.id}
+            )
+            db.session.commit()
+        except Exception:
+            pass
 
+        quota_restant = -1 if limite == float("inf") else max(0, int(limite) - (db_count + 1))
         return jsonify({
             "succes": True,
             "analyse": resultat,
-            "quota_restant": (limite - quota_user["count"]) if limite != float("inf") else -1,
+            "quota_restant": quota_restant,
             "plan": plan or "gratuit",
         })
 

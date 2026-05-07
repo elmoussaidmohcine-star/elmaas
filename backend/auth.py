@@ -238,9 +238,50 @@ def consommer_upload():
     # ELMAAS et ELMAASYON : uploads illimités
     if plan in ("elmaas", "elmaasyon"):
         return jsonify({"succes": True, "illimite": True})
-    # Gratuit : 1 seul upload
+
+    # Gratuit : 1 upload par 24h — reset automatique si délai écoulé
+    maintenant = datetime.now(timezone.utc)
+    try:
+        row = db.session.execute(
+            db.text("SELECT derniere_upload_date FROM utilisateurs WHERE id=:uid"),
+            {"uid": user.id}
+        ).fetchone()
+        derniere_date = row[0] if row and row[0] else None
+    except Exception:
+        derniere_date = None
+
+    # Reset si 24h écoulées depuis le dernier upload
+    if derniere_date is not None:
+        if hasattr(derniere_date, "tzinfo") and derniere_date.tzinfo is None:
+            derniere_date = derniere_date.replace(tzinfo=timezone.utc)
+        if (maintenant - derniere_date) >= timedelta(hours=24):
+            user.photo_perso_utilisee = False
+            db.session.flush()
+
     if user.photo_perso_utilisee:
-        return jsonify({"erreur": "Quota upload atteint", "code": "QUOTA_UPLOAD"}), 403
+        # Calculer le temps restant avant prochain reset
+        try:
+            if derniere_date:
+                prochain = derniere_date + timedelta(hours=24)
+                restant_sec = max(0, int((prochain - maintenant).total_seconds()))
+            else:
+                restant_sec = 0
+        except Exception:
+            restant_sec = 0
+        return jsonify({
+            "erreur": "Quota upload atteint (1 photo/24h en plan Gratuit)",
+            "code": "QUOTA_UPLOAD",
+            "restant_sec": restant_sec
+        }), 403
+
+    # Consommer l'upload
     user.photo_perso_utilisee = True
+    try:
+        db.session.execute(
+            db.text("UPDATE utilisateurs SET derniere_upload_date=:now WHERE id=:uid"),
+            {"now": maintenant.replace(tzinfo=None), "uid": user.id}
+        )
+    except Exception:
+        pass  # colonne pas encore créée — la migration s'en charge au démarrage
     db.session.commit()
     return jsonify({"succes": True, "illimite": False})
