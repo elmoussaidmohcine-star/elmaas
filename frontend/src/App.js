@@ -61,7 +61,7 @@ function BtnParamsFlottant({ onClick, L }) {
 }
 
 //  Popup Paramètres 
-function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer, onDeconnecter, onPaiement }) {
+function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer, onDeconnecter, onPaiement, onVoirPlans }) {
   return (
     <div className="popup-overlay" onClick={onFermer}>
       <div className="popup-pouvoir" style={{ minWidth: 340, maxWidth: 440, gap: 14, maxHeight: "85vh", overflowY: "auto" }}
@@ -92,98 +92,406 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
         </div>
 
         {utilisateur && (
-          <div className="plans-section">
-            <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("plans", L)}</div>
-
-            {/* Plan Gratuit */}
-            <div className={`plan-card ${!utilisateur.plan || utilisateur.plan === "gratuit" ? "actif" : ""}`} style={{
-              border: "1px solid rgba(100,140,220,0.3)",
-              background: "rgba(20,30,70,0.25)",
-            }}>
-              <div className="plan-nom" style={{ color: "#6699ff" }}>{t("planGratuit", L)}</div>
-              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                {t("planGratuitDesc", L)}
-              </div>
-              <div className="plan-prix" style={{ color: "#6699ff" }}>0€</div>
+          <div style={{ width: "100%", borderTop: "1px solid var(--bord)", paddingTop: 14 }}>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+              <span>{L===0?"Formule active":L===1?"Active plan":L===2?"\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u0646\u0634\u0637\u0629":"Plan activo"} :</span>
+              <span style={{
+                fontWeight: 700, fontSize: 13, letterSpacing: "0.04em",
+                color: utilisateur.plan === "elmaas" ? "#cc88ff" : utilisateur.plan === "elmaasyon" ? "#66aaff" : "#6699ff",
+              }}>
+                {utilisateur.plan === "elmaas" ? "ELMAAS" : utilisateur.plan === "elmaasyon" ? "ELMAASYON" : (L===0?"Gratuit":L===1?"Free":L===2?"\u0645\u062c\u0627\u0646\u064a":"Gratis")}
+              </span>
             </div>
-
-            {/* Plan ELMAASYON */}
-            <div className={`plan-card ${utilisateur.plan === "elmaasyon" ? "actif" : "premium"}`} style={{
-              border: utilisateur.plan === "elmaasyon" ? "1px solid #4488ff" : "1px solid #4488ff55",
-              background: utilisateur.plan === "elmaasyon" ? "rgba(30,60,140,0.3)" : "rgba(20,30,70,0.2)",
-              boxShadow: utilisateur.plan === "elmaasyon" ? "0 0 16px #4488ff33" : "none",
-            }}>
-              <div className="plan-nom" style={{ color: "#66aaff" }}>{t("planElmaasyon", L)}</div>
-              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                {t("planElmaasyonDescFull", L)}
+            <button
+              onClick={onVoirPlans}
+              style={{
+                width: "100%", padding: "13px 18px",
+                background: "linear-gradient(135deg, rgba(68,136,255,0.10), rgba(170,85,255,0.10))",
+                border: "1px solid rgba(100,120,220,0.35)", borderRadius: 8,
+                cursor: "pointer", display: "flex", alignItems: "center",
+                justifyContent: "space-between", gap: 12, transition: "all 0.2s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "linear-gradient(135deg, rgba(68,136,255,0.18), rgba(170,85,255,0.18))"}
+              onMouseLeave={e => e.currentTarget.style.background = "linear-gradient(135deg, rgba(68,136,255,0.10), rgba(170,85,255,0.10))"}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 18 }}>{"\u2726"}</span>
+                <div style={{ textAlign: "left" }}>
+                  <div style={{
+                    fontFamily: "var(--titre, 'Cinzel', serif)",
+                    fontSize: 14, fontWeight: 700, letterSpacing: "0.08em",
+                    background: "linear-gradient(90deg, #4488ff, #aa55ff)",
+                    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                  }}>
+                    {L===0?"D\u00e9couvrir les formules":L===1?"Explore plans":L===2?"\u0627\u0643\u062a\u0634\u0641 \u0627\u0644\u0628\u0627\u0642\u0627\u062a":"Ver planes"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                    {L===0?"Uploads \u00b7 Analyse \u00b7 IA avanc\u00e9e":L===1?"Uploads \u00b7 Analysis \u00b7 Advanced AI":L===2?"\u062a\u062d\u0645\u064a\u0644 \u00b7 \u062a\u062d\u0644\u064a\u0644 \u00b7 \u0630\u0643\u0627\u0621 \u0627\u0635\u0637\u0646\u0627\u0639\u064a":"Subidas \u00b7 An\u00e1lisis \u00b7 IA avanzada"}
+                  </div>
+                </div>
               </div>
-              <div className="plan-prix" style={{ color: "#88bbff" }}>
-                <span style={{ textDecoration: "line-through", fontSize: 13, opacity: 0.45, marginRight: 6 }}>6.99€</span>
-                <strong style={{ color: "#66aaff" }}>3.49€</strong>
-                <small style={{ color: "var(--muted)", fontSize: 10, marginLeft: 5 }}>
-                  /{L===0?"mois":L===1?"month":L===2?"شهر":"mes"} — {L===0?"Lancement -50%":L===1?"-50% Launch":L===2?"إطلاق -50%":"-50% Lanzamiento"}
-                </small>
-              </div>
-              {utilisateur.plan !== "elmaasyon" && utilisateur.plan !== "elmaas" ? (
-                <button className="btn-valider" style={{
-                  fontSize: 13, padding: "8px 16px",
-                  background: "linear-gradient(135deg,#1144cc,#4488ff)", border: "none",
-                }} onClick={() => onPaiement("elmaasyon")}>
-                  {t("passerPremiumBtn", L)}
-                </button>
-              ) : utilisateur.plan === "elmaasyon" && (
-                <button className="btn-valider" style={{
-                  fontSize: 12, padding: "6px 14px", background: "rgba(68,136,255,0.12)",
-                  border: "1px solid #4488ff44",
-                }} onClick={async () => {
-                  const res = await fetch(`${API}/stripe/portal`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
-                  const d = await res.json(); if (d.url) window.location.href = d.url;
-                }}>
-                  {L===0?"Gérer l'abonnement":L===1?"Manage subscription":L===2?"إدارة الاشتراك":"Gestionar suscripción"}
-                </button>
-              )}
-            </div>
-
-            {/* Plan ELMAAS */}
-            <div className={`plan-card ${utilisateur.plan === "elmaas" ? "actif" : "premium"}`} style={{
-              border: utilisateur.plan === "elmaas" ? "1px solid #aa55ff" : "1px solid #aa55ff44",
-              background: utilisateur.plan === "elmaas" ? "rgba(60,20,120,0.3)" : "rgba(30,10,60,0.2)",
-              boxShadow: utilisateur.plan === "elmaas" ? "0 0 20px #aa55ff33" : "none",
-            }}>
-              <div className="plan-nom" style={{ color: "#cc88ff" }}>ELMAAS</div>
-              <div className="plan-desc" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-                {t("planElmaasDescFull", L)}
-              </div>
-              <div className="plan-prix" style={{ color: "#cc88ff" }}>
-                <span style={{ textDecoration: "line-through", fontSize: 13, opacity: 0.45, marginRight: 6 }}>12.99€</span>
-                <strong style={{ color: "#aa66ff" }}>6.49€</strong>
-                <small style={{ color: "var(--muted)", fontSize: 10, marginLeft: 5 }}>
-                  /{L===0?"mois":L===1?"month":L===2?"شهر":"mes"} — {L===0?"Lancement -50%":L===1?"-50% Launch":L===2?"إطلاق -50%":"-50% Lanzamiento"}
-                </small>
-              </div>
-              {utilisateur.plan !== "elmaas" ? (
-                <button className="btn-valider" style={{
-                  fontSize: 13, padding: "8px 16px",
-                  background: "linear-gradient(135deg,#6600cc,#aa55ff)", border: "none",
-                }} onClick={() => onPaiement("elmaas")}>
-                  {t("passerPremiumBtn", L)}
-                </button>
-              ) : (
-                <button className="btn-valider" style={{
-                  fontSize: 12, padding: "6px 14px", background: "rgba(170,85,255,0.12)",
-                  border: "1px solid #aa55ff44",
-                }} onClick={async () => {
-                  const res = await fetch(`${API}/stripe/portal`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` } });
-                  const d = await res.json(); if (d.url) window.location.href = d.url;
-                }}>
-                  {L===0?"Gérer l'abonnement":L===1?"Manage subscription":L===2?"إدارة الاشتراك":"Gestionar suscripción"}
-                </button>
-              )}
-            </div>
+              <span style={{ color: "#aa55ff", fontSize: 18, opacity: 0.8 }}>{"\u2192"}</span>
+            </button>
           </div>
         )}
 
         <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
+      </div>
+    </div>
+  );
+}
+
+// ── EcranPlans — Page dediee aux formules ─────────────────────────────────────
+function EcranPlans({ utilisateur, L, onFermer, onPaiement }) {
+  const mois = L===0?"mois":L===1?"month":L===2?"\u0634\u0647\u0631":"mes";
+  const lancement = L===0?"Offre de lancement \u221250%":L===1?"Launch offer \u221250%":L===2?"\u0639\u0631\u0636 \u0627\u0644\u0625\u0637\u0644\u0627\u0642 \u221250%":"Oferta de lanzamiento \u221250%";
+
+  const Feature = ({ ok, children }) => (
+    <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:8 }}>
+      <span style={{ fontSize:13, color: ok ? "#66ee88" : "#555", flexShrink:0, marginTop:1 }}>{ok ? "\u2713" : "\u2717"}</span>
+      <span style={{ fontSize:13, color: ok ? "var(--texte)" : "var(--muted)", lineHeight:1.5 }}>{children}</span>
+    </div>
+  );
+
+  const Section = ({ label }) => (
+    <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.12em", textTransform:"uppercase",
+      color:"var(--muted)", marginBottom:8, marginTop:16, opacity:0.7 }}>{label}</div>
+  );
+
+  const photoLabel = L===0?"Photos":L===1?"Photos":L===2?"\u0627\u0644\u0635\u0648\u0631":"Fotos";
+  const analyseLabel = L===0?"Analyse":L===1?"Analysis":L===2?"\u0627\u0644\u062a\u062d\u0644\u064a\u0644":"An\u00e1lisis";
+  const iaLabel = L===0?"Intelligence Artificielle":L===1?"Artificial Intelligence":L===2?"\u0627\u0644\u0630\u0643\u0627\u0621 \u0627\u0644\u0627\u0635\u0637\u0646\u0627\u0639\u064a":"Inteligencia Artificial";
+
+  const txt = {
+    biblio: [
+      "Biblioth\u00e8que de photos incluse",
+      "Built-in photo library",
+      "\u0645\u0643\u062a\u0628\u0629 \u0627\u0644\u0635\u0648\u0631 \u0627\u0644\u0645\u062f\u0645\u062c\u0629",
+      "Fotos de la biblioteca incluidas"
+    ],
+    upload1: [
+      "1 photo personnalis\u00e9e (upload)",
+      "1 custom photo upload",
+      "\u062a\u062d\u0645\u064a\u0644 \u0635\u0648\u0631\u0629 \u0645\u062e\u0635\u0635\u0629 \u0648\u0627\u062d\u062f\u0629",
+      "1 foto personalizada (subida)"
+    ],
+    uploadIllim: [
+      "Uploads illimit\u00e9s (vos propres photos)",
+      "Unlimited uploads (your own photos)",
+      "\u062a\u062d\u0645\u064a\u0644\u0627\u062a \u063a\u064a\u0631 \u0645\u062d\u062f\u0648\u062f\u0629 (\u0635\u0648\u0631\u0643 \u0627\u0644\u062e\u0627\u0635\u0629)",
+      "Subidas ilimitadas (tus fotos)"
+    ],
+    uploadIllimShort: [
+      "Uploads illimit\u00e9s",
+      "Unlimited uploads",
+      "\u062a\u062d\u0645\u064a\u0644\u0627\u062a \u063a\u064a\u0631 \u0645\u062d\u062f\u0648\u062f\u0629",
+      "Subidas ilimitadas"
+    ],
+    analyse1: [
+      "1 analyse de partie / jour",
+      "1 game analysis / day",
+      "\u062a\u062d\u0644\u064a\u0644 \u0645\u0628\u0627\u0631\u0627\u0629 \u0648\u0627\u062d\u062f / \u064a\u0648\u0645",
+      "1 an\u00e1lisis de partida / d\u00eda"
+    ],
+    analyse3: [
+      "3 analyses de partie / jour",
+      "3 game analyses / day",
+      "3 \u062a\u062d\u0627\u0644\u064a\u0644 / \u064a\u0648\u0645",
+      "3 an\u00e1lisis de partida / d\u00eda"
+    ],
+    analyseIllim: [
+      "Analyses illimit\u00e9es",
+      "Unlimited analyses",
+      "\u062a\u062d\u0627\u0644\u064a\u0644 \u063a\u064a\u0631 \u0645\u062d\u062f\u0648\u062f\u0629",
+      "An\u00e1lisis ilimitados"
+    ],
+    visuCoup: [
+      "Visualisation coup par coup",
+      "Move-by-move visualization",
+      "\u062a\u0635\u0648\u0631 \u0627\u0644\u0623\u062d\u062f\u0627\u062b \u062d\u0631\u0643\u0629 \u0628\u062d\u0631\u0643\u0629",
+      "Visualizaci\u00f3n jugada a jugada"
+    ],
+    stratProf: [
+      "Comparaison strat\u00e9gique profonde",
+      "Deep strategic comparison",
+      "\u0645\u0642\u0627\u0631\u0646\u0629 \u0627\u0633\u062a\u0631\u0627\u062a\u064a\u062c\u064a\u0629 \u0645\u0639\u0645\u0651\u0642\u0629",
+      "Comparaci\u00f3n estrat\u00e9gica profunda"
+    ],
+    bots3: [
+      "Robots Chess, Amal, ELMAASYON",
+      "Chess, Amal, ELMAASYON bots",
+      "\u0631\u0648\u0628\u0648\u062a\u0627\u062a Chess, Amal, ELMAASYON",
+      "Robots Chess, Amal, ELMAASYON"
+    ],
+    botElmaas: [
+      "Robot ELMAAS (Grandmaster)",
+      "ELMAAS bot (Grandmaster)",
+      "\u0631\u0648\u0628\u0648\u062a ELMAAS (\u063a\u0631\u0627\u0646\u062f \u0645\u0627\u0633\u062a\u0631)",
+      "Robot ELMAAS (Grandmaster)"
+    ],
+    botElmaas15: [
+      "Robot ELMAAS \u2014 Grandmaster (~15s/coup)",
+      "ELMAAS bot \u2014 Grandmaster (~15s/move)",
+      "\u0631\u0648\u0628\u0648\u062a ELMAAS \u2014 \u063a\u0631\u0627\u0646\u062f \u0645\u0627\u0633\u062a\u0631 (~15\u062b/\u062d\u0631\u0643\u0629)",
+      "Robot ELMAAS \u2014 Grandmaster (~15s/jugada)"
+    ],
+    iaReflex: [
+      "R\u00e9flexion IA jusqu'\u00e0 15 secondes par coup",
+      "AI thinking up to 15 seconds per move",
+      "\u062a\u0641\u0643\u064a\u0631 \u064a\u0635\u0644 \u0625\u0644\u0649 15 \u062b\u0627\u0646\u064a\u0629 \u0644\u0643\u0644 \u062d\u0631\u0643\u0629",
+      "Reflexi\u00f3n IA hasta 15 segundos por jugada"
+    ],
+    gerer: [
+      "G\u00e9rer l'abonnement",
+      "Manage subscription",
+      "\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0627\u0634\u062a\u0631\u0627\u0643",
+      "Gestionar suscripci\u00f3n"
+    ],
+    choisirYon: [
+      "Choisir ELMAASYON",
+      "Get ELMAASYON",
+      "\u0627\u0634\u062a\u0631\u0643 \u0641\u064a ELMAASYON",
+      "Elegir ELMAASYON"
+    ],
+    choisirElm: [
+      "Choisir ELMAAS",
+      "Get ELMAAS",
+      "\u0627\u0634\u062a\u0631\u0643 \u0641\u064a ELMAAS",
+      "Elegir ELMAAS"
+    ],
+    inclus: [
+      "Inclus dans ELMAAS",
+      "Included in ELMAAS",
+      "\u0645\u0636\u0645\u0651\u0646 \u0641\u064a ELMAAS",
+      "Incluido en ELMAAS"
+    ],
+    formuleActuelle: [
+      "FORMULE ACTUELLE",
+      "CURRENT PLAN",
+      "\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062d\u0627\u0644\u064a\u0629",
+      "PLAN ACTUAL"
+    ],
+    planActuel: [
+      "Formule actuelle",
+      "Current plan",
+      "\u0627\u0644\u0628\u0627\u0642\u0629 \u0627\u0644\u062d\u0627\u0644\u064a\u0629",
+      "Plan actual"
+    ],
+    populaire: ["POPULAIRE", "POPULAR", "\u0627\u0644\u0623\u0643\u062b\u0631 \u0634\u064a\u0648\u0639\u0627\u064b", "POPULAR"],
+    gratuit: ["Gratuit", "Free", "\u0645\u062c\u0627\u0646\u064a", "Gratis"],
+    pourToujours: ["Pour toujours", "Forever free", "\u0645\u062c\u0627\u0646\u0627\u064b \u0644\u0644\u0623\u0628\u062f", "Gratis para siempre"],
+    offreLancement: ["Offre lancement", "Launch offer", "\u0639\u0631\u0636 \u0627\u0644\u0625\u0637\u0644\u0627\u0642", "Oferta lanzamiento"],
+    grandmaster: ["Le niveau Grandmaster", "The Grandmaster tier", "\u0645\u0633\u062a\u0648\u0649 \u063a\u0631\u0627\u0646\u062f \u0645\u0627\u0633\u062a\u0631", "El nivel Grandmaster"],
+    choisir: ["Choisissez votre formule", "Choose your plan", "\u0627\u062e\u062a\u0631 \u0628\u0627\u0642\u062a\u0643", "Elige tu plan"],
+    retour: ["\u2190 Retour", "\u2190 Back", "\u2192 \u0631\u062c\u0648\u0639", "\u2190 Volver"],
+    offreLimitee: [
+      "offre limit\u00e9e \u00e0 l'ouverture",
+      "limited opening offer",
+      "\u0639\u0631\u0636 \u0645\u062d\u062f\u0648\u062f \u0639\u0646\u062f \u0627\u0644\u0625\u0637\u0644\u0627\u0642",
+      "oferta limitada al lanzamiento"
+    ],
+    paiement: [
+      "Paiement s\u00e9curis\u00e9 via Stripe \u00b7 Annulation \u00e0 tout moment \u00b7 Sans engagement",
+      "Secure payment via Stripe \u00b7 Cancel anytime \u00b7 No commitment",
+      "\u062f\u0641\u0639 \u0622\u0645\u0646 \u0639\u0628\u0631 Stripe \u00b7 \u0625\u0644\u063a\u0627\u0621 \u0641\u064a \u0623\u064a \u0648\u0642\u062a \u00b7 \u0628\u062f\u0648\u0646 \u0627\u0644\u062a\u0632\u0627\u0645",
+      "Pago seguro v\u00eda Stripe \u00b7 Cancela cuando quieras \u00b7 Sin compromiso"
+    ],
+  };
+  const T = (key) => txt[key][L] || txt[key][0];
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, background:"var(--bg)", zIndex:2000,
+      display:"flex", flexDirection:"column", overflowY:"auto",
+    }}>
+      {/* Header */}
+      <div style={{
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+        padding:"16px 24px", borderBottom:"1px solid var(--bord)",
+        position:"sticky", top:0, background:"var(--bg)", zIndex:10,
+      }}>
+        <div>
+          <div style={{ fontFamily:"var(--titre)", fontSize:22, letterSpacing:"0.1em", color:"var(--texte)" }}>ELMAAS</div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginTop:2 }}>{T("choisir")}</div>
+        </div>
+        <button onClick={onFermer} style={{
+          background:"none", border:"1px solid var(--bord)", color:"var(--muted)",
+          padding:"6px 14px", borderRadius:6, cursor:"pointer", fontSize:13,
+        }}>{T("retour")}</button>
+      </div>
+
+      {/* Banniere lancement */}
+      <div style={{
+        textAlign:"center", padding:"10px 16px",
+        background:"linear-gradient(90deg,rgba(68,136,255,0.12),rgba(170,85,255,0.12))",
+        borderBottom:"1px solid rgba(100,120,220,0.2)",
+        fontSize:12, color:"#aa88ff", letterSpacing:"0.06em",
+      }}>
+        {"\u2726"} {lancement} {"\u2014"} {T("offreLimitee")} {"\u2726"}
+      </div>
+
+      {/* Cards */}
+      <div style={{
+        display:"flex", flexWrap:"wrap", gap:20, padding:"28px 24px",
+        justifyContent:"center", maxWidth:1000, margin:"0 auto", width:"100%",
+      }}>
+
+        {/* GRATUIT */}
+        <div style={{
+          flex:"1 1 280px", maxWidth:320,
+          background:"rgba(20,30,70,0.3)", border:"1px solid rgba(100,140,220,0.3)",
+          borderRadius:12, padding:24, display:"flex", flexDirection:"column", gap:0,
+          boxShadow: (!utilisateur?.plan || utilisateur?.plan==="gratuit") ? "0 0 24px rgba(100,140,220,0.15)" : "none",
+        }}>
+          {(!utilisateur?.plan || utilisateur?.plan==="gratuit") && (
+            <div style={{ fontSize:11, color:"#6699ff", letterSpacing:"0.1em", marginBottom:8, fontWeight:700 }}>
+              {"\u2726"} {T("formuleActuelle")}
+            </div>
+          )}
+          <div style={{ fontFamily:"var(--titre)", fontSize:20, color:"#6699ff", marginBottom:4 }}>{T("gratuit")}</div>
+          <div style={{ fontSize:28, fontWeight:800, color:"#6699ff", marginBottom:4 }}>0\u20ac</div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:20 }}>{T("pourToujours")}</div>
+
+          <Section label={photoLabel} />
+          <Feature ok={true}>{T("biblio")}</Feature>
+          <Feature ok={true}>{T("upload1")}</Feature>
+          <Feature ok={false}>{T("uploadIllimShort")}</Feature>
+
+          <Section label={analyseLabel} />
+          <Feature ok={true}>{T("analyse1")}</Feature>
+          <Feature ok={false}>{T("analyseIllim")}</Feature>
+
+          <Section label={iaLabel} />
+          <Feature ok={true}>{T("bots3")}</Feature>
+          <Feature ok={false}>{T("botElmaas")}</Feature>
+
+          <div style={{ marginTop:"auto", paddingTop:20 }}>
+            <div style={{ padding:"10px 16px", borderRadius:8, background:"rgba(100,140,220,0.08)",
+              border:"1px solid rgba(100,140,220,0.2)", textAlign:"center", fontSize:13, color:"#6699ff" }}>
+              {T("planActuel")}
+            </div>
+          </div>
+        </div>
+
+        {/* ELMAASYON */}
+        <div style={{
+          flex:"1 1 280px", maxWidth:320,
+          background: utilisateur?.plan==="elmaasyon" ? "rgba(30,60,140,0.35)" : "rgba(20,30,80,0.3)",
+          border: utilisateur?.plan==="elmaasyon" ? "1px solid #4488ff" : "1px solid rgba(68,136,255,0.35)",
+          borderRadius:12, padding:24, display:"flex", flexDirection:"column", gap:0,
+          boxShadow: utilisateur?.plan==="elmaasyon" ? "0 0 32px rgba(68,136,255,0.18)" : "none",
+          position:"relative",
+        }}>
+          {utilisateur?.plan==="elmaasyon" && (
+            <div style={{ fontSize:11, color:"#66aaff", letterSpacing:"0.1em", marginBottom:8, fontWeight:700 }}>
+              {"\u2726"} {T("formuleActuelle")}
+            </div>
+          )}
+          {utilisateur?.plan !== "elmaasyon" && utilisateur?.plan !== "elmaas" && (
+            <div style={{
+              position:"absolute", top:-12, left:"50%", transform:"translateX(-50%)",
+              background:"linear-gradient(135deg,#1144cc,#4488ff)", color:"#fff",
+              fontSize:11, fontWeight:700, padding:"4px 14px", borderRadius:20, letterSpacing:"0.08em",
+            }}>{T("populaire")}</div>
+          )}
+          <div style={{ fontFamily:"var(--titre)", fontSize:20, color:"#66aaff", marginBottom:4 }}>ELMAASYON</div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:4 }}>
+            <span style={{ textDecoration:"line-through", fontSize:14, color:"var(--muted)", opacity:0.5 }}>6.99\u20ac</span>
+            <span style={{ fontSize:32, fontWeight:800, color:"#66aaff" }}>3.49\u20ac</span>
+          </div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:20 }}>/{mois} {"\u2014"} {T("offreLancement")}</div>
+
+          <Section label={photoLabel} />
+          <Feature ok={true}>{T("biblio")}</Feature>
+          <Feature ok={true}>{T("uploadIllim")}</Feature>
+
+          <Section label={analyseLabel} />
+          <Feature ok={true}>{T("analyse3")}</Feature>
+          <Feature ok={true}>{T("visuCoup")}</Feature>
+          <Feature ok={false}>{T("analyseIllim")}</Feature>
+
+          <Section label={iaLabel} />
+          <Feature ok={true}>{T("bots3")}</Feature>
+          <Feature ok={false}>{T("botElmaas")}</Feature>
+
+          <div style={{ marginTop:"auto", paddingTop:20 }}>
+            {utilisateur?.plan === "elmaasyon" ? (
+              <button className="btn-valider" style={{
+                width:"100%", fontSize:13, padding:"11px",
+                background:"rgba(68,136,255,0.12)", border:"1px solid #4488ff44",
+              }} onClick={async () => {
+                const res = await fetch(API+"/stripe/portal", { method:"POST", headers:{ Authorization:"Bearer "+getToken() } });
+                const d = await res.json(); if (d.url) window.location.href = d.url;
+              }}>{T("gerer")}</button>
+            ) : utilisateur?.plan !== "elmaas" ? (
+              <button className="btn-valider" style={{
+                width:"100%", fontSize:14, padding:"12px",
+                background:"linear-gradient(135deg,#1144cc,#4488ff)", border:"none",
+              }} onClick={() => onPaiement("elmaasyon")}>{T("choisirYon")}</button>
+            ) : (
+              <div style={{ padding:"10px", textAlign:"center", fontSize:12, color:"var(--muted)",
+                border:"1px solid var(--bord)", borderRadius:8 }}>{T("inclus")}</div>
+            )}
+          </div>
+        </div>
+
+        {/* ELMAAS */}
+        <div style={{
+          flex:"1 1 280px", maxWidth:320,
+          background: utilisateur?.plan==="elmaas" ? "rgba(60,20,120,0.35)" : "rgba(30,10,60,0.3)",
+          border: utilisateur?.plan==="elmaas" ? "2px solid #aa55ff" : "1px solid rgba(170,85,255,0.35)",
+          borderRadius:12, padding:24, display:"flex", flexDirection:"column", gap:0,
+          boxShadow: utilisateur?.plan==="elmaas" ? "0 0 40px rgba(170,85,255,0.25)" : "none",
+        }}>
+          {utilisateur?.plan==="elmaas" && (
+            <div style={{ fontSize:11, color:"#cc88ff", letterSpacing:"0.1em", marginBottom:8, fontWeight:700 }}>
+              {"\u2726"} {T("formuleActuelle")}
+            </div>
+          )}
+          <div style={{ fontFamily:"var(--titre)", fontSize:20, color:"#cc88ff", marginBottom:4 }}>ELMAAS</div>
+          <div style={{ fontSize:11, color:"#9966cc", letterSpacing:"0.06em", marginBottom:8, fontStyle:"italic" }}>{T("grandmaster")}</div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:4 }}>
+            <span style={{ textDecoration:"line-through", fontSize:14, color:"var(--muted)", opacity:0.5 }}>12.99\u20ac</span>
+            <span style={{ fontSize:32, fontWeight:800, color:"#cc88ff" }}>6.49\u20ac</span>
+          </div>
+          <div style={{ fontSize:12, color:"var(--muted)", marginBottom:20 }}>/{mois} {"\u2014"} {T("offreLancement")}</div>
+
+          <Section label={photoLabel} />
+          <Feature ok={true}>{T("biblio")}</Feature>
+          <Feature ok={true}>{T("uploadIllim")}</Feature>
+
+          <Section label={analyseLabel} />
+          <Feature ok={true}>{T("analyseIllim")}</Feature>
+          <Feature ok={true}>{T("visuCoup")}</Feature>
+          <Feature ok={true}>{T("stratProf")}</Feature>
+
+          <Section label={iaLabel} />
+          <Feature ok={true}>{T("bots3")}</Feature>
+          <Feature ok={true}>{T("botElmaas15")}</Feature>
+          <Feature ok={true}>{T("iaReflex")}</Feature>
+
+          <div style={{ marginTop:"auto", paddingTop:20 }}>
+            {utilisateur?.plan === "elmaas" ? (
+              <button className="btn-valider" style={{
+                width:"100%", fontSize:13, padding:"11px",
+                background:"rgba(170,85,255,0.12)", border:"1px solid #aa55ff44",
+              }} onClick={async () => {
+                const res = await fetch(API+"/stripe/portal", { method:"POST", headers:{ Authorization:"Bearer "+getToken() } });
+                const d = await res.json(); if (d.url) window.location.href = d.url;
+              }}>{T("gerer")}</button>
+            ) : (
+              <button className="btn-valider" style={{
+                width:"100%", fontSize:14, padding:"12px",
+                background:"linear-gradient(135deg,#6600cc,#aa55ff)", border:"none",
+              }} onClick={() => onPaiement("elmaas")}>{T("choisirElm")}</button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign:"center", padding:"20px 24px 40px", borderTop:"1px solid var(--bord)", marginTop:8 }}>
+        <div style={{ fontSize:12, color:"var(--muted)", lineHeight:1.8 }}>{T("paiement")}</div>
       </div>
     </div>
   );
@@ -1091,6 +1399,7 @@ export default function App() {
   const [indexLangue, setIndexLangue] = useState(getLangueInitiale);
   const L = indexLangue;
   const [showParametres, setShowParametres] = useState(false);
+  const [showPlans, setShowPlans] = useState(false);
   const [etape, setEtape] = useState(() => getUser()?.pseudo ? "taille" : (getUser() ? "pseudo" : "auth"));
   const [props, setProps] = useState({ j1: 16, j2: 16, taille: 16 });
   const [partieId, setPartieId] = useState(null);
@@ -1734,26 +2043,31 @@ export default function App() {
   const popupParams = showParametres && (
     <PopupParametres utilisateur={utilisateur} L={L} indexLangue={indexLangue}
       changerLangue={changerLangue} onFermer={() => setShowParametres(false)}
-      onDeconnecter={onDeconnecter} onPaiement={handlePaiement} />
+      onDeconnecter={onDeconnecter} onPaiement={handlePaiement}
+      onVoirPlans={() => { setShowParametres(false); setShowPlans(true); }} />
+  );
+  const ecranPlans = showPlans && (
+    <EcranPlans utilisateur={utilisateur} L={L}
+      onFermer={() => setShowPlans(false)} onPaiement={handlePaiement} />
   );
 
   if (etape === "auth") return (
     <div className="app">
-      {boutonParamsFlottant}{popupParams}
+      {boutonParamsFlottant}{popupParams}{ecranPlans}
       <EcranAuth onConnecte={(user) => { setUtilisateur(user); setEtape(user?.pseudo ? "taille" : (user ? "pseudo" : "taille")); }} L={L} />
     </div>
   );
 
   if (etape === "pseudo") return (
     <div className="app">
-      {boutonParamsFlottant}{popupParams}
+      {boutonParamsFlottant}{popupParams}{ecranPlans}
       <EcranPseudo L={L} onPseudoDefini={(user) => { setUtilisateur(user); setEtape("taille"); }} />
     </div>
   );
 
   if (etape === "taille") return (
     <div className="app">
-      {boutonParamsFlottant}{popupParams}
+      {boutonParamsFlottant}{popupParams}{ecranPlans}
       {matchmakingActif && (
         <PopupMatchmaking L={L} timerSec={timerChoisi} utilisateur={utilisateur}
           onAnnuler={() => setMatchmakingActif(false)}
@@ -1811,7 +2125,7 @@ export default function App() {
 
   if (etape === "photo") return (
     <div className="app">
-      {boutonParamsFlottant}{popupParams}
+      {boutonParamsFlottant}{popupParams}{ecranPlans}
       {modeIA === "aucune" && (
         <div style={{ position: "absolute", bottom: 32, width: "100%", display: "flex", justifyContent: "center" }}>
           <button className="btn-action" style={{ fontSize: 15, padding: "10px 20px" }}
@@ -1828,7 +2142,7 @@ export default function App() {
 
   if (etape === "lobby") return (
     <div className="app">
-      {boutonParamsFlottant}{popupParams}
+      {boutonParamsFlottant}{popupParams}{ecranPlans}
       <EcranLobby 
         partieId={partieId} 
         monRole={monRole} 
@@ -1868,6 +2182,7 @@ export default function App() {
   return (
     <div className="app jeu">
       {popupParams}
+      {ecranPlans}
 
       {bullesActives.map(b => (
         <BulleMessage key={b.id} texte={b.texte} couleur={b.couleur} position={b.position}
