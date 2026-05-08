@@ -1,4 +1,4 @@
-// ELMAAS App.js — VERSION CORRIGÉE (Analyse profonde uniquement)
+// ELMAAS App.js — VERSION CORRIGÉE (Analyse profonde uniquement + Tutoriel)
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
@@ -7,6 +7,7 @@ import Board from "./Board";
 import { T, LANGUES, t, getSloganAleatoire, getCitationAttente, getSloganVictoire, getSloganDefaite, getSloganAnalyse, CLASSIFICATION_COUP } from "./translations";
 import "./App.css";
 import EcranAnalyse from "./EcranAnalyse";
+import TutorielELMAAS from "./TutorielELMAAS";
 
 const API = "https://elmaas-backend.onrender.com";
 //const API = "http://localhost:3000/";
@@ -61,7 +62,7 @@ function BtnParamsFlottant({ onClick, L }) {
 }
 
 //  Popup Paramètres 
-function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer, onDeconnecter, onPaiement, onVoirPlans }) {
+function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer, onDeconnecter, onPaiement, onVoirPlans, onLancerTutoriel }) {
   return (
     <div className="popup-overlay" onClick={onFermer}>
       <div className="popup-pouvoir" style={{ minWidth: 340, maxWidth: 440, gap: 14, maxHeight: "85vh", overflowY: "auto" }}
@@ -135,6 +136,7 @@ function PopupParametres({ utilisateur, L, indexLangue, changerLangue, onFermer,
           </div>
         )}
 
+        <button className="popup-btn" onClick={() => { onFermer(); onLancerTutoriel(); }}>{t("tutorielRelancer", L)}</button>
         <button className="popup-btn" onClick={onFermer}>{t("fermer", L)}</button>
       </div>
     </div>
@@ -1400,7 +1402,13 @@ export default function App() {
   const L = indexLangue;
   const [showParametres, setShowParametres] = useState(false);
   const [showPlans, setShowPlans] = useState(false);
-  const [etape, setEtape] = useState(() => getUser()?.pseudo ? "taille" : (getUser() ? "pseudo" : "auth"));
+  const [etape, setEtape] = useState(() => {
+    const user = getUser();
+    if (!user) return "auth";
+    if (!user.pseudo) return "pseudo";
+    if (!localStorage.getItem("elmaas_tutoriel_vu")) return "tutoriel";
+    return "taille";
+  });
   const [props, setProps] = useState({ j1: 16, j2: 16, taille: 16 });
   const [partieId, setPartieId] = useState(null);
   const [partieIdMatch, setPartieIdMatch] = useState(null);
@@ -1605,7 +1613,10 @@ export default function App() {
             localStorage.setItem("elmaas_user", JSON.stringify(user));
             setUtilisateur(user);
             if (besoinPseudo === "1" || !user.pseudo) setEtape("pseudo");
-            else setEtape("taille");
+            else {
+              if (!localStorage.getItem("elmaas_tutoriel_vu")) setEtape("tutoriel");
+              else setEtape("taille");
+            }
           }
           window.history.replaceState({}, "", "/");
         })
@@ -2044,7 +2055,8 @@ export default function App() {
     <PopupParametres utilisateur={utilisateur} L={L} indexLangue={indexLangue}
       changerLangue={changerLangue} onFermer={() => setShowParametres(false)}
       onDeconnecter={onDeconnecter} onPaiement={handlePaiement}
-      onVoirPlans={() => { setShowParametres(false); setShowPlans(true); }} />
+      onVoirPlans={() => { setShowParametres(false); setShowPlans(true); }}
+      onLancerTutoriel={() => { setShowParametres(false); setEtape("tutoriel"); }} />
   );
   const ecranPlans = showPlans && (
     <EcranPlans utilisateur={utilisateur} L={L}
@@ -2061,7 +2073,17 @@ export default function App() {
   if (etape === "pseudo") return (
     <div className="app">
       {boutonParamsFlottant}{popupParams}{ecranPlans}
-      <EcranPseudo L={L} onPseudoDefini={(user) => { setUtilisateur(user); setEtape("taille"); }} />
+      <EcranPseudo L={L} onPseudoDefini={(user) => { setUtilisateur(user); if (!localStorage.getItem("elmaas_tutoriel_vu")) setEtape("tutoriel"); else setEtape("taille"); }} />
+    </div>
+  );
+
+  if (etape === "tutoriel") return (
+    <div className="app">
+      <TutorielELMAAS
+        L={L}
+        onFermer={() => { localStorage.setItem("elmaas_tutoriel_vu", "1"); setEtape("taille"); }}
+        onIgnorer={() => { localStorage.setItem("elmaas_tutoriel_vu", "1"); setEtape("taille"); }}
+      />
     </div>
   );
 

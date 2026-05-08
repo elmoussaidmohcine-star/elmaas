@@ -1499,7 +1499,114 @@ export const T = {
   ],
   planGratuitLancement: ["Gratuit (lancement)", "Free (launch)", "مجاني (إطلاق)", "Gratis (lanzamiento)"],
   planElmaasyonBienvenue: ["Mois de bienvenue — Gratuit", "Welcome month — Free", "شهر الترحيب — مجاني", "Mes de bienvenida — Gratis"],
+    // ── Tutoriel ────────────────────────────────────────────────
+  tutorielBienvenue: ["Bienvenue dans ELMAAS", "Welcome to ELMAAS", "مرحباً بك في إلماس", "Bienvenido a ELMAAS"],
+  tutorielIgnorer: ["Ignorer le tutoriel", "Skip tutorial", "تخطي الدليل", "Omitir tutorial"],
+  tutorielCommencer: ["Commencer le tutoriel", "Start tutorial", "ابدأ الدليل", "Iniciar tutorial"],
+  tutorielSuivant: ["Suivant", "Next", "التالي", "Siguiente"],
+  tutorielPrecedent: ["Précédent", "Previous", "السابق", "Anterior"],
+  tutorielJouer: ["C'est parti", "Let's play", "لنلعب", "A jugar"],
+  tutorielRelire: ["Relire le tutoriel", "Replay tutorial", "إعادة الدليل", "Repetir tutorial"],
+  tutorielRelancer: ["Relancer le tutoriel", "Restart tutorial", "إعادة تشغيل الدليل", "Reiniciar tutorial"],
+
+  tutorielPlateauTitre: ["Le plateau", "The board", "اللوحة", "El tablero"],
+  tutorielPlateauLabel: ["Plateau de démo", "Demo board", "لوحة تجريبية", "Tablero demo"],
+  tutorielPlateauDesc: [
+    "Le plateau est généré depuis une photo, puis divisé en puzzles avec des bords colorés. Chaque case appartient à au plus un puzzle.",
+    "The board is generated from a photo, then divided into puzzles with colored borders. Each cell belongs to at most one puzzle.",
+    "تُولَّد اللوحة من صورة، ثم تُقسَّم إلى ألغاز محددة بحدود ملونة. كل خانة تنتمي إلى لغز واحد على الأكثر.",
+    "El tablero se genera desde una foto, dividido en puzzles con bordes de colores. Cada celda pertenece a un solo puzzle."
+  ],
+
+  tutorielPuzzleUniTitre: ["Puzzles unicolores", "Single-color puzzles", "ألغاز أحادية اللون", "Puzzles unicolor"],
+  tutorielPuzzleUniLabel: ["Puzzles unicolores", "Single-color puzzles", "ألغاز أحادية اللون", "Puzzles unicolor"],
+  tutorielPuzzleUniRouge: ["Puzzle rouge — cases rouges uniquement", "Red puzzle — red cells only", "لغز أحمر — خلايا حمراء فقط", "Puzzle rojo — solo celdas rojas"],
+  tutorielPuzzleUniNoir: ["Puzzle noir — cases noires uniquement", "Black puzzle — black cells only", "لغز أسود — خلايا سوداء فقط", "Puzzle negro — solo celdas negras"],
+  tutorielPuzzleUniDesc: [
+    "Les puzzles unicolores doivent être remplis entièrement par une seule couleur joueur. Aucune pièce ELMAAS (diamant) ne peut les compléter.",
+    "Single-color puzzles must be filled entirely by one player color. No ELMAAS (diamond) piece can complete them.",
+    "يجب أن تُملأ الألغاز أحادية اللون بلون لاعب واحد بالكامل. لا يمكن لقطع ELMAAS (الماسية) إكمالها.",
+    "Los puzzles unicolores deben llenarse completamente con un solo color. Las piezas ELMAAS no pueden completarlos."
+  ],
+
+  tutorielPuzzleBiTitre: ["Puzzles bicolores", "Two-color puzzles", "ألغاز ثنائية اللون", "Puzzles bicolor"],
+  tutorielPuzzleBiLabel: ["Puzzle bicolore", "Two-color puzzle", "لغز ثنائي اللون", "Puzzle bicolor"],
+  tutorielPuzzleBiMixte: ["Rouge + Noir", "Red + Black", "أحمر + أسود", "Rojo + Negro"],
+  tutorielPuzzleBiDesc: [
+    "Un puzzle bicolore doit contenir au moins une case rouge ET une case noire. Le joueur actif au moment de la complétion remporte le puzzle.",
+    "A two-color puzzle must contain at least one red AND one black cell. The active player at completion wins the puzzle.",
+    "يجب أن يحتوي اللغز ثنائي اللون على خانة حمراء واحدة على الأقل وخانة سوداء. اللاعب النشط عند الاكتمال يفوز باللغز.",
+    "Un puzzle bicolor debe tener al menos una celda roja Y una negra. El jugador activo al completarlo gana el puzzle."
+  ],
+
+  tutorielScoreTitre: ["Score & Intersections", "Score & Intersections", "النقاط والتقاطعات", "Puntuación e Intersecciones"],
+  tutorielScoreDesc: [
+    "Chaque case gagnée vaut 1 point. Une case ne compte que pour un seul joueur. Si deux puzzles se chevauchent, le dernier complété prend les cases partagées — l'autre joueur perd ces points.",
+    "Each won cell is worth 1 point. A cell counts for only one player. If two puzzles overlap, the last completed takes the shared cells — the other player loses those points.",
+    "كل خانة مكتسبة تساوي نقطة واحدة. تُحسب الخانة للاعب واحد فقط. إذا تداخل لغزان، فإن آخر لغز مكتمل يأخذ الخلايا المشتركة — ويخسر الخصم هذه النقاط.",
+    "Cada celda ganada vale 1 punto. Una celda cuenta para un solo jugador. Si dos puzzles se superponen, el último completado se lleva las celdas compartidas — el rival pierde esos puntos."
+  ],
+
+  tutorielSurpuzzleTitre: ["Sur-puzzles", "Sub-puzzles", "الألغاز الفرعية", "Sub-puzzles"],
+  tutorielSurpuzzleParent: ["Puzzle parent", "Parent puzzle", "اللغز الرئيسي", "Puzzle padre"],
+  tutorielSurpuzzleSub: ["Sous-puzzle", "Sub-puzzle", "اللغز الفرعي", "Sub-puzzle"],
+  tutorielSurpuzzleVole: ["Volé !", "Stolen!", "مُسْرَق!", "¡Robado!"],
+  tutorielSurpuzzleDesc: [
+    "Certains puzzles contiennent des sous-puzzles. Compléter un sous-puzzle peut voler le puzzle parent à l'adversaire si celui-ci l'avait déjà remporté.",
+    "Some puzzles contain sub-puzzles. Completing a sub-puzzle can steal the parent puzzle from the opponent if they had already won it.",
+    "بعض الألغاز تحتوي على ألغاز فرعية. إكمال لغز فرعي قد يسرق اللغز الرئيسي من الخصم إذا كان قد فاز به سابقاً.",
+    "Algunos puzzles contienen sub-puzzles. Completar un sub-puzzle puede arrebatarle el puzzle principal al rival si ya lo había ganado."
+  ],
+
+  tutorielActionsTitre: ["Actions par tour", "Actions per turn", "الإجراءات لكل دور", "Acciones por turno"],
+  tutorielActionPoserTitre: ["Poser", "Place", "وضع", "Colocar"],
+  tutorielActionPoserDesc: [
+    "Sélectionne une pièce de ta main et clique sur le plateau. La pièce doit intersecter au moins un puzzle actif.",
+    "Select a piece from your hand and click the board. The piece must intersect at least one active puzzle.",
+    "اختر قطعة من يدك وانقر على اللوحة. يجب أن تتقاطع القطعة مع لغز نشط واحد على الأقل.",
+    "Selecciona una pieza de tu mano y haz clic en el tablero. La pieza debe intersectar al menos un puzzle activo."
+  ],
+  tutorielActionRepiocherTitre: ["Repiocher", "Redraw", "السحب من جديد", "Robar"],
+  tutorielActionRepiocherDesc: [
+    "Remplace toute ta main par de nouvelles pièces de ta réserve. Utile quand aucune pièce ne convient.",
+    "Replace your entire hand with new pieces from your reserve. Useful when no piece fits.",
+    "استبدل يدك بالكامل بقطع جديدة من احتياطيك. مفيد عندما لا تناسب أي قطعة.",
+    "Reemplaza tu mano completa con piezas nuevas de tu reserva. Útil cuando ninguna encaja."
+  ],
+  tutorielActionScoutTitre: ["Scout", "Scout", "الاستكشاف", "Explorar"],
+  tutorielActionScoutDesc: [
+    "Consulte les prochaines pièces de ta réserve et échange certaines si tu le souhaites. Planifie à l'avance.",
+    "Preview your next reserve pieces and optionally swap some. Plan your strategy ahead.",
+    "راجع القطع القادمة في احتياطيك وبدّل بعضها إن أردت. خطط مسبقاً.",
+    "Consulta tus próximas piezas de reserva e intercambia algunas si lo deseas. Planifica tu estrategia."
+  ],
+
+  tutorielElmaasTitre: ["Pièces ELMAAS", "ELMAAS Pieces", "قطع إلماس", "Piezas ELMAAS"],
+  tutorielElmaasDesc: [
+    "Les pièces ELMAAS (diamant) apparaissent lors de la régénération. Posées sur une case adverse, elles l'effacent. Pas de diamant sur diamant. Sur un puzzle déjà complété adverse, les points restent tant que l'adversaire ne repose pas sa couleur dessus.",
+    "ELMAAS (diamond) pieces appear during regeneration. Placed on an opponent cell, they erase it. No diamond on diamond. On an opponent's completed puzzle, points remain until they place their color on it again.",
+    "تظهر قطع ELMAAS (الماسية) عند التجديد. عند وضعها فوق خانة خصم، تمحوها. لا ماس فوق ماس. على لغز مكتمل للخصم، تبقى النقاط ما لم يضع خصمك لونه فوقها من جديد.",
+    "Las piezas ELMAAS (diamante) aparecen en la regeneración. Colocadas sobre una celda rival, la borran. No diamante sobre diamante. En un puzzle completado del rival, los puntos permanecen hasta que vuelva a colocar su color."
+  ],
+
+  tutorielSeriesTitre: ["Séries & Fin de manche", "Streaks & Round end", "السلاسل ونهاية الجولة", "Rachas y Fin de ronda"],
+  tutorielSerie3Desc: ["3 puzzles d'affilée = pouvoir (échange ou extraction)", "3 in a row = power (exchange or extract)", "3 ألغاز متتالية = قوة (تبادل أو استخراج)", "3 seguidos = poder (intercambio o extracción)"],
+  tutorielSerie5Desc: ["5 puzzles d'affilée = victoire immédiate !", "5 in a row = immediate victory!", "5 ألغاز متتالية = نصر فوري!", "5 seguidos = ¡victoria inmediata!"],
+  tutorielFinDesc: [
+    "La manche se termine quand un joueur ne peut plus poser de pièce intersectant un puzzle actif, ou si le timer expire.",
+    "The round ends when a player can no longer place a piece intersecting an active puzzle, or if the timer expires.",
+    "تنتهي الجولة عندما لا يستطيع لاعب وضع أي قطعة تتقاطع مع لغز نشط، أو عند انتهاء الوقت.",
+    "La ronda termina cuando un jugador no puede colocar ninguna pieza que intersecte un puzzle activo, o si expira el tiempo."
+  ],
+
+  tutorielRecapTitre: ["Récapitulatif", "Summary", "الملخص", "Resumen"],
+  tutorielRecap1: ["Plateau généré depuis une photo, divisé en puzzles", "Board generated from a photo, divided into puzzles", "لوحة مولدة من صورة، مقسمة إلى ألغاز", "Tablero generado desde foto, dividido en puzzles"],
+  tutorielRecap2: ["Puzzles unicolores (rouge/noir) et bicolores (mixtes)", "Single-color (red/black) and two-color (mixed) puzzles", "ألغاز أحادية اللون (أحمر/أسود) وثنائية اللون (مختلطة)", "Puzzles unicolor (rojo/negro) y bicolor (mixtos)"],
+  tutorielRecap3: ["Score par cases gagnées, intersections au dernier complété", "Score by won cells, intersections to last completed", "نقاط بالخلايا المكتسبة، التقاطعات لآخر مكتمل", "Puntos por celdas ganadas, intersecciones al último completado"],
+  tutorielRecap4: ["Actions : poser, repiocher, scout — plus séries et ELMAAS", "Actions: place, redraw, scout — plus streaks and ELMAAS", "إجراءات: وضع، سحب، استكشاف — بالإضافة إلى السلاسل و ELMAAS", "Acciones: colocar, robar, explorar — además rachas y ELMAAS"],
+  tutorielRecap5: ["Fin de manche : plus de coups possibles ou timer expiré", "Round end: no more moves or timer expires", "نهاية الجولة: لا حركات ممكنة أو انتهاء الوقت", "Fin de ronda: sin movimientos o tiempo expirado"],
 };
+
 
 // ═══════════════════════════════════════════════════════════
 // FONCTION D'ACCÈS UI
