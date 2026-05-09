@@ -2563,7 +2563,7 @@ export default function App() {
         </div>
 
         {/* 3. PLATEAU — maximum d'espace */}
-        <div className="plateau-central">
+        <div className={`plateau-central plateau-taille-${taille}`}>
           <Board etat={etat} taille={taille} couleurJoueur={joueurAffiche?.couleur}
             pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurAffiche?.main_active[pieceIdx] : null}
             pieceIdx={pieceIdx} pixelsPhoto={pixelsPhoto}
