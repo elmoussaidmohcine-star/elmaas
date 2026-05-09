@@ -2239,7 +2239,12 @@ export default function App() {
           <div className="popup-pouvoir" style={{ minWidth: 380, gap: 16 }}>
             {(() => {
               const g = mancheTermineeInfo.gagnant;
-              const maCouleur = monRole === "joueur2" ? "noir" : "rouge";
+              // ═══════════════════════════════════════════════════════
+              // CORRECTION : tenir compte de modeIA pour la couleur humaine
+              // ═══════════════════════════════════════════════════════
+              const maCouleur = modeIA !== "aucune"
+                ? (modeIA === "j1" ? "noir" : "rouge")   // IA rouge → humain noir
+                : (monRole === "joueur2" ? "noir" : "rouge");
               const jaiGagne = g === maCouleur;
               const egalite = g === "egalite";
               return (
