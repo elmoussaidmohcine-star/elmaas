@@ -572,7 +572,7 @@ def ia_niveau_3(etat, joueur):
 # NIVEAU 4 — ELMAAS  (le jeu porte son nom, le robot aussi)
 #
 # Architecture de décision :
-#   Phase 0 — Victoire immédiate série 5 ?
+#   Phase 0 — Victoire immédiate (série 5 → fin de manche) ?
 #   Phase 1 — Je complète un puzzle ce tour ? (normal + mixte via ELMAAS)
 #   Phase 2 — L adversaire complète un puzzle AU PROCHAIN TOUR ? → bloquer
 #   Phase 3 — ELMAAS tactique : destructions à haute valeur
@@ -959,7 +959,7 @@ def ia_niveau_4(etat, joueur):
     """
     import time
     debut = time.time()
-    DEADLINE = 3.5  # secondes max
+    DEADLINE = 8.0  # secondes max (augmenté pour éviter les timeouts)
 
     main = joueur.main_active
     if not main:
@@ -972,6 +972,9 @@ def ia_niveau_4(etat, joueur):
     taille    = get_taille()
     joueur_adv = etat.joueur_adverse()
 
+    # Fallback si jamais on dépasse le temps avant d'avoir un résultat
+    coup_fallback = None
+
     # ────────────────────────────────────────────────────────
     # PHASE 0 — Victoire immédiate
     # Si série actuelle == 4, le prochain puzzle complété = fin de manche
@@ -982,6 +985,8 @@ def ia_niveau_4(etat, joueur):
             if piece.get("enlevement"):
                 continue
             for r in range(taille):
+                if time.time() - debut > DEADLINE:
+                    return coup_fallback if coup_fallback else ia_niveau_1(etat, joueur)
                 for c in range(taille):
                     valide, _ = placement_valide(piece, (r, c), pieces, taille)
                     if not valide:
@@ -998,15 +1003,21 @@ def ia_niveau_4(etat, joueur):
     meilleures_completions = []  # (gain_total, vol_parent, idx, origine)
 
     for idx, piece in enumerate(main):
+        if time.time() - debut > DEADLINE:
+            break
         for r in range(taille):
+            if time.time() - debut > DEADLINE:
+                break
             for c in range(taille):
+                if time.time() - debut > DEADLINE:
+                    break
                 valide, _ = placement_valide(piece, (r, c), pieces, taille)
                 if not valide:
                     continue
                 gain, nb_p, vol = _gain_si_pose(piece, (r, c), pieces, puzzles,
                                                  couleur, couleur_adv, taille)
                 if gain > 0:
-                    # Tie-break : préférer aussi ce qui bloque l adversaire
+                    # Tie-break : préférer aussi ce qui bloque l'adversaire
                     sc_pos = score_cellules_dans_puzzles(piece, (r, c), puzzles, couleur, taille)
                     meilleures_completions.append((gain + vol * 20 + sc_pos * 0.1,
                                                    gain, vol, idx, (r, c)))
@@ -1023,7 +1034,7 @@ def ia_niveau_4(etat, joueur):
     # PHASE 2 — Blocage d urgence
     # L adversaire peut compléter un puzzle au prochain coup ?
     # ────────────────────────────────────────────────────────
-    if time.time() < DEADLINE:
+    if time.time() - debut < DEADLINE:
         menaces = _adversaire_peut_completer(joueur_adv, pieces, puzzles,
                                               couleur_adv, couleur, taille)
         if menaces:
@@ -1031,6 +1042,8 @@ def ia_niveau_4(etat, joueur):
             # Chercher le coup qui intercepte ces cases
             cellules_menacees = set()
             for gm, idxm, orgm in menaces[:3]:  # top 3 menaces
+                if time.time() - debut > DEADLINE:
+                    break
                 piece_adv = joueur_adv.main_active[idxm]
                 for r, c in cellules_absolues(piece_adv, orgm):
                     if 0 <= r < taille and 0 <= c < taille:
@@ -1039,8 +1052,14 @@ def ia_niveau_4(etat, joueur):
             meilleur_blocage = None
             meilleur_s_bloc = -9999
             for idx, piece in enumerate(main):
+                if time.time() - debut > DEADLINE:
+                    break
                 for r in range(taille):
+                    if time.time() - debut > DEADLINE:
+                        break
                     for c in range(taille):
+                        if time.time() - debut > DEADLINE:
+                            break
                         valide, _ = placement_valide(piece, (r, c), pieces, taille)
                         if not valide:
                             continue
@@ -1062,13 +1081,19 @@ def ia_niveau_4(etat, joueur):
     # PHASE 3 — ELMAAS tactique
     # Si j ai des pièces diamant ET une cible à très haute valeur
     # ────────────────────────────────────────────────────────
-    if time.time() < DEADLINE:
+    if time.time() - debut < DEADLINE:
         elmaas_coups = []  # (score, idx, origine)
         for idx, piece in enumerate(main):
+            if time.time() - debut > DEADLINE:
+                break
             if not piece.get("enlevement"):
                 continue
             for r in range(taille):
+                if time.time() - debut > DEADLINE:
+                    break
                 for c in range(taille):
+                    if time.time() - debut > DEADLINE:
+                        break
                     valide, _ = placement_valide(piece, (r, c), pieces, taille)
                     if not valide:
                         continue
@@ -1090,7 +1115,11 @@ def ia_niveau_4(etat, joueur):
                     if piece2.get("enlevement"):
                         continue
                     for r in range(taille):
+                        if time.time() - debut > DEADLINE:
+                            break
                         for c in range(taille):
+                            if time.time() - debut > DEADLINE:
+                                break
                             valide, _ = placement_valide(piece2, (r, c), pieces, taille)
                             if not valide:
                                 continue
@@ -1113,21 +1142,19 @@ def ia_niveau_4(etat, joueur):
     # ────────────────────────────────────────────────────────
     candidats = _candidats_tries(joueur, pieces, puzzles, couleur, couleur_adv, taille, n_max=35)
     if not candidats:
-        return None
+        return ia_niveau_1(etat, joueur)  # fallback absolu
 
     meilleur_score = float("-inf")
     meilleur = (candidats[0][1], candidats[0][2])
 
     for sc_greedy, idx, origine in candidats:
-        if time.time() > DEADLINE:
+        if time.time() - debut > DEADLINE:
             break
 
         piece = main[idx]
         pieces_apres = _simuler_coup_leger(pieces, piece, origine, couleur, taille)
 
-        # Évaluer position après mon coup (via puzzles simulés)
-        # On utilise l éval positionnelle sur le plateau simulé
-        # (on ne deepcopy pas l état complet pour des raisons de performance)
+        # Évaluer position après mon coup
         val_moi = evaluer_position_apres(pieces_apres, puzzles, couleur, couleur_adv)
 
         # Simuler les top-5 réponses adverses
@@ -1145,7 +1172,7 @@ def ia_niveau_4(etat, joueur):
 
         pire = val_moi
         for _, idx_a, org_a in candidats_adv[:5]:
-            if time.time() > DEADLINE:
+            if time.time() - debut > DEADLINE:
                 break
             piece_a = joueur_adv.main_active[idx_a]
             pieces_apres2 = _simuler_coup_leger(pieces_apres, piece_a, org_a, couleur_adv, taille)

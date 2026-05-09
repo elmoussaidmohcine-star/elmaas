@@ -1454,6 +1454,10 @@ export default function App() {
   const [bullesActives, setBullesActives] = useState([]);
   const lastMsgTime = useRef(0);
   
+  // ── REF ANTI-BOUCLE IA ───────────────────────────────────
+  // Empêche declencherIA de tourner en boucle infinie si la requête échoue
+  const iaTourLanceRef = useRef(null);
+  
   const pseudoAdverse = modeIA !== "aucune"
     ? (niveauIA === 1 ? "Chess" : niveauIA === 2 ? "Amal" : niveauIA === 3 ? "ELMAASYON" : "ELMAAS")
     : (pseudoAdversaireMatch || etat?.pseudo_adversaire || "ADVERSAIRE");
@@ -1873,8 +1877,19 @@ export default function App() {
     if (!partieIdCourant || !etatCourant || mode === "aucune") return;
     const tourIA = mode === "j1" ? 0 : 1;
     if (etatCourant.tour_actuel !== tourIA || etatCourant.manche_terminee) return;
+    
+    // ── ANTI-BOUCLE INFINIE ──────────────────────────────────
+    // Un seul déclenchement par numero_tour. Si la requête échoue,
+    // on ne relance pas immédiatement pour éviter l'horloge infinie.
+    if (iaTourLanceRef.current === etatCourant.numero_tour) {
+      console.log("[IA] Déjà lancée pour le tour", etatCourant.numero_tour);
+      return;
+    }
+    iaTourLanceRef.current = etatCourant.numero_tour;
+    
     setIaEnCours(true);
-    const iaDelayMs = niveau >= 4 ? 15000 : 800;
+    // Délai artificiel réduit : le backend fait déjà le vrai calcul
+    const iaDelayMs = niveau >= 4 ? 1000 : 800;
     await new Promise(r => setTimeout(r, iaDelayMs));
     try {
       const res = await axios.post(`${API}/ia/${partieIdCourant}`, { niveau });
@@ -1884,7 +1899,13 @@ export default function App() {
         const scores = calculer_scores_locaux(res.data.etat);
         setMancheTermineeInfo({ gagnant: res.data.gagnant, scores });
       }
-    } catch (err) { console.error("Erreur IA:", err); gererErreur404(err); }
+    } catch (err) { 
+      console.error("Erreur IA:", err); 
+      gererErreur404(err); 
+      // En cas d'erreur, on laisse iaTourLanceRef bloqué pour ce tour
+      // pour éviter la boucle infinie. Le joueur peut repiocher manuellement
+      // ou recharger la page.
+    }
     finally { setIaEnCours(false); }
   }, [gererErreur404]);
 
@@ -2011,6 +2032,8 @@ export default function App() {
     setMancheTermineeInfo(null); setPauseActive(false); setPauseIAActive(false); setDemandePauseRecue(null);
     setIaEnCours(false);
     setEloInfo(null);
+    // Réinitialiser l'anti-boucle IA pour la prochaine partie
+    iaTourLanceRef.current = null;
     setEtape(utilisateur?.pseudo ? "taille" : (utilisateur ? "pseudo" : "auth"));
   };
 
