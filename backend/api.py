@@ -881,101 +881,8 @@ def lister_parties():
     return jsonify({"nb_parties": len(parties), "parties": list(parties.keys())})
 
 
-@app.route("/ia/<partie_id>", methods=["POST"])
-def coup_ia(partie_id: str):
-    etat = parties.get(partie_id)
-    if not etat:
-        return jsonify({"erreur": "Partie introuvable"}), 404
 
-    data = request.json or {}
-    niveau = int(data.get("niveau", 2))
 
-    # CAPTURER le joueur IA AVANT tout (avant que jouer_tour ne change tour_actuel)
-    joueur_ia = etat.joueur_actif()
-    couleur_ia = joueur_ia.couleur
-    adverse = etat.joueur_adverse()
-
-    # Jouer le coup IA
-    coup = jouer_ia(etat, joueur_ia, niveau)
-
-    # Si aucun coup possible -> repiocher
-    if coup is None:
-        from game_engine import action_passer_repiocher
-        action_passer_repiocher(etat)
-        etat.passer_tour()
-        etat.timestamp_debut_tour = time.time()
-        etat_serialise = serialiser_etat(etat)
-        socketio.emit("etat_mis_a_jour", {
-            "etat": etat_serialise, "action": "repiocher",
-            "puzzles_completes": [], "manche_terminee": etat.manche_terminee,
-            "gagnant": etat.gagnant,
-        }, room=partie_id)
-        return jsonify({"succes": True, "action": "repiocher", "etat": etat_serialise})
-
-    piece_index, origine = coup
-    resultat = jouer_tour(etat, "poser", piece_index=piece_index, origine=list(origine), pouvoir="rien")
-
-    # === GESTION POUVOIR POST-COMPLETION ===
-    if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
-
-        # NIVEAU 4: choix intelligent du pouvoir
-        if niveau >= 4:
-            from ai_player import choisir_pouvoir_niveau_4
-            pouvoir_choisi, cible = choisir_pouvoir_niveau_4(etat, joueur_ia, resultat.get("puzzles_completes", []))
-
-            if pouvoir_choisi == "extraire" and cible:
-                from game_engine import appliquer_bonus_serie
-                positions = cible if isinstance(cible, list) else [cible]
-                bonus = appliquer_bonus_serie(etat, positions)
-                if bonus.get("recoloriages_possibles", 0) > 0 and positions:
-                    from game_engine import recolorier_piece
-                    recolorier_piece(etat, positions[0])
-            elif pouvoir_choisi == "echanger" and cible:
-                from game_engine import appliquer_pouvoir
-                appliquer_pouvoir(etat, "echanger", cible)
-            else:
-                from game_engine import appliquer_pouvoir
-                appliquer_pouvoir(etat, "rien")
-
-        # NIVEAU 2-3: echange automatique simple
-        elif niveau >= 2 and adverse.main_active:
-            piece_prise = adverse.main_active.pop(0)
-            if joueur_ia.main_active:
-                piece_donnee = joueur_ia.main_active.pop(-1)
-                adverse.main_active.append(piece_donnee)
-            joueur_ia.main_active.append(piece_prise)
-            # Appliquer le pouvoir "rien" pour terminer proprement
-            from game_engine import appliquer_pouvoir
-            appliquer_pouvoir(etat, "rien")
-        else:
-            # Niveau 1 ou pas d'adversaire -> rien
-            from game_engine import appliquer_pouvoir
-            appliquer_pouvoir(etat, "rien")
-
-        # UN SEUL passer_tour() ici car jouer_tour() ne l'a PAS fait (attente_pouvoir=True)
-        if not etat.manche_terminee:
-            etat.passer_tour()
-
-    # Si PAS d'attente_pouvoir, jouer_tour() a DEJA appele passer_tour()
-    # -> on ne fait RIEN, juste mettre a jour le timestamp
-    etat.timestamp_debut_tour = time.time()
-
-    # Serialiser et retourner
-    etat_serialise = serialiser_etat(etat)
-    resultat["etat"] = etat_serialise
-    resultat["manche_terminee"] = etat.manche_terminee
-    resultat["gagnant"] = etat.gagnant
-    if "puzzles_completes" in resultat:
-        resultat["puzzles_completes"] = [serialiser_puzzle(p) for p in resultat["puzzles_completes"]]
-
-    socketio.emit("etat_mis_a_jour", {
-        "etat": etat_serialise, "action": "poser",
-        "puzzles_completes": resultat.get("puzzles_completes", []),
-        "manche_terminee": etat.manche_terminee,
-        "gagnant": etat.gagnant,
-    }, room=partie_id)
-
-    return jsonify(resultat)
 
 
 @app.route("/pixels/<partie_id>", methods=["GET"])
@@ -998,7 +905,157 @@ def get_pixels(partie_id: str):
         }
     })
 
+@app.route("/ia/<partie_id>", methods=["POST"])
+def coup_ia(partie_id: str):
+    etat = parties.get(partie_id)
+    if not etat:
+        return jsonify({"erreur": "Partie introuvable"}), 404
 
+    data = request.json or {}
+    niveau = int(data.get("niveau", 2))
+
+    def ia_repiocher(reason=""):
+        try:
+            from game_engine import action_passer_repiocher
+            action_passer_repiocher(etat)
+        except Exception as e:
+            if DEBUG:
+                print(f"[IA] Erreur repiocher: {e}")
+
+        if not etat.manche_terminee:
+            etat.passer_tour()
+
+        etat.timestamp_debut_tour = time.time()
+        etat_serialise = serialiser_etat(etat)
+
+        resultat = {
+            "succes": True,
+            "action": "repiocher",
+            "etat": etat_serialise,
+            "warning": reason,
+            "manche_terminee": etat.manche_terminee,
+            "gagnant": etat.gagnant,
+        }
+
+        socketio.emit("etat_mis_a_jour", {
+            "etat": etat_serialise,
+            "action": "repiocher",
+            "puzzles_completes": [],
+            "manche_terminee": etat.manche_terminee,
+            "gagnant": etat.gagnant,
+        }, room=partie_id)
+
+        sauvegarder_partie(partie_id)
+        return jsonify(resultat)
+
+    joueur_ia = etat.joueur_actif()
+    adverse = etat.joueur_adverse()
+
+    try:
+        coup = jouer_ia(etat, joueur_ia, niveau)
+    except Exception as e:
+        if DEBUG:
+            import traceback
+            traceback.print_exc()
+        return ia_repiocher(f"IA crash: {str(e)}")
+
+    if coup is None:
+        return ia_repiocher("Aucun coup IA possible")
+
+    try:
+        piece_index, origine = coup
+        resultat = jouer_tour(
+            etat,
+            "poser",
+            piece_index=int(piece_index),
+            origine=tuple(origine),
+            pouvoir="rien"
+        )
+    except Exception as e:
+        if DEBUG:
+            import traceback
+            traceback.print_exc()
+        return ia_repiocher(f"Coup IA invalide: {str(e)}")
+
+    if not resultat.get("succes"):
+        return ia_repiocher(resultat.get("erreur", "Coup IA refusé"))
+
+    if resultat.get("attente_pouvoir") and not resultat.get("victoire_immediate"):
+        try:
+            if niveau >= 4:
+                from ai_player import choisir_pouvoir_niveau_4
+                pouvoir_choisi, cible = choisir_pouvoir_niveau_4(
+                    etat,
+                    joueur_ia,
+                    resultat.get("puzzles_completes", [])
+                )
+
+                if pouvoir_choisi == "extraire" and cible:
+                    from game_engine import appliquer_bonus_serie, recolorier_piece
+                    positions = cible if isinstance(cible, list) else [cible]
+                    bonus = appliquer_bonus_serie(etat, positions)
+                    if bonus.get("recoloriages_possibles", 0) > 0 and positions:
+                        recolorier_piece(etat, positions[0])
+
+                elif pouvoir_choisi == "echanger" and cible:
+                    from game_engine import appliquer_pouvoir
+                    appliquer_pouvoir(etat, "echanger", cible)
+
+                else:
+                    from game_engine import appliquer_pouvoir
+                    appliquer_pouvoir(etat, "rien")
+
+            elif niveau >= 2 and adverse.main_active:
+                piece_prise = adverse.main_active.pop(0)
+
+                if joueur_ia.main_active:
+                    piece_donnee = joueur_ia.main_active.pop(-1)
+                    adverse.main_active.append(piece_donnee)
+
+                joueur_ia.main_active.append(piece_prise)
+
+                from game_engine import appliquer_pouvoir
+                appliquer_pouvoir(etat, "rien")
+
+            else:
+                from game_engine import appliquer_pouvoir
+                appliquer_pouvoir(etat, "rien")
+
+        except Exception as e:
+            if DEBUG:
+                import traceback
+                traceback.print_exc()
+            try:
+                from game_engine import appliquer_pouvoir
+                appliquer_pouvoir(etat, "rien")
+            except Exception:
+                pass
+
+        if not etat.manche_terminee:
+            etat.passer_tour()
+
+    etat.timestamp_debut_tour = time.time()
+
+    etat_serialise = serialiser_etat(etat)
+    resultat["etat"] = etat_serialise
+    resultat["manche_terminee"] = etat.manche_terminee
+    resultat["gagnant"] = etat.gagnant
+
+    if "puzzles_completes" in resultat:
+        resultat["puzzles_completes"] = [
+            serialiser_puzzle(p) for p in resultat["puzzles_completes"]
+        ]
+
+    socketio.emit("etat_mis_a_jour", {
+        "etat": etat_serialise,
+        "action": "poser",
+        "puzzles_completes": resultat.get("puzzles_completes", []),
+        "manche_terminee": etat.manche_terminee,
+        "gagnant": etat.gagnant,
+    }, room=partie_id)
+
+    sauvegarder_partie(partie_id)
+    return jsonify(resultat)
 @app.route("/reconnaitre/<partie_id>", methods=["POST"])
 def reconnaitre(partie_id: str):
     if partie_id not in parties:
@@ -1115,7 +1172,7 @@ def supprimer_partie(partie_id: str):
         bonus_double_tour.pop(partie_id, None)
         reconnaissance_tentee.pop(partie_id, None)
         joueurs_connectes.pop(partie_id, None)
-        demandes_revanche.pop(partie_id, None)
+        scores_manches.pop(partie_id, None)
         return jsonify({"succes": True})
     return jsonify({"erreur": "Partie introuvable"}), 404
 
