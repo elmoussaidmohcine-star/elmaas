@@ -76,34 +76,29 @@ export default function Board({
   const [puzzleEclaire, setPuzzleEclaire] = useState(null);
   const [animPuzzles, setAnimPuzzles] = useState({});
   const boardRef = useRef(null);
-  const computeCellSize = useCallback(() => {
+  const [cellSize, setCellSize] = useState(() => {
     const isMobile = window.innerWidth <= 768;
-
     if (isMobile) {
       const avail = Math.min(window.innerWidth - 16, 420);
       return Math.max(14, Math.floor(avail / taille));
     }
-
-    const sidePanels = 460;
-    const headerSpace = 210;
-    const availableWidth = window.innerWidth - sidePanels;
-    const availableHeight = window.innerHeight - headerSpace;
-    const boardPx = Math.min(availableWidth, availableHeight, 860);
-
-    return Math.max(28, Math.min(48, Math.floor(boardPx / taille)));
-  }, [taille]);
-
-  const [cellSize, setCellSize] = useState(() => computeCellSize());
+    return Math.min(36, Math.floor(560 / taille));
+  });
 
   useEffect(() => {
     const handleResize = () => {
-      setCellSize(computeCellSize());
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const avail = Math.min(window.innerWidth - 16, 420);
+        setCellSize(Math.max(14, Math.floor(avail / taille)));
+      } else {
+        setCellSize(Math.min(36, Math.floor(560 / taille)));
+      }
     };
-
     handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [computeCellSize]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [taille]);
 
   const CELL = cellSize;
 
@@ -312,8 +307,8 @@ export default function Board({
 
           const px = pixelsPhoto?.[r]?.[c];
           let bgColor = px
-            ? `rgba(${px[0]},${px[1]},${px[2]},0.24)`
-            : "rgba(10,10,20,0.24)";
+            ? `rgba(${px[0]},${px[1]},${px[2]},0.18)`
+            : "rgba(10,10,20,0.18)";
 
           const bgComplete = couleurBgComplete(puzzleAffiche);
           if (bgComplete) bgColor = bgComplete;
@@ -362,11 +357,8 @@ export default function Board({
                 className="piece-posee-v2"
                 style={{
                   position: "absolute",
-                  top: 1,
-                  left: 1,
-                  right: 1,
-                  bottom: 1,
-                  borderRadius: Math.max(4, CELL * 0.12),
+                  top: 2, left: 2, right: 2, bottom: 2,
+                  borderRadius: "20%",
                   backgroundColor:
                     couleurPiece === "meilleur_coup" ? "#00dd66" :
                     couleurPiece === "rouge"   ? C.ROUGE_C :
@@ -374,14 +366,12 @@ export default function Board({
                     couleurPiece === "diamant" ? C.DIAMANT : "#888",
                   border:
                     couleurPiece === "meilleur_coup" ? "2px solid #00ff88" :
-                    couleurPiece === "rouge" ? "1px solid rgba(255,255,255,0.18)" :
-                    couleurPiece === "noir"  ? `2px solid ${C.NOIR_B}` :
-                    "1px solid rgba(255,255,255,0.22)",
+                    couleurPiece === "noir"  ? `2px solid ${C.NOIR_B}` : "none",
                   boxShadow:
-                    couleurPiece === "meilleur_coup" ? "0 0 10px rgba(0,255,100,0.75)" :
-                    couleurPiece === "rouge" ? "0 0 10px rgba(255,68,34,0.75)" :
-                    couleurPiece === "noir"  ? "0 0 6px rgba(85,85,102,0.65)" :
-                    "0 0 10px rgba(0,191,255,0.75)",
+                    couleurPiece === "meilleur_coup" ? "0 0 8px rgba(0,255,100,0.7)" :
+                    couleurPiece === "rouge" ? "0 0 6px rgba(255,68,34,0.6)" :
+                    couleurPiece === "noir"  ? "0 0 4px rgba(85,85,102,0.5)" :
+                    "0 0 6px rgba(0,191,255,0.6)",
                   zIndex: 10,
                 }}
               />

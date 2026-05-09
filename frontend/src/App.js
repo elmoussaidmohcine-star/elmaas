@@ -2518,16 +2518,7 @@ export default function App() {
             {(() => {
               const clickEchanger = popup?.type === "attente_cible" && popup?.pouvoir === "echanger";
               const mainAdverse = joueurAdverseAffiche?.main_active || [];
-              const hintPlateau =
-    L === 2
-      ? (pieceIdx !== null ? "ضع القطعة على الرقعة" : "اختر قطعة من اليسار")
-      : L === 3
-      ? (pieceIdx !== null ? "Coloca la pieza en el tablero" : "Elige una pieza de la izquierda")
-      : L === 1
-      ? (pieceIdx !== null ? "Place the piece on the board" : "Select a piece from the left")
-      : (pieceIdx !== null ? "Pose la pièce sur le plateau" : "Choisis une pièce à gauche");
-
-  return (
+              return (
                 <>
                   <div className="panneau-titre" style={{ marginTop: 14 }}>
                     {t("adversaire", L)} ({trCouleur(joueurAdverseAffiche?.couleur)})
@@ -2573,27 +2564,13 @@ export default function App() {
 
         {/* 3. PLATEAU — maximum d'espace */}
         <div className="plateau-central">
-          <div className="plateau-zone">
-            <div className="plateau-helper">{hintPlateau}</div>
-
-            <Board
-              etat={etat}
-              taille={taille}
-              couleurJoueur={joueurAffiche?.couleur}
-              pieceSelectionnee={
-                pieceIdx !== null && !enModeCible && !attenteChoixPouvoir
-                  ? joueurAffiche?.main_active[pieceIdx]
-                  : null
-              }
-              pieceIdx={pieceIdx}
-              pixelsPhoto={pixelsPhoto}
-              onPoserPiece={!enModeCible && !attenteChoixPouvoir ? handlePoserPiece : null}
-              modeCible={enModeCible}
-              extractionsEnCours={extractionsEnCours}
-              onCibleSelectionnee={enModeCible ? handleCiblePouvoir : null}
-              modeCouleur={modeCouleur}
-            />
-          </div>
+          <Board etat={etat} taille={taille} couleurJoueur={joueurAffiche?.couleur}
+            pieceSelectionnee={pieceIdx !== null && !enModeCible && !attenteChoixPouvoir ? joueurAffiche?.main_active[pieceIdx] : null}
+            pieceIdx={pieceIdx} pixelsPhoto={pixelsPhoto}
+            onPoserPiece={!enModeCible && !attenteChoixPouvoir ? handlePoserPiece : null}
+            modeCible={enModeCible} extractionsEnCours={extractionsEnCours}
+            onCibleSelectionnee={enModeCible ? handleCiblePouvoir : null}
+            modeCouleur={modeCouleur} />
         </div>
 
         {/* 4b. ADVERSAIRE MOBILE — sous le plateau */}
