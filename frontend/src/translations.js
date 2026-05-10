@@ -26,7 +26,7 @@ export const SLOGANS = {
     accueil: [
       "Les échecs sont vieux. ELMAAS pense.",
       "Merci au français d'avoir inventé le mot « les échecs ». Aveu involontaire.",
-      "Pas de roi à protéger — seulement une idée à défendre.",
+      "Pas de pièce centrale à protéger — seulement une vision à construire.",
       "Un jeu de stratégie, d'art, et d'un tout petit ego.",
       "Tu ne lances pas une partie. Tu ouvres quelque chose.",
       "Ici, même un pion a des ambitions littéraires.",
@@ -67,11 +67,11 @@ export const SLOGANS = {
       "Tu vas apprendre. Brutalement.",
       "Un seul coup peut suffire à te définir.",
       "Bienvenue dans un jeu qui ne te simplifie pas.",
-      "Ici on ne protège pas le roi. On le supprime.",
+      "Ici, on ne protège pas une seule pièce. On construit une stratégie.",
       "La tour des échecs ne va jamais en diagonale. On comprend sa frustration.",
       "Un fou limité à une couleur. Même en bois, on peut faire mieux.",
       "Quatre-vingt pour cent des joueurs d'échecs pensent être dans les vingt pour cent supérieurs.",
-      "ELMAAS n'a pas de roi parce que le roi n'a jamais mérité sa place.",
+      "ELMAAS ne tourne pas autour d'une seule pièce. Il tourne autour de chaque décision.",
       "Dans les échecs, le pion qui rêve devient reine. ELMAAS te laisse choisir ce que tu veux devenir.",
       "Ce plateau ne connaît pas la pitié. Mais il connaît l'art.",
       "Chaque couleur raconte une histoire. Laquelle est la tienne ?",
@@ -106,8 +106,8 @@ export const SLOGANS = {
       "Chaque case a une mémoire. Prends soin de ce que tu y déposes.",
       "Tu n'as pas encore commencé et tu es déjà en train de perdre ou de gagner.",
       "Le jeu commence avant le premier coup.",
-      "Dans les échecs, on finit toujours par un roi à genoux. ELMAAS préfère une toile.",
-      "ELMAAS : parce qu'une grille de seize cases vaut mille rois.",
+      "Dans les échecs, tout finit autour d'une pièce. ELMAAS préfère une image entière.",
+      "ELMAAS : parce qu'une image peut valoir mille plateaux.",
       "Chaque couleur que tu poses est une lettre. Ensemble, elles forment quelque chose.",
       "Tu joues pour gagner. Mais tu resteras pour avoir appris.",
       "L'art du jeu, c'est de ne pas laisser voir qu'on joue.",
@@ -118,7 +118,7 @@ export const SLOGANS = {
       "Ce que tu poses maintenant changera tout ce qui vient après.",
       "Prêt ? Le plateau, lui, l'est toujours.",
       "Quatre couleurs, deux joueurs, une vérité.",
-      "Les échecs ont un roi inutile. ELMAAS a des joueurs utiles.",
+      "Les échecs ont une pièce centrale. ELMAAS place le joueur au centre.",
       "Ce plateau ne t'appartient pas encore. Fais-le tien.",
       "Avant de jouer, regarde. Vraiment regarder, ça prend du temps.",
       "Tu viens ici pour jouer. Tu repartiras différent.",
@@ -304,7 +304,7 @@ export const SLOGANS = {
   en: {
     accueil: [
       "Chess is old. This is alive.",
-      "No king. No excuses. Just choices.",
+      "No fixed throne. No excuses. Just choices.",
       "You don't start a game. You start a conversation.",
       "Every move is a statement. Make it count.",
       "You think you're ready. You're not yet.",
@@ -315,7 +315,7 @@ export const SLOGANS = {
       "This game remembers everything you do.",
       "One move. One identity.",
       "Chess has sixty-four squares. ELMAAS has no ceiling.",
-      "The king in chess is the weakest piece worth protecting. We dropped him.",
+      "Chess revolves around one central piece. ELMAAS revolves around every decision.",
       "A horse that jumps in an L-shape. We never questioned it. ELMAAS did.",
       "The queen does all the work. The king stands there. Sound familiar?",
       "Pawns dream of becoming queens in chess. Here, you choose what you become.",
@@ -344,7 +344,7 @@ export const SLOGANS = {
       "Patience is a strategy. Impatience is a tell.",
       "You're about to learn something about how you think.",
       "The board is waiting. It's always more patient than you.",
-      "ELMAAS doesn't have a king because kings don't deserve protection.",
+      "ELMAAS has no central piece to hide behind. Every choice matters.",
       "This is the game chess wanted to become.",
       "You can't bluff the board. It sees every choice.",
       "Whatever you're about to play — own it.",
@@ -494,8 +494,8 @@ export const SLOGANS = {
   // ────────────────────────────────────────────────────────
   ar: {
     accueil: [
-      "الشطرنج قديمٌ كملوكه — وإلماس أحدثُ من أفكارهم.",
-      "لا ملكَ هنا يحتاج حمايتك. أنتَ الحكمة.",
+      "الشطرنج قديمٌ كرقعته — وإلماس يولد من كل صورة.",
+      "لا قطعة واحدة تحمل اللعبة كلها. أنتَ من يصنع المعنى.",
       "في الشطرنج يتحرك الحصان على شكل حرف. قرونٌ ولم يسأل أحدٌ لماذا.",
       "الوزيرُ يفعل كل شيء، والملك يقف. هذا ليس ذكاءً، هذا عجز.",
       "الجندي يحلم بأن يصبح وزيراً. في إلماس، أنتَ تختار ما تصبح.",
@@ -533,7 +533,7 @@ export const SLOGANS = {
       "ما ستضعه على هذا الطاولة لن تستطيع استرداده.",
       "كل قرارٍ اتخذته هنا كان موجوداً فيك قبل اللعب.",
       "أربع ألوان، لاعبان، حقيقة واحدة.",
-      "الشطرنج ورثَ ملكاً لا يستحق تاجه. إلماس ألغى التاج.",
+      "الشطرنج يدور حول قطعة واحدة. إلماس يدور حول قراراتك كلها.",
       "هذه اللوحة لا تعرف سمعتك. ابنِ واحدة جديدة.",
       "المتأني يصل. المتسرع يُعرِّف نفسه مبكراً.",
       "أعظم اللاعبين لا يحسبون أكثر — يرون أوضح.",
@@ -687,7 +687,7 @@ export const SLOGANS = {
   es: {
     accueil: [
       "El ajedrez tiene seiscientos años. ELMAAS tiene ahora.",
-      "No hay rey que proteger. Solo decisiones que tomar.",
+      "No hay una sola pieza que proteger. Solo decisiones que tomar.",
       "Empiezas una partida. En realidad, empiezas un diálogo.",
       "Cada ficha que colocas dice algo de ti.",
       "Crees que estás listo. Nadie lo está del todo.",
@@ -705,7 +705,7 @@ export const SLOGANS = {
       "El ajedrez tiene sesenta y cuatro casillas. Nosotros preferimos el infinito.",
       "El peón sueña con ser reina en el ajedrez. Aquí tú eliges lo que quieres ser.",
       "La torre siempre en línea recta. Qué aburrida dignidad la suya.",
-      "ELMAAS: porque los reyes ya tuvieron su tiempo.",
+      "ELMAAS: porque cada partida merece un tablero nuevo.",
       "Cada color que colocas es una letra. Juntos forman algo.",
       "No ganas ELMAAS. Descubres algo sobre ti.",
       "Los mejores jugadores no calculan más. Ven más.",
@@ -721,7 +721,7 @@ export const SLOGANS = {
       "La paciencia es una estrategia. La impaciencia, una confesión.",
       "Estás a punto de aprender algo sobre cómo piensas.",
       "El tablero espera. Siempre es más paciente que tú.",
-      "ELMAAS no tiene rey porque los reyes no merecen protección.",
+      "ELMAAS no depende de una sola pieza. Depende de cada decisión.",
       "No puedes engañar al tablero. Ve cada elección.",
       "Lo que estás a punto de jugar — hazlo tuyo.",
       "Dos colores. Un ganador. Cero suerte.",
@@ -872,6 +872,235 @@ export const SLOGANS = {
   },
 };
 
+
+// ═══════════════════════════════════════════════════════════
+// EXTRA SLOGANS — ELMAAS branding safe / photo → board
+// Ajout automatique : slogans attirants sans attaque directe des rois
+// ═══════════════════════════════════════════════════════════
+
+const EXTRA_SLOGANS = {
+  fr: {
+    accueil: [
+      "Chaque photo devient une bataille.",
+      "Ta photo devient le plateau. Ton esprit décide du reste.",
+      "Une image. Deux visions. Un seul vainqueur.",
+      "Le jeu commence quand l'image devient territoire.",
+      "Tu ne joues pas sur un plateau. Tu joues sur une histoire.",
+      "Chaque image cache une stratégie différente.",
+      "Pas d'ouverture à réciter. Seulement une position à comprendre.",
+      "Aux échecs, le plateau attend. Dans ELMAAS, il naît de ton image.",
+      "Deux joueurs, une image, mille chemins possibles.",
+      "ELMAAS ne répète jamais deux fois la même partie.",
+      "Le territoire n'est pas donné. Il se construit.",
+      "Une bonne pièce au bon endroit peut changer toute l'histoire.",
+      "Ton adversaire voit le même plateau. Pas la même histoire.",
+      "Dans ELMAAS, la mémoire ne suffit pas. Il faut s'adapter.",
+      "Chaque case peut devenir décisive. Regarde mieux.",
+      "Tu arrives avec une image. Tu repars avec une bataille.",
+      "La stratégie commence là où la routine s'arrête.",
+      "Chaque puzzle terminé est une décision qui prend forme.",
+      "L'instinct place la pièce. La stratégie lui donne un sens.",
+      "La vraie question n'est pas où jouer, mais pourquoi ici.",
+      "Ce plateau n'est jamais neutre. Il porte ton image.",
+      "Il ne suffit pas de jouer. Il faut lire ce que l'image devient.",
+      "Chaque partie est unique parce que chaque image l'est.",
+      "ELMAAS transforme une photo en duel d'intelligence.",
+      "Le premier coup commence avant la première pièce.",
+      "Ce que tu choisis comme image change ta manière de jouer.",
+      "Le plateau apparaît. Maintenant, prouve que tu sais voir.",
+      "Chaque couleur posée est une intention.",
+      "Un puzzle peut sembler petit. Il peut décider de tout.",
+      "Le bon joueur regarde les pièces. Le grand joueur regarde les zones.",
+      "Ce n'est pas un plateau fixe. C'est un territoire vivant.",
+      "Tu ne connais pas la carte avant de la créer.",
+      "Chaque partie commence par une image et finit par une idée.",
+      "Le hasard propose. Le joueur dispose.",
+      "Une case prise au bon moment vaut parfois une partie entière.",
+      "Ce jeu récompense ceux qui voient avant de poser.",
+      "Tu ne gagnes pas en répétant. Tu gagnes en t'adaptant.",
+      "Chaque image donne une nouvelle question stratégique.",
+      "ELMAAS ne demande pas ce que tu sais par cœur. Il demande ce que tu vois.",
+      "Le plateau change. Le vrai joueur aussi.",
+      "Si tu joues comme hier, l'image te punira aujourd'hui.",
+      "Un bon coup occupe une case. Un grand coup occupe l'avenir.",
+      "Ici, le plan se construit sous tes yeux.",
+      "Tu poses une pièce. Le plateau répond.",
+      "La beauté du jeu commence quand la photo devient logique.",
+      "Chaque partie raconte ce que les joueurs osent construire.",
+      "Le contrôle ne se réclame pas. Il se prouve.",
+      "L'image est donnée. La stratégie reste à inventer.",
+      "Tu cherches une ouverture. ELMAAS te donne un monde.",
+      "Le plateau n'attend pas ta mémoire. Il attend ta lucidité."
+    ]
+  },
+
+  en: {
+    accueil: [
+      "Every photo becomes a battle.",
+      "Your photo becomes the board. Your mind decides the rest.",
+      "One image. Two visions. One winner.",
+      "The game begins when the image becomes territory.",
+      "You don't play on a board. You play on a story.",
+      "Every image hides a different strategy.",
+      "No openings to repeat. Only a position to understand.",
+      "In chess, the board waits. In ELMAAS, it is born from your image.",
+      "Two players, one image, a thousand possible paths.",
+      "ELMAAS never repeats the same game twice.",
+      "Territory is not given. It is built.",
+      "One well-placed piece can change the whole story.",
+      "Your opponent sees the same board. Not the same story.",
+      "In ELMAAS, memory is not enough. You must adapt.",
+      "Every cell can become decisive. Look closer.",
+      "You arrive with an image. You leave with a battle.",
+      "Strategy begins where routine stops.",
+      "Every completed puzzle is a decision taking shape.",
+      "Instinct places the piece. Strategy gives it meaning.",
+      "The real question is not where to play, but why there.",
+      "This board is never neutral. It carries your image.",
+      "Playing is not enough. You must read what the image becomes.",
+      "Every game is unique because every image is unique.",
+      "ELMAAS turns a photo into a duel of intelligence.",
+      "The first move begins before the first piece.",
+      "The image you choose changes the way you play.",
+      "The board appears. Now prove you can see.",
+      "Every color you place is an intention.",
+      "A puzzle may look small. It can decide everything.",
+      "Good players look at pieces. Great players look at zones.",
+      "This is not a fixed board. It is living territory.",
+      "You don't know the map until you create it.",
+      "Every game begins with an image and ends with an idea.",
+      "Chance proposes. The player decides.",
+      "One cell taken at the right moment can be the whole game.",
+      "This game rewards those who see before they place.",
+      "You don't win by repeating. You win by adapting.",
+      "Every image asks a new strategic question.",
+      "ELMAAS doesn't ask what you memorized. It asks what you see.",
+      "The board changes. Real players change with it.",
+      "Play like yesterday, and today's image will punish you.",
+      "A good move takes a cell. A great move takes the future.",
+      "Here, the plan builds itself before your eyes.",
+      "You place a piece. The board answers.",
+      "The beauty begins when the photo becomes logic.",
+      "Every game tells what the players dare to build.",
+      "Control is not claimed. It is proven.",
+      "The image is given. The strategy is invented.",
+      "You look for an opening. ELMAAS gives you a world.",
+      "The board does not wait for memory. It waits for clarity."
+    ]
+  },
+
+  ar: {
+    accueil: [
+      "كل صورة تصبح معركة.",
+      "صورتك تتحول إلى رقعة. وعقلك يقرر الباقي.",
+      "صورة واحدة. رؤيتان. فائز واحد.",
+      "تبدأ اللعبة حين تتحول الصورة إلى أرض استراتيجية.",
+      "أنت لا تلعب على رقعة فقط. أنت تلعب داخل قصة.",
+      "كل صورة تخفي استراتيجية مختلفة.",
+      "لا افتتاحيات محفوظة. فقط وضعية تحتاج إلى فهم.",
+      "في الشطرنج تنتظرك الرقعة. في إلماس، الرقعة تولد من صورتك.",
+      "لاعبان، صورة واحدة، وألف طريق ممكن.",
+      "إلماس لا يكرر المباراة نفسها مرتين.",
+      "السيطرة لا تُمنح. السيطرة تُبنى.",
+      "قطعة واحدة في المكان الصحيح قد تغيّر القصة كلها.",
+      "خصمك يرى نفس الرقعة. لكنه لا يرى نفس القصة.",
+      "في إلماس، الذاكرة لا تكفي. يجب أن تتكيف.",
+      "كل خانة قد تصبح حاسمة. انظر أكثر.",
+      "تدخل بصورة. وتخرج بمعركة.",
+      "تبدأ الاستراتيجية حين تتوقف العادة.",
+      "كل لغز تكمّله هو قرار يأخذ شكله.",
+      "الحدس يضع القطعة. والاستراتيجية تعطيها معناها.",
+      "السؤال الحقيقي ليس أين تضع القطعة، بل لماذا هنا.",
+      "هذه الرقعة ليست محايدة. إنها تحمل صورتك.",
+      "لا يكفي أن تلعب. يجب أن تفهم ما أصبحت عليه الصورة.",
+      "كل مباراة فريدة لأن كل صورة فريدة.",
+      "إلماس يحوّل الصورة إلى مواجهة ذكاء.",
+      "الحركة الأولى تبدأ قبل وضع أول قطعة.",
+      "الصورة التي تختارها تغيّر طريقة لعبك.",
+      "تظهر الرقعة. الآن أثبت أنك ترى.",
+      "كل لون تضعه هو نية.",
+      "قد يبدو اللغز صغيراً. لكنه قد يقرر كل شيء.",
+      "اللاعب الجيد يرى القطع. اللاعب الكبير يرى المناطق.",
+      "هذه ليست رقعة ثابتة. إنها أرض حيّة.",
+      "لن تعرف الخريطة حتى تصنعها.",
+      "كل مباراة تبدأ بصورة وتنتهي بفكرة.",
+      "الاحتمال يقترح. واللاعب يقرر.",
+      "خانة واحدة في الوقت الصحيح قد تساوي مباراة كاملة.",
+      "هذه اللعبة تكافئ من يرى قبل أن يضع.",
+      "لا تفوز بالتكرار. تفوز بالتكيف.",
+      "كل صورة تطرح سؤالاً استراتيجياً جديداً.",
+      "إلماس لا يسألك ماذا حفظت. يسألك ماذا ترى.",
+      "الرقعة تتغير. واللاعب الحقيقي يتغير معها.",
+      "إن لعبت مثل الأمس، ستعاقبك صورة اليوم.",
+      "الحركة الجيدة تأخذ خانة. الحركة العظيمة تأخذ المستقبل.",
+      "هنا تُبنى الخطة أمام عينيك.",
+      "تضع قطعة. فتجيبك الرقعة.",
+      "يبدأ جمال اللعبة حين تتحول الصورة إلى منطق.",
+      "كل مباراة تحكي ما يجرؤ اللاعبان على بنائه.",
+      "السيطرة لا تُدّعى. السيطرة تُثبت.",
+      "الصورة تُعطى. والاستراتيجية تُخترع.",
+      "تبحث عن افتتاحية. إلماس يعطيك عالماً.",
+      "الرقعة لا تنتظر ذاكرتك. تنتظر وضوحك."
+    ]
+  },
+
+  es: {
+    accueil: [
+      "Cada foto se convierte en una batalla.",
+      "Tu foto se convierte en el tablero. Tu mente decide el resto.",
+      "Una imagen. Dos visiones. Un ganador.",
+      "El juego empieza cuando la imagen se convierte en territorio.",
+      "No juegas sobre un tablero. Juegas dentro de una historia.",
+      "Cada imagen esconde una estrategia distinta.",
+      "No hay aperturas que memorizar. Solo una posición que entender.",
+      "En el ajedrez, el tablero espera. En ELMAAS, nace de tu imagen.",
+      "Dos jugadores, una imagen, mil caminos posibles.",
+      "ELMAAS nunca repite la misma partida dos veces.",
+      "El territorio no se recibe. Se construye.",
+      "Una pieza bien colocada puede cambiar toda la historia.",
+      "Tu rival ve el mismo tablero. No la misma historia.",
+      "En ELMAAS, la memoria no basta. Hay que adaptarse.",
+      "Cada casilla puede ser decisiva. Mira mejor.",
+      "Llegas con una imagen. Te vas con una batalla.",
+      "La estrategia empieza donde termina la rutina.",
+      "Cada puzzle completado es una decisión tomando forma.",
+      "El instinto coloca la pieza. La estrategia le da sentido.",
+      "La verdadera pregunta no es dónde jugar, sino por qué ahí.",
+      "Este tablero nunca es neutro. Lleva tu imagen.",
+      "No basta con jugar. Hay que leer en qué se convierte la imagen.",
+      "Cada partida es única porque cada imagen lo es.",
+      "ELMAAS transforma una foto en un duelo de inteligencia.",
+      "La primera jugada empieza antes de la primera pieza.",
+      "La imagen que eliges cambia tu forma de jugar.",
+      "Aparece el tablero. Ahora demuestra que sabes ver.",
+      "Cada color que colocas es una intención.",
+      "Un puzzle puede parecer pequeño. Puede decidirlo todo.",
+      "El buen jugador mira piezas. El gran jugador mira zonas.",
+      "No es un tablero fijo. Es territorio vivo.",
+      "No conoces el mapa hasta que lo creas.",
+      "Cada partida empieza con una imagen y termina con una idea.",
+      "El azar propone. El jugador decide.",
+      "Una casilla tomada en el momento justo puede valer toda la partida.",
+      "Este juego premia a quienes ven antes de colocar.",
+      "No ganas repitiendo. Ganas adaptándote.",
+      "Cada imagen plantea una nueva pregunta estratégica.",
+      "ELMAAS no pregunta qué memorizaste. Pregunta qué ves.",
+      "El tablero cambia. El jugador real cambia con él.",
+      "Si juegas como ayer, la imagen de hoy te castigará.",
+      "Una buena jugada toma una casilla. Una gran jugada toma el futuro.",
+      "Aquí, el plan se construye ante tus ojos.",
+      "Colocas una pieza. El tablero responde.",
+      "La belleza empieza cuando la foto se convierte en lógica.",
+      "Cada partida cuenta lo que los jugadores se atreven a construir.",
+      "El control no se reclama. Se demuestra.",
+      "La imagen se da. La estrategia se inventa.",
+      "Buscas una apertura. ELMAAS te da un mundo.",
+      "El tablero no espera tu memoria. Espera tu claridad."
+    ]
+  }
+};
+
+
 // ═══════════════════════════════════════════════════════════
 // SYSTÈME GÉNÉRATIF — Combinaisons infinies par langue
 // Les fragments sont valides grammaticalement et poétiques
@@ -950,23 +1179,31 @@ let _cache = {};
 
 export function getSloganAccueil(indexLangue) {
   const code = LANGUES[indexLangue]?.code || "fr";
-  const liste = SLOGANS[code]?.accueil || SLOGANS.fr.accueil;
-  // Mélanger les générés et les existants : 85% stockés, 15% générés
-  if (Math.random() < 0.15) return genererCitation(code);
+  const base = SLOGANS[code]?.accueil || SLOGANS.fr.accueil;
+  const extra = EXTRA_SLOGANS[code]?.accueil || [];
+  const liste = [...base, ...extra].filter(Boolean);
+
+  if (Math.random() < 0.12) return genererCitation(code);
+
   const key = `accueil_${code}`;
-  if (!_cache[key]) {
+  if (_cache[key] === undefined || _cache[key] >= liste.length) {
     _cache[key] = Math.floor(Math.random() * liste.length);
   }
   return liste[_cache[key]];
 }
 
 export function getSloganAleatoire(indexLangue) {
-  // Alias pour accueil — compatibilité avec l'ancien code
   const code = LANGUES[indexLangue]?.code || "fr";
-  const liste = SLOGANS[code]?.accueil || SLOGANS.fr.accueil;
-  if (Math.random() < 0.15) return genererCitation(code);
+  const base = SLOGANS[code]?.accueil || SLOGANS.fr.accueil;
+  const extra = EXTRA_SLOGANS[code]?.accueil || [];
+  const liste = [...base, ...extra].filter(Boolean);
+
+  if (Math.random() < 0.12) return genererCitation(code);
+
   const k = `slogan_${code}_${Math.floor(Date.now() / 30000)}`;
-  if (!_cache[k]) _cache[k] = Math.floor(Math.random() * liste.length);
+  if (_cache[k] === undefined || _cache[k] >= liste.length) {
+    _cache[k] = Math.floor(Math.random() * liste.length);
+  }
   return liste[_cache[k]];
 }
 
@@ -1172,10 +1409,10 @@ export const T = {
 
   manuelTitre: ["Manuel ELMAAS", "ELMAAS Manual", "دليل إلماس", "Manual ELMAAS"],
   manuelIntro: [
-    "Un jeu de stratégie, d'art et d'intuition. Pas de roi. Pas d'excuse.",
-    "Strategy, art, and instinct. No king. No excuses.",
-    "استراتيجية، فن، وحدس. بلا ملك. بلا مبررات.",
-    "Estrategia, arte e instinto. Sin rey. Sin excusas."
+    "Un jeu de stratégie, d'art et d'intuition. Une image, des décisions, zéro excuse.",
+    "Strategy, art, and instinct. One image, hard choices, no excuses.",
+    "استراتيجية، فن، وحدس. صورة واحدة، قرارات حاسمة، بلا مبررات.",
+    "Estrategia, arte e instinto. Una imagen, decisiones, cero excusas."
   ],
 
   // ── Sections du manuel ────────────────────────────────────
