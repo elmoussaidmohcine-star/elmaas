@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Board from "./Board";
 import { t } from "./translations";
 
-// ─── Classifications : chiffres romains, style antiquité ───
 const CLASSIF = {
   ELMAAS:    { bg: "#1a0a2e", border: "#9933ff", text: "#d4aaff", labelKey: "classifElmaasLabel",    mark: "I"   },
   ELMAASYON: { bg: "#0a1a3e", border: "#4477ff", text: "#aaccff", labelKey: "classifElmaasyonLabel", mark: "II"  },
@@ -14,37 +13,35 @@ const CLASSIF = {
 
 const ORDRE_CLASSIF = ["ELMAAS", "ELMAASYON", "MASSY", "NOTMESSY", "MISSED", "CHESS"];
 
-// ─── Mini piece pour l analyse ───
 function MiniPieceAnalyse({ piece, couleur }) {
   if (!piece) return null;
   const cells = piece.cellules || [];
   const maxR = Math.max(0, ...cells.map(([r]) => r));
   const maxC = Math.max(0, ...cells.map(([, c]) => c));
-  const S = 8;
+  const S = 7;
   const estELMAAS = piece.enlevement === true;
   const coul = estELMAAS ? "#00BFFF" : (couleur === "rouge" ? "var(--rouge-c)" : "var(--noir-c)");
 
   return (
     <div style={{
-      position: "relative", width: (maxC + 1) * S + 4, height: (maxR + 1) * S + 4,
-      padding: 2, borderRadius: 4, border: `1px solid ${coul}33`,
+      position: "relative", width: (maxC + 1) * S + 2, height: (maxR + 1) * S + 2,
+      padding: 1, borderRadius: 3, border: `1px solid ${coul}33`,
       background: "rgba(255,255,255,0.02)", flexShrink: 0
     }}>
       {cells.map(([r, c], i) => (
         <div key={i} style={{
-          position: "absolute", top: r * S + 2, left: c * S + 2,
+          position: "absolute", top: r * S + 1, left: c * S + 1,
           width: S - 1, height: S - 1, borderRadius: 1, background: coul,
-          boxShadow: `0 0 2px ${coul}44`
+          boxShadow: `0 0 1px ${coul}44`
         }} />
       ))}
       {estELMAAS && (
-        <div style={{ position: "absolute", top: -2, right: -2, width: 4, height: 4, borderRadius: "50%", background: "#00BFFF" }} />
+        <div style={{ position: "absolute", top: -2, right: -2, width: 3, height: 3, borderRadius: "50%", background: "#00BFFF" }} />
       )}
     </div>
   );
 }
 
-// ─── Cellules absolues d une piece ───
 function cellulesAbsolues(piece, origine) {
   if (!piece || !origine) return [];
   const [r0, c0] = origine;
@@ -125,28 +122,16 @@ export default function EcranAnalyse({
     const altPiece = alt?.piece;
     if (altPiece && alt.origine) {
       const abs = cellulesAbsolues(altPiece, alt.origine);
-      abs.forEach(([r, c]) => {
-        pieces[`${r},${c}`] = "meilleur_coup";
-      });
+      abs.forEach(([r, c]) => { pieces[`${r},${c}`] = "meilleur_coup"; });
     }
     return buildEtatPlateau(pieces, coupActuel.puzzles_avant, coupActuel.numero_tour);
   }, [showMeilleurCoup, coupActuel, buildEtatPlateau]);
 
-  const precedent = useCallback(() => {
-    setIndexCoup(prev => Math.max(0, prev - 1));
-    setShowMeilleurCoup(false);
-  }, []);
-
-  const suivant = useCallback(() => {
-    setIndexCoup(prev => Math.min(totalCoups - 1, prev + 1));
-    setShowMeilleurCoup(false);
-  }, [totalCoups]);
+  const precedent = useCallback(() => { setIndexCoup(p => Math.max(0, p - 1)); setShowMeilleurCoup(false); }, []);
+  const suivant = useCallback(() => { setIndexCoup(p => Math.min(totalCoups - 1, p + 1)); setShowMeilleurCoup(false); }, [totalCoups]);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "ArrowLeft") precedent();
-      if (e.key === "ArrowRight") suivant();
-    };
+    const handleKeyDown = (e) => { if (e.key === "ArrowLeft") precedent(); if (e.key === "ArrowRight") suivant(); };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [precedent, suivant]);
@@ -154,10 +139,7 @@ export default function EcranAnalyse({
   const compteurPieces = useMemo(() => {
     if (!coupActuel?.plateau_apres) return { rouge: 0, noir: 0 };
     let rouge = 0, noir = 0;
-    Object.values(coupActuel.plateau_apres).forEach(v => {
-      if (v === "rouge") rouge++;
-      else if (v === "noir") noir++;
-    });
+    Object.values(coupActuel.plateau_apres).forEach(v => { if (v === "rouge") rouge++; else if (v === "noir") noir++; });
     return { rouge, noir };
   }, [coupActuel]);
 
@@ -167,8 +149,8 @@ export default function EcranAnalyse({
   if (!analyseJoueur && !analyseAdv) {
     return (
       <div className="ecran-analyse-overlay">
-        <div className="ecran-analyse" style={{ justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
-          <div style={{ color: "var(--muted)", fontSize: 15, textAlign: "center", fontFamily: "var(--brush)" }}>
+        <div className="ecran-analyse" style={{ justifyContent: "center", alignItems: "center" }}>
+          <div style={{ color: "var(--muted)", fontSize: 14, textAlign: "center", fontFamily: "var(--brush)" }}>
             {t("analyseAucunePartie", L)}
           </div>
         </div>
@@ -180,521 +162,231 @@ export default function EcranAnalyse({
     <div className="ecran-analyse-overlay">
       <div className="ecran-analyse">
 
-        {/* En-tete */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          marginBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 8
-        }}>
-          <h2 style={{
-            margin: 0, fontSize: 18, color: "var(--texte)",
-            fontFamily: "var(--titre)", letterSpacing: "0.08em", fontWeight: 400
-          }}>
-            {t("analyseTitre", L)}
-          </h2>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => setShowLegende(v => !v)}
-              style={{
-                fontSize: 11, padding: "6px 12px", borderRadius: 4,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: showLegende ? "rgba(255,255,255,0.06)" : "transparent",
-                color: "var(--texte)", cursor: "pointer", fontFamily: "var(--titre)",
-                letterSpacing: "0.1em", textTransform: "uppercase"
-              }}>
+        {/* HEADER */}
+        <div className="analyse-header-compact">
+          <h2>{t("analyseTitre", L)}</h2>
+          <div className="analyse-header-btns">
+            <button onClick={() => setShowLegende(v => !v)}>
               {showLegende ? t("analyseCacher", L) : t("analyseLegende", L)}
             </button>
-            <button onClick={onFermer} style={{
-              fontSize: 20, cursor: "pointer", background: "none", border: "none",
-              color: "var(--muted)", fontFamily: "var(--titre)", lineHeight: 1
-            }}>
-              &times;
-            </button>
+            <button onClick={onFermer}>&times;</button>
           </div>
         </div>
 
-        {/* Legende */}
+        {/* LEGENDE */}
         {showLegende && (
-          <div style={{
-            marginBottom: 8, padding: 10, borderRadius: 6,
-            background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)"
-          }}>
-            <div style={{
-              fontSize: 10, color: "var(--muted)", marginBottom: 10,
-              fontWeight: 600, letterSpacing: "0.2em", fontFamily: "var(--titre)", textTransform: "uppercase"
-            }}>
-            {t("analyseClassification", L)}
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="analyse-legende-compact">
+            <div className="legende-titre">{t("analyseClassification", L)}</div>
+            <div className="legende-classifs">
               {ORDRE_CLASSIF.map(cl => {
                 const info = CLASSIF[cl];
                 return (
-                  <div key={cl} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "6px 12px", borderRadius: 6,
-                    background: info.bg, border: `1px solid ${info.border}`
-                  }}>
-                    <div style={{
-                      width: 20, height: 20, borderRadius: "50%",
-                      border: `1px solid ${info.text}`, display: "flex",
-                      alignItems: "center", justifyContent: "center",
-                      fontFamily: "'Cinzel', serif", fontSize: 9, fontWeight: 700,
-                      color: info.text
-                    }}>
-                      {info.mark}
-                    </div>
+                  <div key={cl} className="legende-classif-item" style={{ background: info.bg, border: `1px solid ${info.border}` }}>
+                    <div className="legende-classif-mark" style={{ borderColor: info.text, color: info.text }}>{info.mark}</div>
                     <div>
-                      <div style={{
-                        fontWeight: 700, fontSize: 12, color: info.text,
-                        letterSpacing: 0.5, fontFamily: "var(--titre)"
-                      }}>{cl}</div>
-                      <div style={{ fontSize: 10, color: `${info.text}aa`, fontFamily: "var(--brush)" }}>{t(info.labelKey, L)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 10, color: info.text, fontFamily: "var(--titre)" }}>{cl}</div>
+                      <div style={{ fontSize: 9, color: `${info.text}aa`, fontFamily: "var(--brush)" }}>{t(info.labelKey, L)}</div>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div style={{ marginTop: 12, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{
-                fontSize: 10, color: "var(--muted)", fontWeight: 600,
-                fontFamily: "var(--titre)", letterSpacing: "0.15em", textTransform: "uppercase"
-              }}>{t("analysePlateau", L)} :</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--rouge-c)" }} />
-                <span style={{ fontSize: 10, color: "var(--rouge-c)", fontWeight: 600, fontFamily: "var(--brush)" }}>Rouge</span>
+            <div className="legende-colors">
+              <div className="legende-color-item">
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: "var(--rouge-c)" }} />
+                <span style={{ color: "var(--rouge-c)" }}>Rouge</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--noir-c)" }} />
-                <span style={{ fontSize: 10, color: "var(--noir-c)", fontWeight: 600, fontFamily: "var(--brush)" }}>Noir</span>
+              <div className="legende-color-item">
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: "var(--noir-c)" }} />
+                <span style={{ color: "var(--noir-c)" }}>Noir</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 2, background: "#00BFFF" }} />
-                <span style={{ fontSize: 10, color: "#00BFFF", fontWeight: 600, fontFamily: "var(--brush)" }}>ELMAAS</span>
+              <div className="legende-color-item">
+                <div style={{ width: 8, height: 8, borderRadius: 2, background: "#00BFFF" }} />
+                <span style={{ color: "#00BFFF" }}>ELMAAS</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Onglets */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {/* ONGLETS */}
+        <div className="analyse-onglets-compact">
           {[
             { key: "moi", label: couleurJoueur === "rouge" ? "Rouge" : "Noir", pct: analyseJoueur?.precision_pct ?? 0 },
             { key: "adversaire", label: couleurJoueur === "rouge" ? "Noir" : "Rouge", pct: analyseAdv?.precision_pct ?? 0 },
           ].map(({ key, label, pct }) => (
-            <button key={key}
-              onClick={() => { setCoteActif(key); setIndexCoup(0); setShowMeilleurCoup(false); }}
-              style={{
-                flex: 1, padding: 10,
-                background: coteActif === key ? "rgba(102,0,204,0.25)" : "rgba(255,255,255,0.02)",
-                color: "#fff",
-                border: coteActif === key ? "1px solid rgba(153,51,255,0.5)" : "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 13,
-                fontFamily: "var(--titre)", letterSpacing: "0.05em"
-              }}>
-              {label} <span style={{ opacity: 0.6, fontFamily: "var(--brush)", fontSize: 12 }}>— {pct}%</span>
+            <button key={key} className={coteActif === key ? "actif" : ""}
+              onClick={() => { setCoteActif(key); setIndexCoup(0); setShowMeilleurCoup(false); }}>
+              {label} <span style={{ opacity: 0.6, fontFamily: "var(--brush)", fontSize: 11 }}>— {pct}%</span>
             </button>
           ))}
         </div>
 
-        {/* Corps */}
+        {/* CORPS */}
         <div className="analyse-corps">
 
-          {/* Colonne plateau */}
+          {/* PLATEAU + PIÈCES */}
           <div className="analyse-plateau">
-            <div style={{
-              display: "flex", gap: 14, marginBottom: 8, fontSize: 11,
-              fontFamily: "var(--brush)", justifyContent: "center"
-            }}>
-              <span style={{ color: "var(--rouge-c)", fontWeight: 600 }}>Rouge : {compteurPieces.rouge}</span>
-              <span style={{ color: "var(--noir-c)", fontWeight: 600 }}>Noir : {compteurPieces.noir}</span>
+            <div className="analyse-scores-ligne">
+              <span className="r">Rouge : {compteurPieces.rouge}</span>
+              <span className="n">Noir : {compteurPieces.noir}</span>
             </div>
 
-            {showMeilleurCoup && etatPlateauMeilleur ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" }}>
-                <div style={{
-                  fontSize: 11, color: "#aa88ff", fontWeight: 600,
-                  fontFamily: "var(--titre)", letterSpacing: "0.1em", textTransform: "uppercase"
-                }}>
-                  {t("analyseMeilleurCoupPossible", L)}
-                </div>
-                <div style={{ overflow: "auto", maxWidth: "100%" }}>
-                  <Board
-                    etat={etatPlateauMeilleur}
-                    taille={taille}
-                    pixelsPhoto={pixelsPhoto}
-                    couleurJoueur={couleurAnalysee}
-                    onPoserPiece={null}
-                    modeCouleur={modeCouleur}
-                  />
-                </div>
+            <div className="analyse-board-wrap">
+              <div className="analyse-board-inner">
+                {showMeilleurCoup && etatPlateauMeilleur ? (
+                  <div className="analyse-best-overlay">
+                    <div className="analyse-best-label">{t("analyseMeilleurCoupPossible", L)}</div>
+                    <Board etat={etatPlateauMeilleur} taille={taille} pixelsPhoto={pixelsPhoto}
+                      couleurJoueur={couleurAnalysee} onPoserPiece={null} modeCouleur={modeCouleur} />
+                  </div>
+                ) : etatPlateau ? (
+                  <Board etat={etatPlateau} taille={taille} pixelsPhoto={pixelsPhoto}
+                    couleurJoueur={couleurAnalysee} onPoserPiece={null} modeCouleur={modeCouleur} />
+                ) : (
+                  <div className="analyse-loading">
+                    <div className="loading-text">{t("analyseChargement", L)}</div>
+                    <div className="loading-disclaimer">{t("analyseDisclaimer", L)}</div>
+                  </div>
+                )}
               </div>
-            ) : etatPlateau ? (
-              <div style={{ overflow: "auto", maxWidth: "100%" }}>
-                <Board
-                  etat={etatPlateau}
-                  taille={taille}
-                  pixelsPhoto={pixelsPhoto}
-                  couleurJoueur={couleurAnalysee}
-                  onPoserPiece={null}
-                  modeCouleur={modeCouleur}
-                />
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: "28px 16px", fontFamily: "var(--brush)" }}>
-                <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12 }}>
-                  {t("analyseChargement", L)}
-                </div>
-                <div style={{
-                  color: "#e8c840",
-                  fontSize: 11,
-                  fontStyle: "italic",
-                  lineHeight: 1.6,
-                  maxWidth: 320,
-                  margin: "0 auto",
-                  opacity: 0.85,
-                  borderTop: "1px solid #e8c84022",
-                  paddingTop: 10,
-                }}>
-                  {t("analyseDisclaimer", L)}
-                </div>
-              </div>
-            )}
+            </div>
 
-            {/* ── Disclaimer ELMAAS ── */}
             {coups.length > 0 && (
-              <div style={{
-                margin: "8px 0 4px",
-                padding: "6px 10px",
-                borderTop: "1px solid #e8c84018",
-                color: "#e8c840",
-                fontSize: 10,
-                fontStyle: "italic",
-                fontFamily: "var(--brush)",
-                lineHeight: 1.5,
-                opacity: 0.75,
-                textAlign: "center",
-              }}>
-                {t("analyseDisclaimer", L)}
-              </div>
+              <div className="analyse-disclaimer">{t("analyseDisclaimer", L)}</div>
             )}
 
-            {/* ── PIÈCES EN MAIN — sous le plateau ── */}
-            <div style={{
-              width: "100%", marginTop: 14,
-              display: "flex", flexDirection: "column", gap: 10
-            }}>
-              {/* Joueur analysé */}
-              <div style={{
-                padding: "8px 12px", borderRadius: 8,
-                background: "rgba(255,255,255,0.02)",
-                border: `1px solid ${couleurAnalysee === "rouge" ? "rgba(220,60,60,0.2)" : "rgba(160,160,200,0.2)"}`,
-              }}>
-                <div style={{
-                  fontSize: 10, color: "var(--muted)", textTransform: "uppercase",
-                  letterSpacing: "0.15em", fontFamily: "var(--titre)",
-                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6
-                }}>
-                  <div style={{
-                    width: 7, height: 7, borderRadius: "50%",
-                    background: couleurAnalysee === "rouge" ? "var(--rouge-c)" : "var(--noir-c)"
-                  }} />
+            {/* PIÈCES EN MAIN — côte à côte */}
+            <div className="analyse-mains-wrap">
+              <div className="analyse-main-block" style={{ borderColor: couleurAnalysee === "rouge" ? "rgba(220,60,60,0.2)" : "rgba(160,160,200,0.2)" }}>
+                <div className="analyse-main-titre">
+                  <div className="dot" style={{ background: couleurAnalysee === "rouge" ? "var(--rouge-c)" : "var(--noir-c)" }} />
                   {coteActif === "moi" ? t("analyseMesPieces", L) : t("analysePiecesAdv", L)}
-                  <span style={{ color: couleurAnalysee === "rouge" ? "var(--rouge-c)" : "var(--noir-c)", fontWeight: 600 }}>
-                    ({couleurAnalysee})
-                  </span>
+                  <span>({couleurAnalysee})</span>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 22 }}>
+                <div className="analyse-main-list">
                   {(coupActuel?.main_joueur || []).length > 0 ? (
-                    coupActuel.main_joueur.map((piece, i) => (
-                      <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAnalysee} />
-                    ))
+                    coupActuel.main_joueur.map((piece, i) => <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAnalysee} />)
                   ) : (
-                    <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)", fontStyle: "italic" }}>
-                      {t("analyseAucuneDonneeMain", L)}
-                    </span>
+                    <span className="analyse-main-empty">{t("analyseAucuneDonneeMain", L)}</span>
                   )}
                 </div>
               </div>
 
-              {/* Adversaire */}
-              <div style={{
-                padding: "8px 12px", borderRadius: 8,
-                background: "rgba(255,255,255,0.02)",
-                border: `1px solid ${couleurAdv === "rouge" ? "rgba(220,60,60,0.2)" : "rgba(160,160,200,0.2)"}`,
-              }}>
-                <div style={{
-                  fontSize: 10, color: "var(--muted)", textTransform: "uppercase",
-                  letterSpacing: "0.15em", fontFamily: "var(--titre)",
-                  marginBottom: 8, display: "flex", alignItems: "center", gap: 6
-                }}>
-                  <div style={{
-                    width: 7, height: 7, borderRadius: "50%",
-                    background: couleurAdv === "rouge" ? "var(--rouge-c)" : "var(--noir-c)"
-                  }} />
+              <div className="analyse-main-block" style={{ borderColor: couleurAdv === "rouge" ? "rgba(220,60,60,0.2)" : "rgba(160,160,200,0.2)" }}>
+                <div className="analyse-main-titre">
+                  <div className="dot" style={{ background: couleurAdv === "rouge" ? "var(--rouge-c)" : "var(--noir-c)" }} />
                   {coteActif === "moi" ? t("analysePiecesAdv", L) : t("analyseMesPieces", L)}
-                  <span style={{ color: couleurAdv === "rouge" ? "var(--rouge-c)" : "var(--noir-c)", fontWeight: 600 }}>
-                    ({couleurAdv})
-                  </span>
+                  <span>({couleurAdv})</span>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", minHeight: 22 }}>
+                <div className="analyse-main-list">
                   {(coupActuel?.main_adversaire || []).length > 0 ? (
-                    coupActuel.main_adversaire.map((piece, i) => (
-                      <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAdv} />
-                    ))
+                    coupActuel.main_adversaire.map((piece, i) => <MiniPieceAnalyse key={i} piece={piece} couleur={couleurAdv} />)
                   ) : (
-                    <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)", fontStyle: "italic" }}>
-                      {t("analyseAucuneDonneeMain", L)}
-                    </span>
+                    <span className="analyse-main-empty">{t("analyseAucuneDonneeMain", L)}</span>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Colonne info */}
+          {/* PANNEAU INFO */}
           <div className="analyse-panneau">
 
             {/* Navigation */}
-            <div style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12
-            }}>
-              <button onClick={precedent} disabled={indexCoup === 0}
-                style={{
-                  padding: "6px 14px", opacity: indexCoup === 0 ? 0.3 : 1,
-                  borderRadius: 4, border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.03)", color: "var(--texte)",
-                  cursor: indexCoup === 0 ? "default" : "pointer",
-                  fontSize: 16, fontFamily: "var(--titre)"
-                }}>
-                &larr;
-              </button>
-              <div style={{ textAlign: "center" }}>
-                <div style={{
-                  fontSize: 10, color: "var(--muted)", fontFamily: "var(--titre)",
-                  letterSpacing: "0.15em", textTransform: "uppercase"
-                }}>{t("coupSur", L)}</div>
-                <div style={{
-                  fontSize: 22, fontWeight: 700, color: "var(--texte)", fontFamily: "var(--titre)"
-                }}>
-                  {indexCoup + 1} <span style={{ color: "var(--muted)", fontSize: 13, fontFamily: "var(--brush)" }}>/ {totalCoups}</span>
-                </div>
+            <div className="analyse-nav">
+              <button onClick={precedent} disabled={indexCoup === 0}>&larr;</button>
+              <div>
+                <div className="analyse-nav-label">{t("coupSur", L)}</div>
+                <div className="analyse-nav-num">{indexCoup + 1} <span>/ {totalCoups}</span></div>
               </div>
-              <button onClick={suivant} disabled={indexCoup >= totalCoups - 1}
-                style={{
-                  padding: "6px 14px", opacity: indexCoup >= totalCoups - 1 ? 0.3 : 1,
-                  borderRadius: 4, border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.03)", color: "var(--texte)",
-                  cursor: indexCoup >= totalCoups - 1 ? "default" : "pointer",
-                  fontSize: 16, fontFamily: "var(--titre)"
-                }}>
-                &rarr;
-              </button>
+              <button onClick={suivant} disabled={indexCoup >= totalCoups - 1}>&rarr;</button>
             </div>
 
             {/* Infos coup */}
-            <div style={{
-              padding: 12, borderRadius: 8,
-              background: "rgba(255,255,255,0.02)",
-              border: `1px solid ${classifInfo.border}44`, marginBottom: 10
-            }}>
-              <div style={{
-                fontSize: 11, color: "var(--muted)", marginBottom: 8,
-                fontFamily: "var(--brush)"
-              }}>
-                {t("analyseTour", L)} <strong style={{ color: "var(--texte)" }}>{coupActuel?.numero_tour ?? "?"}</strong>
-                {" — "}
-                <span style={{
-                  color: coupActuel?.couleur === "rouge" ? "var(--rouge-c)" : "var(--noir-c)",
-                  fontWeight: 700, fontFamily: "var(--titre)"
-                }}>
-                  {coupActuel?.couleur?.toUpperCase() ?? "?"}
-                </span>
+            <div className="analyse-infos-coup" style={{ borderColor: classifInfo.border + '44' }}>
+              <div className="analyse-coup-ligne1">
+                <span>{t("analyseTour", L)} <strong>{coupActuel?.numero_tour ?? "?"}</strong> — <strong style={{ color: coupActuel?.couleur === "rouge" ? "var(--rouge-c)" : "var(--noir-c)" }}>{coupActuel?.couleur?.toUpperCase() ?? "?"}</strong></span>
               </div>
 
-              {/* Badge classification */}
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 10,
-                padding: "7px 12px", borderRadius: 6, marginBottom: 8,
-                background: classifInfo.bg,
-                border: `1px solid ${classifInfo.border}`
-              }}>
-                <div style={{
-                  width: 24, height: 24, borderRadius: "50%",
-                  border: `1.5px solid ${classifInfo.text}`, display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                  fontFamily: "'Cinzel', serif", fontSize: 10, fontWeight: 700,
-                  color: classifInfo.text
-                }}>
-                  {classifInfo.mark}
-                </div>
+              <div className="analyse-classif-badge" style={{ background: classifInfo.bg, border: `1px solid ${classifInfo.border}` }}>
+                <div className="analyse-classif-mark" style={{ borderColor: classifInfo.text, color: classifInfo.text }}>{classifInfo.mark}</div>
                 <div>
-                  <div style={{
-                    fontWeight: 700, fontSize: 14, color: classifInfo.text,
-                    letterSpacing: 1, fontFamily: "var(--titre)"
-                  }}>{classif || "?"}</div>
-                  <div style={{ fontSize: 10, color: `${classifInfo.text}aa`, fontFamily: "var(--brush)" }}>{classifInfo.labelKey ? t(classifInfo.labelKey, L) : (classif || "?")}</div>
+                  <div className="analyse-classif-name" style={{ color: classifInfo.text }}>{classif || "?"}</div>
+                  <div className="analyse-classif-label" style={{ color: classifInfo.text + 'aa' }}>{classifInfo.labelKey ? t(classifInfo.labelKey, L) : (classif || "?")}</div>
                 </div>
               </div>
 
               {coupActuel?.rang && (
-                <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 4, fontFamily: "var(--brush)" }}>
-                  {t("analyseRang", L)} : <strong style={{ color: "var(--texte)" }}>{coupActuel.rang}</strong> / {coupActuel.total_coups_possibles} {t("analyseCoupsPossibles", L)}
-                </div>
+                <div className="analyse-meta">{t("analyseRang", L)}: <strong>{coupActuel.rang}</strong> / {coupActuel.total_coups_possibles}</div>
               )}
 
               {coupActuel?.scores_avant && coupActuel?.scores_apres && (
-                <div style={{ display: "flex", gap: 10, fontSize: 10, marginBottom: 4, fontFamily: "var(--brush)" }}>
-                  <div>
-                    <span style={{ color: "var(--muted)" }}>{t("analyseAvant", L)} </span>
-                    <span style={{ color: "var(--rouge-c)" }}>R:{coupActuel.scores_avant.rouge ?? 0}</span>
-                    {" "}<span style={{ color: "var(--noir-c)" }}>N:{coupActuel.scores_avant.noir ?? 0}</span>
-                  </div>
-                  <span style={{ color: "var(--muted)" }}>&rarr;</span>
-                  <div>
-                    <span style={{ color: "var(--muted)" }}>{t("analyseApres", L)} </span>
-                    <span style={{ color: "var(--rouge-c)" }}>R:{coupActuel.scores_apres.rouge ?? 0}</span>
-                    {" "}<span style={{ color: "var(--noir-c)" }}>N:{coupActuel.scores_apres.noir ?? 0}</span>
-                  </div>
+                <div className="analyse-scores-evo">
+                  <span>R:{coupActuel.scores_avant.rouge ?? 0} N:{coupActuel.scores_avant.noir ?? 0}</span>
+                  <span>→</span>
+                  <span>R:{coupActuel.scores_apres.rouge ?? 0} N:{coupActuel.scores_apres.noir ?? 0}</span>
                 </div>
               )}
 
               {coupActuel?.gain_cellules > 0 && (
-                <div style={{ fontSize: 10, color: "#44cc88", marginBottom: 2, fontFamily: "var(--brush)" }}>
-                  +{coupActuel.gain_cellules} {t("analyseCellules", L)}
-                </div>
+                <div className="analyse-meta gain">+{coupActuel.gain_cellules} {t("analyseCellules", L)}</div>
               )}
 
               {coupActuel?.serie_apres > 0 && (
-                <div style={{ fontSize: 10, color: "#ffaa44", marginBottom: 2, fontFamily: "var(--brush)" }}>
-                  {t("analyseSerie", L)} : {coupActuel.serie_avant} &rarr; <strong>{coupActuel.serie_apres}</strong>
-                </div>
+                <div className="analyse-meta serie">{t("analyseSerie", L)}: {coupActuel.serie_avant}→<strong>{coupActuel.serie_apres}</strong></div>
               )}
 
               {coupActuel?.piece_forme && (
-                <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--brush)" }}>
-                  {t("analyseForme", L)} : <span style={{ color: "var(--texte)" }}>{coupActuel.piece_forme}</span>
-                  {coupActuel.piece_est_elmaas && (
-                    <span style={{ color: "#00BFFF", marginLeft: 6, fontWeight: 600 }}>ELMAAS</span>
-                  )}
-                </div>
+                <div className="analyse-meta">{t("analyseForme", L)}: {coupActuel.piece_forme}{coupActuel.piece_est_elmaas && <span className="elmaas-tag">ELMAAS</span>}</div>
               )}
             </div>
 
-            {/* Bouton meilleur coup — caché si coup déjà optimal (ELMAAS/ELMAASYON/MASSY) */}
-            {coupActuel?.meilleur_alternative &&
-             !["ELMAAS","ELMAASYON","MASSY"].includes(coupActuel?.classification) && (
-              <div style={{ marginBottom: 10 }}>
-                <button
-                  onClick={() => setShowMeilleurCoup(!showMeilleurCoup)}
-                  style={{
-                    padding: "9px 12px",
-                    background: showMeilleurCoup ? "rgba(255,255,255,0.04)" : "rgba(102,0,204,0.12)",
-                    color: showMeilleurCoup ? "var(--muted)" : "#cc99ff",
-                    border: "1px solid rgba(153,51,255,0.35)",
-                    borderRadius: 4, cursor: "pointer", fontSize: 11, fontWeight: 600,
-                    width: "100%", fontFamily: "var(--titre)", letterSpacing: "0.04em",
-                    fontStyle: "italic"
-                  }}>
-                  {showMeilleurCoup
-                    ? t("analyseRetourCoup", L)
-                    : t("analyseVoirUnMeilleur", L)}
+            {/* Meilleur coup */}
+            {coupActuel?.meilleur_alternative && !["ELMAAS","ELMAASYON","MASSY"].includes(coupActuel?.classification) && (
+              <div className="analyse-best-btn-wrap">
+                <button onClick={() => setShowMeilleurCoup(!showMeilleurCoup)} className="analyse-best-btn">
+                  {showMeilleurCoup ? t("analyseRetourCoup", L) : t("analyseVoirUnMeilleur", L)}
                 </button>
-
                 {showMeilleurCoup && (
-                  <div style={{
-                    marginTop: 6, padding: "8px 10px",
-                    background: "rgba(102,0,204,0.07)", borderRadius: 4,
-                    border: "1px solid rgba(153,51,255,0.2)", fontSize: 11, fontFamily: "var(--brush)"
-                  }}>
-                    <div style={{
-                      color: "#aa88ff", fontWeight: 600, marginBottom: 4,
-                      fontFamily: "var(--titre)", letterSpacing: "0.04em", fontSize: 10
-                    }}>{t("analyseMeilleurCoupLabel", L)} :</div>
+                  <div className="analyse-best-detail">
                     <div>{t("analysePiece", L)} #{(coupActuel.meilleur_alternative.piece_index ?? 0) + 1}</div>
-                    <div style={{ color: "#ffaa44" }}>
-                      {t("analyseOrigine", L)} : [{coupActuel.meilleur_alternative.origine?.join(", ")}]
-                    </div>
-                    {coupActuel.meilleur_alternative.est_elmaas && (
-                      <div style={{ color: "#00BFFF", marginTop: 3, fontWeight: 600, fontSize: 10 }}>
-                        {t("analyseElmaasDisponible", L)}
-                      </div>
-                    )}
+                    <div>{t("analyseOrigine", L)}: [{coupActuel.meilleur_alternative.origine?.join(", ")}]</div>
+                    {coupActuel.meilleur_alternative.est_elmaas && <div className="elmaas-tag">ELMAAS</div>}
                   </div>
                 )}
               </div>
             )}
 
             {/* Progression */}
-            <div style={{ marginTop: 2 }}>
-              <div style={{ height: 2, background: "rgba(255,255,255,0.05)", borderRadius: 1, overflow: "hidden" }}>
-                <div style={{
-                  height: "100%",
-                  width: `${totalCoups > 0 ? ((indexCoup + 1) / totalCoups) * 100 : 0}%`,
-                  background: "linear-gradient(90deg,#6600cc,#4477ff)",
-                  borderRadius: 1, transition: "width 0.2s"
-                }} />
+            <div className="analyse-progress">
+              <div className="analyse-progress-bar">
+                <div style={{ width: `${totalCoups > 0 ? ((indexCoup + 1) / totalCoups) * 100 : 0}%` }} />
               </div>
-              <div style={{
-                marginTop: 6, fontSize: 9, color: "var(--muted)",
-                textAlign: "center", fontFamily: "var(--brush)"
-              }}>
-                &larr; &rarr; {t("analyseNaviguer", L)}
-              </div>
+              <div className="analyse-progress-hint">&larr; &rarr; {t("analyseNaviguer", L)}</div>
             </div>
           </div>
         </div>
 
-        {/* Recapitulatif */}
+        {/* RÉCAPITULATIF */}
         {totalCoups > 0 && (() => {
           const stats = {};
           coups.forEach(c => { stats[c.classification] = (stats[c.classification] || 0) + 1; });
           return (
-            <div style={{
-              marginTop: 14, padding: 12, borderRadius: 8,
-              background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)"
-            }}>
-              <div style={{
-                fontSize: 10, color: "var(--muted)", marginBottom: 8,
-                fontWeight: 600, fontFamily: "var(--titre)",
-                letterSpacing: "0.15em", textTransform: "uppercase"
-              }}>
-                {t("analyseResume", L)} — {couleurAnalysee?.toUpperCase()} — {analyseEnCours?.precision_pct ?? 0}% {t("analysePrecision", L)}
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div className="analyse-recap-outer">
+              <div className="analyse-recap-titre">{t("analyseResume", L)} — {couleurAnalysee?.toUpperCase()} — {analyseEnCours?.precision_pct ?? 0}% {t("analysePrecision", L)}</div>
+              <div className="analyse-recap-badges">
                 {ORDRE_CLASSIF.map(cl => {
                   const count = stats[cl] || 0;
                   if (count === 0) return null;
                   const info = CLASSIF[cl];
                   const pct = Math.round(count / totalCoups * 100);
                   return (
-                    <div key={cl}
-                      onClick={() => {
-                        const idx = coups.findIndex(c => c.classification === cl);
-                        if (idx >= 0) { setIndexCoup(idx); setShowMeilleurCoup(false); }
-                      }}
-                      title={L === 0 ? `Aller au premier coup ${cl}` : L === 1 ? `Go to first ${cl} move` : L === 2 ? `انتقل إلى أول حركة ${cl}` : `Ir al primer movimiento ${cl}`}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        padding: "5px 10px", borderRadius: 4, cursor: "pointer",
-                        background: info.bg, border: `1px solid ${info.border}`,
-                        userSelect: "none"
-                      }}>
-                      <div style={{
-                        width: 14, height: 14, borderRadius: "50%",
-                        border: `1px solid ${info.text}`, display: "flex",
-                        alignItems: "center", justifyContent: "center",
-                        fontFamily: "'Cinzel', serif", fontSize: 7, fontWeight: 700,
-                        color: info.text
-                      }}>
-                        {info.mark}
-                      </div>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, color: "#fff",
-                        fontFamily: "var(--titre)"
-                      }}>{cl}</span>
-                      <span style={{
-                        fontSize: 9, color: "rgba(255,255,255,0.6)",
-                        fontFamily: "var(--brush)"
-                      }}>{count}x ({pct}%)</span>
+                    <div key={cl} className="analyse-recap-badge" style={{ background: info.bg, border: `1px solid ${info.border}` }}
+                      onClick={() => { const idx = coups.findIndex(c => c.classification === cl); if (idx >= 0) { setIndexCoup(idx); setShowMeilleurCoup(false); } }}
+                      title={L === 0 ? `Aller au premier coup ${cl}` : L === 1 ? `Go to first ${cl} move` : L === 2 ? `انتقل إلى أول حركة ${cl}` : `Ir al primer movimiento ${cl}`}>
+                      <div className="recap-mark" style={{ borderColor: info.text, color: info.text }}>{info.mark}</div>
+                      <span className="recap-name">{cl}</span>
+                      <span className="recap-count">{count}x ({pct}%)</span>
                     </div>
                   );
                 })}
