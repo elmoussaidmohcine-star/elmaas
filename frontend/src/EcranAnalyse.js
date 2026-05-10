@@ -255,7 +255,7 @@ export default function EcranAnalyse({
               <div className="analyse-disclaimer">{t("analyseDisclaimer", L)}</div>
             )}
 
-            {/* PIÈCES EN MAIN — côte à côte */}
+            {/* PIÈCES EN MAIN */}
             <div className="analyse-mains-wrap">
               <div className="analyse-main-block" style={{ borderColor: couleurAnalysee === "rouge" ? "rgba(220,60,60,0.2)" : "rgba(160,160,200,0.2)" }}>
                 <div className="analyse-main-titre">
