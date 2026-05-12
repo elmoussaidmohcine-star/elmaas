@@ -1250,11 +1250,11 @@ export const CLASSIFICATION_COUP = {
 
 export const T = {
 sousSlogan: [
-  "Ta photo devient un champ de bataille.",
-  "Your photo becomes a battlefield.",
-  "صورتك تتحول إلى ساحة معركة.",
-  "Tu foto se convierte en un campo de batalla."
-],
+    "Là où les règles les plus simples sont les plus difficiles à maîtriser.",
+    "Where the simplest rules are the hardest to master.",
+    "حيث تكون أبسط القواعد هي الأصعب إتقانًا.",
+    "Donde las reglas más simples son las más difíciles de dominar."
+  ],
 
 
   // Auth
@@ -1304,7 +1304,12 @@ sousSlogan: [
   ],
 
   // Photo
-  choisissezPhoto: ["Choisissez une photo pour votre plateau", "Choose a photo for your board", "اختر صورة للوحتك", "Elige una foto para tu tablero"],
+  choisissezPhoto: [
+    "Transforme une photo en champ de bataille.",
+    "Turn a photo into a battlefield.",
+    "حوّل صورة إلى ساحة معركة.",
+    "Convierte una foto en un campo de batalla."
+  ],
   nomSecretPhoto: ["Nom secret de la photo", "Secret photo name", "الاسم السري للصورة", "Nombre secreto de la foto"],
   max10Car: ["(max 10 car.)", "(max 10 chars.)", "(10 أحرف كحد أقصى)", "(máx 10 car.)"],
   min3Car: ["(min 3 caractères)", "(min 3 characters)", "(3 أحرف على الأقل)", "(mín 3 caracteres)"],
