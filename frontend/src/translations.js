@@ -1249,12 +1249,12 @@ export const CLASSIFICATION_COUP = {
 // ═══════════════════════════════════════════════════════════
 
 export const T = {
-  sousSlogan: [
-    "Là où les règles les plus simples sont les plus difficiles à maîtriser.",
-    "Where the simplest rules are the hardest to master.",
-    "حيث تكون أبسط القواعد هي الأصعب إتقانًا.",
-    "Donde las reglas más simples son las más difíciles de dominar."
-  ],
+sousSlogan: [
+  "Ta photo devient un champ de bataille.",
+  "Your photo becomes a battlefield.",
+  "صورتك تتحول إلى ساحة معركة.",
+  "Tu foto se convierte en un campo de batalla."
+],
 
 
   // Auth
