@@ -1250,11 +1250,12 @@ export const CLASSIFICATION_COUP = {
 
 export const T = {
   sousSlogan: [
-    "Un jeu de stratégie, d'art et d'intuition.",
-    "A game of strategy, art, and instinct.",
-    "لعبة الاستراتيجية والفن والحدس",
-    "Un juego de estrategia, arte e instinto."
+    "Là où les règles les plus simples sont les plus difficiles à maîtriser.",
+    "Where the simplest rules are the hardest to master.",
+    "حيث تكون أبسط القواعد هي الأصعب إتقانًا.",
+    "Donde las reglas más simples son las más difíciles de dominar."
   ],
+
 
   // Auth
   continuerAvecGoogle: ["Continuer avec Google", "Continue with Google", "المتابعة بواسطة Google", "Continuar con Google"],
